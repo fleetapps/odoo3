@@ -1,15 +1,20 @@
+<<<<<<< ae6402be874d100f8e4ad1863e8626edf70ce62e
 import { Component, markRaw, onWillStart, useChildSubEnv, useState } from "@odoo/owl";
+||||||| 0704801e349417a593906f9b718c98569adc153b
+import { Component, onWillStart, useChildSubEnv, useState } from "@odoo/owl";
+=======
+import { Component, onWillStart, useState } from "@odoo/owl";
+>>>>>>> de4bbd9f0ca4e0f862add2f73491674ea1627908
 import { useService } from "@web/core/utils/hooks";
-import { download } from "@web/core/network/download";
 
 import { useSpreadsheetNotificationStore } from "@spreadsheet/hooks";
 
 import * as spreadsheet from "@odoo/o-spreadsheet";
-import { Spreadsheet, Model, registries } from "@odoo/o-spreadsheet";
-import { _t } from "@web/core/l10n/translation";
+import { Spreadsheet, Model } from "@odoo/o-spreadsheet";
 import { useSpreadsheetPrint } from "../hooks";
+import { _t } from "@web/core/l10n/translation";
 
-registries.topbarMenuRegistry.addChild("download_public_excel", ["file"], {
+spreadsheet.registries.topbarMenuRegistry.addChild("download_public_excel", ["file"], {
     name: _t("Download"),
     execute: (env) => env.downloadExcel(),
     isReadonlyAllowed: true,
@@ -31,14 +36,6 @@ export class PublicReadonlySpreadsheet extends Component {
         this.http = useService("http");
         this.state = useState({
             isFilterShown: false,
-        });
-        useChildSubEnv({
-            downloadExcel: () =>
-                download({
-                    url: this.props.downloadExcelUrl,
-                    data: {},
-                }),
-            canDownloadExcel: () => Boolean(this.props.downloadExcelUrl),
         });
         useSpreadsheetPrint(() => this.model);
         onWillStart(this.createModel.bind(this));

@@ -36,8 +36,15 @@ export class SpreadsheetShareButton extends Component {
         if (!this.isChanged(data)) {
             return;
         }
+<<<<<<< ae6402be874d100f8e4ad1863e8626edf70ce62e
         const excelExport = await model.exportXLSX();
         const url = await this.props.onSpreadsheetShared(data, excelExport);
+||||||| 0704801e349417a593906f9b718c98569adc153b
+        const url = await this.props.onSpreadsheetShared(data, model.exportXLSX());
+=======
+        model.dispatch("LOG_DATASOURCE_EXPORT", { action: "freeze" });
+        const url = await this.props.onSpreadsheetShared(data, model.exportXLSX());
+>>>>>>> de4bbd9f0ca4e0f862add2f73491674ea1627908
         this.state.url = url;
         setTimeout(async () => {
             try {
