@@ -96,7 +96,6 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
             'amount_tax': 0,
             'amount_paid': 0,
             'amount_return': 0,
-            'last_order_preparation_change': '{}'
         })
 
         # I make a payment to fully pay the order
@@ -177,7 +176,6 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
             'amount_tax': 0,
             'amount_paid': 0,
             'amount_return': 0,
-            'last_order_preparation_change': '{}'
         }
 
         return self.PosOrder.create(pos_order_values)
@@ -265,7 +263,6 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
             'amount_tax': 0,
             'amount_paid': 0,
             'amount_return': 0,
-            'last_order_preparation_change': '{}'
         })
 
         # I make a payment to fully pay the order
@@ -462,7 +459,6 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
             'amount_tax': 0,
             'amount_paid': 0,
             'amount_return': 0,
-            'last_order_preparation_change': '{}'
         })
 
         # I make a payment to fully pay the order
@@ -566,7 +562,6 @@ class TestAngloSaxonFlow(TestAngloSaxonCommon):
             'amount_tax': 0,
             'amount_paid': 0,
             'amount_return': 0,
-            'last_order_preparation_change': '{}',
             'to_invoice': True,
         }
         pos_order = self.PosOrder.create(pos_order_values)

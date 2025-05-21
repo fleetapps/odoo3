@@ -4,7 +4,13 @@ import { X2MANY_TYPES, DATE_TIME_TYPE } from "./utils";
 const deepSerialization = (
     record,
     opts,
-    { serialized = {}, uuidMapping = {}, parentRelInverseName = null, stack = [] }
+    {
+        serialized = {},
+        uuidMapping = {},
+        parentRelInverseName = null,
+        stack = [],
+        recordDependencies = {},
+    }
 ) => {
     const result = {};
     const { fields, name: currentModel } = record.model;
@@ -15,6 +21,7 @@ const deepSerialization = (
             uuidMapping,
             parentRelInverseName,
             stack,
+            recordDependencies,
         });
 
     // We only care about the fields present in python model
@@ -44,6 +51,10 @@ const deepSerialization = (
             uuidMapping[targetModel] = {};
         }
         if (X2MANY_TYPES.has(field.type) && record[fieldName]) {
+            if (fieldName === "child_prep_line_ids") {
+                //create the prep_line and prep_order before original order is created
+                continue;
+            }
             if (DYNAMIC_MODELS.includes(relatedModel)) {
                 const toUpdate = [];
                 const toCreate = [];
@@ -57,7 +68,7 @@ const deepSerialization = (
                         toUpdate.push(childRecord);
 
                         if (!opts.keepCommands) {
-                            childRecord._dirty = false;
+                            childRecord.unmarkDirty();
                         }
                     } else if (!childRecord.isSynced) {
                         toCreate.push(childRecord);
@@ -71,10 +82,13 @@ const deepSerialization = (
                     fieldName,
                     () => [
                         ...(result[fieldName] || []),
-                        ...toUpdate.map((childRecord) => [
-                            1,
-                            childRecord.id,
-                            recursiveSerialize(childRecord, field.inverse_name),
+                        ...toUpdate.flatMap((childRecord) => [
+                            [
+                                1,
+                                childRecord.id,
+                                recursiveSerialize(childRecord, field.inverse_name),
+                            ],
+                            [4, childRecord.id], // Ensure relationship after editing a record, this can be usefull when splitting orders
                         ]),
                         ...toCreate.map((childRecord) => [
                             0,
@@ -140,6 +154,8 @@ const deepSerialization = (
                 if (
                     fieldName !== parentRelInverseName && //mapping not needed for direct child
                     record.uuid &&
+                    // TODO: REMOVE
+                    // !recordDependencies[field.relation]?.[record[fieldName].uuid]
                     serialized[relatedModel][record[fieldName].uuid]
                 ) {
                     if (!record[fieldName].isSynced) {
@@ -179,7 +195,7 @@ const deepSerialization = (
     }
 
     if (!opts.keepCommands) {
-        record._dirty = false;
+        record.unmarkDirty();
     }
 
     // Cleanup: remove empty entries from uuidMapping.
@@ -197,12 +213,41 @@ const deepSerialization = (
 };
 
 export const ormSerialization = (record, opts) => {
+    const serialized = {};
     const uuidMapping = {};
+    const recordDependencies = {};
     const result = deepSerialization(record, opts, {
+        serialized,
         uuidMapping,
+        recordDependencies,
     });
+
     if (Object.keys(uuidMapping).length !== 0) {
         result.relations_uuid_mapping = uuidMapping;
     }
+
+    // TODO: REMOVE
+    // if (Object.keys(recordDependencies).length !== 0) {
+    //     const normalizedDependencies = {};
+
+    //     for (const modelName in recordDependencies) {
+    //         const create = [];
+    //         const update = [];
+
+    //         for (const deps of Object.values(recordDependencies[modelName])) {
+    //             deps.create?.length && create.push(...deps.create.map((f) => f()).filter(Boolean));
+    //             deps.update?.length && update.push(...deps.update.map((f) => f()).filter(Boolean));
+    //         }
+
+    //         if (create.length || update.length) {
+    //             normalizedDependencies[modelName] = {
+    //                 ...(create.length && { create: create }),
+    //                 ...(update.length && { update: update }),
+    //             };
+    //         }
+    //     }
+    //     result.record_dependencies = normalizedDependencies;
+    // }
+
     return result;
 };

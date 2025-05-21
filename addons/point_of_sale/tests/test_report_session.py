@@ -46,7 +46,6 @@ class TestReportSession(TestPoSCommon):
             'amount_total': 110.0,
             'amount_tax': 10.0,
             'amount_return': 0.0,
-            'last_order_preparation_change': '{}',
             'to_invoice': False,
         })
         # check that an used product can not be archived
@@ -263,7 +262,6 @@ class TestReportSession(TestPoSCommon):
             'amount_total': 100.0,
             'amount_tax': 10.0,
             'amount_return': 0.0,
-            'last_order_preparation_change': '{}',
             'to_invoice': False,
         })
 
@@ -297,7 +295,6 @@ class TestReportSession(TestPoSCommon):
             'amount_total': 100.0,
             'amount_tax': 10.0,
             'amount_return': 0.0,
-            'last_order_preparation_change': '{}',
             'to_invoice': False,
         })
 
@@ -342,7 +339,6 @@ class TestReportSession(TestPoSCommon):
             'amount_total': 156.25,
             'amount_tax': 25.0,
             'amount_return': 0.0,
-            'last_order_preparation_change': '{}',
             'to_invoice': False,
         }
         order = self.env['pos.order'].create(order_info)
@@ -379,7 +375,6 @@ class TestReportSession(TestPoSCommon):
             'amount_total': 100.0,
             'amount_tax': 4.76,
             'amount_return': 0.0,
-            'last_order_preparation_change': '{}',
             'to_invoice': False,
         } for _ in range(5)]
 

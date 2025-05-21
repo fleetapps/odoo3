@@ -8,9 +8,9 @@
         </t>
         <button t-if="pos.config.use_presets and !props.showRemainingButtons"
             class="btn btn-secondary btn-lg flex-shrink-0 border-0"
-            t-attf-class="{{currentOrder.preset_id?.color and `o_colorlist_item_color_${currentOrder.preset_id?.color}`}}"
+            t-attf-class="{{currentOrder?.preset_id?.color and `o_colorlist_item_color_${currentOrder?.preset_id?.color}`}}"
             t-on-click="() => this.pos.selectPreset()">
-            <span t-if="currentOrder.preset_id?.name" t-out="currentOrder.preset_id?.name" />
+            <span t-if="currentOrder?.preset_id?.name" t-out="currentOrder.preset_id?.name" />
             <span t-else="">Preset</span>
         </button>
         <button t-if="!props.showRemainingButtons and !ui.isSmall and this.pos.showSaveOrderButton" t-att-disabled="this.pos.getOrder().isEmpty()" t-attf-class="{{ buttonClass }} ms-auto" t-on-click="() => this.pos.clickSaveOrder()">

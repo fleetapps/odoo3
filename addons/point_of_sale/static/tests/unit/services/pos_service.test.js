@@ -51,6 +51,7 @@ describe("pos_store.js", () => {
         models.connectNewData({
             "pos.order": [serializedOrder],
         });
+        order.model.triggerEvents("update", { id: order.id, fields: [] });
         const updatedOrder = models["pos.order"].get(order.id);
         expect(updatedOrder.state).toBe("cancel");
         expect(isListenerCalled).toBe(true);
@@ -141,13 +142,13 @@ describe("pos_store.js", () => {
             expect(order2.lines[1].id).toBeOfType("number");
         });
 
-        test("getOrderChanges", async () => {
+        test("getChanges", async () => {
             const store = await setupPosEnv();
             const product = store.models["product.product"].get(5);
             product.display_name = "001 TEST";
-            await getFilledOrder(store);
-            const result = store.getOrderChanges();
-            const [line] = Object.values(result.orderlines);
+            const order = await getFilledOrder(store);
+            const result = order.getChanges();
+            const [line] = Object.values(result.addedQuantity);
             expect(line.basic_name).toBe("001 TEST");
         });
 
@@ -203,7 +204,7 @@ describe("pos_store.js", () => {
         expect(store.getOrder().lines[0].qty).toBe(4);
     });
 
-    test("changesToOrderNoPrepCateg", async () => {
+    test("getPreparationChangesNoPrepCateg", async () => {
         const store = await setupPosEnv();
         const order = await getFilledOrder(store);
         const generator = store.ticketPrinter.getGenerator({ models: store.models, order });
@@ -236,10 +237,9 @@ describe("pos_store.js", () => {
 
     test("generateReceiptsDataToPrint", async () => {
         const store = await setupPosEnv();
-        const pos_categories = store.models["pos.category"].getAll().map((c) => c.id);
+        const pos_categories = store.models["pos.category"].map((c) => c.id);
         const order = await getFilledOrder(store);
         order.lines[1].setNote('[{"text":"Wait","colorIndex":0}]');
-
         order.lines[0].setCustomerNote("Test Orderline Customer Note");
         const generator = store.ticketPrinter.getGenerator({ models: store.models, order });
         const orderChange = generator.generatePreparationData(new Set([...pos_categories]), {});
@@ -248,10 +248,7 @@ describe("pos_store.js", () => {
         expect(newChanges.title).toBe("NEW");
         expect(newChanges.data.length).toBe(2);
         expect(newChanges.data[0]).toEqual({
-            uuid: order.lines[0].uuid,
-            name: "TEST",
             basic_name: "TEST",
-            combo_parent_uuid: undefined,
             customer_note: "Test Orderline Customer Note",
             product_id: 5,
             attribute_value_names: [],
@@ -259,15 +256,12 @@ describe("pos_store.js", () => {
             note: "",
             pos_categ_id: 1,
             pos_categ_sequence: 1,
-            display_name: "TEST",
-            group: undefined,
-            isCombo: false,
+            group: false,
+            combo_line_ids: [],
+            combo_parent_uuid: undefined,
         });
         expect(newChanges.data[1]).toEqual({
-            uuid: order.lines[1].uuid,
-            name: "TEST 2",
             basic_name: "TEST 2",
-            combo_parent_uuid: undefined,
             customer_note: "",
             product_id: 6,
             attribute_value_names: [],
@@ -275,9 +269,9 @@ describe("pos_store.js", () => {
             note: "Wait",
             pos_categ_id: 2,
             pos_categ_sequence: 2,
-            display_name: "TEST 2",
-            group: undefined,
-            isCombo: false,
+            group: false,
+            combo_line_ids: [],
+            combo_parent_uuid: undefined,
         });
     });
 
@@ -291,22 +285,38 @@ describe("pos_store.js", () => {
         productB.parentPosCategIds = [2];
 
         const currentOrderChange = {
-            new: [
-                { uuid: "combo-parent-uuid", isCombo: true },
+            addedQuantity: [
+                {
+                    uuid: "combo-parent-uuid",
+                    combo_line_ids: [
+                        {
+                            uuid: "combo-child-a-uuid",
+                            combo_parent_uuid: "combo-parent-uuid",
+                            product_id: productA,
+                            combo_line_ids: false,
+                        },
+                        {
+                            uuid: "combo-child-b-uuid",
+                            combo_parent_uuid: "combo-parent-uuid",
+                            product_id: productB,
+                            combo_line_ids: false,
+                        },
+                    ],
+                },
                 {
                     uuid: "combo-child-a-uuid",
                     combo_parent_uuid: "combo-parent-uuid",
                     product_id: productA.id,
-                    isCombo: false,
+                    combo_line_ids: false,
                 },
                 {
                     uuid: "combo-child-b-uuid",
                     combo_parent_uuid: "combo-parent-uuid",
                     product_id: productB.id,
-                    isCombo: false,
+                    combo_line_ids: false,
                 },
-                { uuid: "line1", product_id: productA.id, isCombo: false },
-                { uuid: "line2", product_id: productB.id, isCombo: false },
+                { uuid: "line1", product_id: productA.id, combo_line_ids: false },
+                { uuid: "line2", product_id: productB.id, combo_line_ids: false },
             ],
             cancelled: [],
             noteUpdate: [],
@@ -319,7 +329,7 @@ describe("pos_store.js", () => {
         );
 
         const expectedUuids = ["combo-parent-uuid", "combo-child-a-uuid", "line1"];
-        const actualUuids = filtered.new.map((c) => c.uuid);
+        const actualUuids = filtered.addedQuantity.map((c) => c.uuid);
 
         expect(actualUuids.sort()).toEqual(expectedUuids.sort());
     });
