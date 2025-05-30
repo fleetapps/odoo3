@@ -7,15 +7,15 @@ from odoo.addons.website_sale.controllers import main
 
 
 class WebsiteSale(main.WebsiteSale):
-    def _check_delivery_address(self, partner_sudo):
+    def _check_delivery_address(self, partner_sudo, **kwargs):
         """Override of `website_sale`to check that the shipping address is compliant with Gelato.
 
         :param res.partner partner_sudo: The partner whose delivery address to check.
         :return: Whether all checked fields are within length limit.
         :rtype: bool
         """
-        res = super()._check_delivery_address(partner_sudo)
-        order_sudo = request.cart
+        res = super()._check_delivery_address(partner_sudo, **kwargs)
+        order_sudo = kwargs.get('order_sudo') or request.cart
         if not res or not order_sudo:
             return res
 
