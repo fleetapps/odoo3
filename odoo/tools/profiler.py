@@ -115,20 +115,32 @@ class Collector:
 
     def add(self, entry=None, frame=None):
         """ Add an entry (dict) to this collector. """
-        self._entries.append({
+        sample = {
             'stack': self._get_stack_trace(frame),
             'exec_context': getattr(self.profiler.init_thread, 'exec_context', ()),
             'start': real_time(),
             **(entry or {}),
-        })
+        }
+        self._entries.append(sample)
+        return sample
 
     def progress(self, entry=None, frame=None):
         """ Checks if the limits were met and add to the entries"""
-        if self.profiler.entry_count_limit \
-            and self.profiler.entry_count() >= self.profiler.entry_count_limit:
+        exceeded_entry_count = bool(self.profiler.entry_count_limit) \
+                                and self.profiler.entry_count() >= self.profiler.entry_count_limit
+        exceeded_time_limit = bool(self.profiler.time_limit) \
+                              and self.profiler.time_limit < real_time() - self.profiler.start_time
+        if exceeded_entry_count \
+            or exceeded_time_limit:
             self.profiler.end()
 
+<<<<<<< 94364e7473492e9bf0ce1f395895f9dbc405d848
         self.add(entry=entry,frame=frame)
+||||||| 37c111d460d9244f162c326f7a67c53ac27a41b5
+        self.add(entry=entry, frame=frame)
+=======
+        return self.add(entry=entry, frame=frame)
+>>>>>>> 690880c958067cbcc5a6ba4cb1b210c3152f4926
 
     def _get_stack_trace(self, frame=None):
         """ Return the stack trace to be included in a given entry. """
@@ -168,12 +180,18 @@ class SQLCollector(Collector):
         self.profiler.init_thread.query_hooks.remove(self.hook)
 
     def hook(self, cr, query, params, query_start, query_time):
-        self.progress({
+        entry = {
             'query': str(query),
             'full_query': str(cr._format(query, params)),
             'start': query_start,
             'time': query_time,
-        })
+        }
+        sample = self.progress(entry)
+
+        def update_sample(delay):
+            sample['time'] = delay
+
+        return update_sample
 
     def summary(self):
         total_time = sum(entry['time'] for entry in self._entries) or 1
@@ -551,7 +569,14 @@ class Profiler:
         self.profile_id = None
         self.log = log
         self.sub_profilers = []
+<<<<<<< 94364e7473492e9bf0ce1f395895f9dbc405d848
         self.entry_count_limit = int(self.params.get("entry_count_limit",0)) # the limit could be set using a smarter way
+||||||| 37c111d460d9244f162c326f7a67c53ac27a41b5
+        self.entry_count_limit = int(self.params.get("entry_count_limit", 0))   # the limit could be set using a smarter way
+=======
+        self.entry_count_limit = int(self.params.get("entry_count_limit", 0))
+        self.time_limit = int(self.params.get("time_limit", 0))
+>>>>>>> 690880c958067cbcc5a6ba4cb1b210c3152f4926
         self.done = False
 
         if db is ...:
