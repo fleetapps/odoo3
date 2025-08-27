@@ -7,66 +7,80 @@ export class ResourceCalendarAttendance extends models.ServerModel {
         return ["id", "hour_from", "hour_to", "dayofweek"];
     }
 
+    _load_pos_data_dependencies() {
+        return [];
+    }
+
     _records = [
         {
             id: 1,
             hour_from: 12,
             hour_to: 15,
             dayofweek: "1",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 2,
             hour_from: 18,
             hour_to: 22,
             dayofweek: "1",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 3,
             hour_from: 12,
             hour_to: 15,
             dayofweek: "2",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 4,
             hour_from: 18,
             hour_to: 22,
             dayofweek: "2",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 5,
             hour_from: 12,
             hour_to: 15,
             dayofweek: "3",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 6,
             hour_from: 18,
             hour_to: 22,
             dayofweek: "3",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 7,
             hour_from: 12,
             hour_to: 15,
             dayofweek: "4",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 8,
             hour_from: 18,
             hour_to: 22,
             dayofweek: "4",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 9,
             hour_from: 12,
             hour_to: 15,
             dayofweek: "5",
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 10,
             hour_from: 18,
             hour_to: 22,
             dayofweek: "5",
+            write_date: "2025-01-01 10:00:00",
         },
     ];
 }

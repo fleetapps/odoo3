@@ -301,17 +301,11 @@ export class PosStore extends WithLazyGetterTrap {
         ];
     }
 
-    async reloadData(fullReload = false) {
+    async reloadData() {
         const orders = this.models["pos.order"].getAll();
         this.device.saveUnusedNumber(orders);
         await this.data.resetIndexedDB();
-        const url = new URL(window.location.href);
-
-        if (fullReload) {
-            url.searchParams.set("limited_loading", "0");
-        }
-
-        window.location.href = url.href;
+        window.location.reload();
     }
 
     async showLoginScreen() {
@@ -1434,7 +1428,7 @@ export class PosStore extends WithLazyGetterTrap {
     }
 
     removePendingOrder(order) {
-        this.pendingOrder["create"].delete(order.id);
+        this.pendingOrder["create"].delete(order.uuid);
         this.pendingOrder["write"].delete(order.id);
         this.pendingOrder["delete"].delete(order.id);
         return true;
@@ -1465,7 +1459,7 @@ export class PosStore extends WithLazyGetterTrap {
         }
     }
 
-    postSyncAllOrders(orders) {}
+    async postSyncAllOrders(orders) {}
     async syncAllOrders(options = {}) {
         if (this.data.network.offline) {
             if (options.throw) {
@@ -1498,7 +1492,6 @@ export class PosStore extends WithLazyGetterTrap {
         // We are now syncing orders one by one to avoid cancelling all sync
         // when one order fails, this also avoid timeout issues with a lot of orders
         let errorOccurred = false;
-        let newSession = false;
         const syncedOrders = [];
 
         for (const order of orders) {
@@ -1536,7 +1529,6 @@ export class PosStore extends WithLazyGetterTrap {
                 await this.postSyncAllOrders(newData["pos.order"]);
                 this.removePendingOrder(order);
                 syncedOrders.push(...newData["pos.order"]);
-                newSession = newSession || data["pos.session"].length > 0;
             } catch (error) {
                 if (options.throw) {
                     throw error;
@@ -1562,20 +1554,6 @@ export class PosStore extends WithLazyGetterTrap {
             // try to read data from server, to be sure to have the latest state
             // the order can be deleted from the server side during the sync_from_ui call
             this.deviceSync.readDataFromServer();
-        }
-
-        if (newSession) {
-            // Replace the original session by the rescue one. And the rescue one will have
-            // a higher id than the original one since it's the last one created.
-            const sessions = this.models["pos.session"].sort((a, b) => a.id - b.id);
-            if (sessions.length > 1) {
-                const sessionToDelete = sessions.slice(0, -1);
-                this.models["pos.session"].deleteMany(sessionToDelete);
-            }
-            this.models["pos.order"]
-                .getAll()
-                .filter((order) => order.state === "draft")
-                .forEach((order) => (order.session_id = this.session));
         }
 
         return syncedOrders;

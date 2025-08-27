@@ -9,6 +9,10 @@ export class RestaurantTable extends models.ServerModel {
         return ["table_number", "floor_id", "seats", "parent_id", "active"];
     }
 
+    _load_pos_data_dependencies() {
+        return [];
+    }
+
     _records = [
         {
             id: 2,
@@ -26,6 +30,7 @@ export class RestaurantTable extends models.ServerModel {
                 shape: "square",
                 color: "rgb(53,211,116)",
             },
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 3,
@@ -43,6 +48,7 @@ export class RestaurantTable extends models.ServerModel {
                 shape: "square",
                 color: "rgb(53,211,116)",
             },
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 4,
@@ -60,6 +66,7 @@ export class RestaurantTable extends models.ServerModel {
                 shape: "square",
                 color: "rgb(53,211,116)",
             },
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 14,
@@ -77,6 +84,7 @@ export class RestaurantTable extends models.ServerModel {
                 shape: "square",
                 color: "rgb(53,211,116)",
             },
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 15,
@@ -94,6 +102,7 @@ export class RestaurantTable extends models.ServerModel {
                 shape: "square",
                 color: "rgb(53,211,116)",
             },
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 16,
@@ -111,6 +120,7 @@ export class RestaurantTable extends models.ServerModel {
                 shape: "square",
                 color: "rgb(53,211,116)",
             },
+            write_date: "2025-01-01 10:00:00",
         },
     ];
 }

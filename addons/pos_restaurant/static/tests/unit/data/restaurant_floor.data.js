@@ -9,6 +9,10 @@ export class RestaurantFloor extends models.ServerModel {
         return ["name", "table_ids", "sequence", "pos_config_ids"];
     }
 
+    _load_pos_data_dependencies() {
+        return [];
+    }
+
     _records = [
         {
             id: 2,
@@ -16,6 +20,7 @@ export class RestaurantFloor extends models.ServerModel {
             table_ids: [2, 3, 4],
             sequence: 1,
             pos_config_ids: [1],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 3,
@@ -23,6 +28,7 @@ export class RestaurantFloor extends models.ServerModel {
             table_ids: [14, 15, 16],
             sequence: 1,
             pos_config_ids: [1],
+            write_date: "2025-01-01 10:00:00",
         },
     ];
 }

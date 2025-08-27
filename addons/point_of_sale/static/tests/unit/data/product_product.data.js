@@ -20,6 +20,10 @@ export class ProductProduct extends models.ServerModel {
         ];
     }
 
+    _load_pos_data_dependencies() {
+        return [];
+    }
+
     _records = [
         {
             id: 1,
@@ -33,6 +37,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [1],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 5,
@@ -46,6 +51,7 @@ export class ProductProduct extends models.ServerModel {
             default_code: false,
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 6,
@@ -59,6 +65,7 @@ export class ProductProduct extends models.ServerModel {
             default_code: false,
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 7,
@@ -72,6 +79,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 8,
@@ -85,6 +93,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 9,
@@ -98,6 +107,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 10,
@@ -111,6 +121,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 11,
@@ -124,6 +135,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 12,
@@ -137,6 +149,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [4],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 13,
@@ -150,6 +163,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [5],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 14,
@@ -163,6 +177,7 @@ export class ProductProduct extends models.ServerModel {
             product_template_attribute_value_ids: [],
             product_template_variant_value_ids: [],
             pos_categ_ids: [4],
+            write_date: "2025-01-01 10:00:00",
         },
         {
             id: 15,
