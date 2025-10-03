@@ -3,7 +3,6 @@ import { Plugin } from "@html_editor/plugin";
 import { throttleForAnimation } from "@web/core/utils/timing";
 import { getScrollingElement, getScrollingTarget } from "@web/core/utils/scrolling";
 import { OverlayButtons } from "./overlay_buttons";
-import { withSequence } from "@html_editor/utils/resource";
 
 /** @typedef {import("@html_builder/core/builder_options_plugin").BuilderButtonDescriptor} BuilderButtonDescriptor */
 /**
@@ -35,7 +34,7 @@ export class OverlayButtonsPlugin extends Plugin {
         on_selection_leave_handlers: this.showOverlayButtonsUi.bind(this),
         on_step_added_handlers: this.refreshButtons.bind(this),
         on_current_options_containers_changed_handlers: this.addOverlayButtons.bind(this),
-        on_mobile_preview_clicked: withSequence(20, this.refreshButtons.bind(this)),
+        on_device_view_switched_handlers: this.refreshButtons.bind(this),
     };
 
     setup() {
