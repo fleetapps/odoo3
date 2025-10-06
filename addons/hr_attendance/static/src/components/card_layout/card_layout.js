@@ -1,15 +1,19 @@
 import { useState } from "@web/owl2/utils";
 import { Component, onWillUnmount } from "@odoo/owl";
+import { AttendanceVideoStream } from "@hr_attendance/components/attendance_video_stream/attendance_video_stream";
 
 const { DateTime } = luxon;
 export class CardLayout extends Component {
     static template = "hr_attendance.CardLayout";
+    static components = { AttendanceVideoStream };
     static props = {
         slots: Object,
         fromTrialMode: { type: Boolean, optional: true },
         companyImageUrl: { type: String },
         kioskReturn: { type: Function },
         activeDisplay: { type: String },
+        captureCheckInImage: { type: Boolean },
+        exposeCamera: { type: Function, optional: true },
     };
     static defaultProps = {
         kioskModeClasses: "",
