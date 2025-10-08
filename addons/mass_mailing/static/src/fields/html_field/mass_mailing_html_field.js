@@ -276,7 +276,6 @@ export class MassMailingHtmlField extends HtmlField {
             allowChecklist: false,
             record: this.props.record,
             mobileBreakpoint: "md",
-            defaultImageMimetype: "image/png",
             onEditorReady: () => this.commitChanges(),
         };
     }
@@ -366,6 +365,16 @@ export class MassMailingHtmlField extends HtmlField {
         const promise = super.commitChanges(...arguments);
         this.converter.keepAlive(promise);
         return promise;
+    }
+
+    /**
+     * Ensure that every SVG and WEBP images are converted to PNG, and create
+     * an attachment for every b64 encoded image, to ensure every image src
+     * is not a data url.
+     * @override
+     */
+    savePendingImages(content) {
+        return this.editor.shared["mail.ImageFormatPlugin"].sanitizeImages(content);
     }
 
     /**
