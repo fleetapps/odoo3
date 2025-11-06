@@ -969,5 +969,8 @@ class AccountEdiCommon(models.AbstractModel):
         # OVERRIDE
         pass
 
+    def _retrieve_invoice_tax_amounts(self, tree, invoice):
+        pass  # To be implemented by the format if needed
+
     def _correct_invoice_tax_amount(self, tree, invoice):
         pass  # To be implemented by the format if needed

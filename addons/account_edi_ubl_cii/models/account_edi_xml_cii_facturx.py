@@ -285,7 +285,7 @@ class AccountEdiXmlCII(models.AbstractModel):
             'country_code': self._find_value(f'.//ram:{role}/ram:PostalTradeAddress//ram:CountryID', tree),
         }
 
-    def _import_fill_invoice(self, invoice, tree, qty_factor):
+    def _import_fill_invoice(self, invoice, tree, qty_factor, collect_values=None):
         logs = []
         invoice_values = {}
         if qty_factor == -1:
@@ -339,7 +339,7 @@ class AccountEdiXmlCII(models.AbstractModel):
 
         invoice_values = {
             **invoice_values,
-            'invoice_line_ids': [Command.create(line_value) for line_value in line_vals],
+            'invoice_line_ids': [Command.create({k: v for k, v in line_value.items() if not k.startswith('_')}) for line_value in line_vals],
         }
         invoice.write(invoice_values)
         logs += partner_logs + currency_logs + line_logs + allowance_charges_logs

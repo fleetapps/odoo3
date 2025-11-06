@@ -1,5 +1,6 @@
 from odoo import Command
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.tools import file_open
 
 
 class TestUblCiiCommon(AccountTestInvoicingCommon):
@@ -130,7 +131,8 @@ class TestUblCiiCommon(AccountTestInvoicingCommon):
     # EXPORT HELPERS
     # -------------------------------------------------------------------------
 
-    def subfolder(self):
+    @classmethod
+    def subfolder_export(cls):
         return 'export'
 
     @classmethod
@@ -139,19 +141,40 @@ class TestUblCiiCommon(AccountTestInvoicingCommon):
 
     def _assert_invoice_ubl_file(self, invoice, filename):
         self.assertTrue(invoice.ubl_cii_xml_id)
-        self.assert_xml(invoice.ubl_cii_xml_id.raw, filename, subfolder=self.subfolder())
+        self.assert_xml(invoice.ubl_cii_xml_id.raw, filename, subfolder=self.subfolder_export())
 
     # -------------------------------------------------------------------------
     # IMPORT HELPERS
     # -------------------------------------------------------------------------
 
     @classmethod
-    def _import_as_attachment_on(cls, file_path=None, attachment=None, journal=None):
-        assert file_path or attachment
-        assert not file_path or not attachment
+    def subfolder_import(cls):
+        return 'import'
+
+    @classmethod
+    def _import_as_attachment(cls, test_name):
+        filename = f"{test_name}.xml"
+        full_file_path = cls._get_test_file_path(cls, filename, subfolder=cls.subfolder_import())
+        with file_open(full_file_path, 'rb') as file:
+            return cls.env['ir.attachment'].create({
+                'mimetype': 'application/xml',
+                'name': filename,
+                'raw': file.read(),
+            })
+
+    @classmethod
+    def _import_as_attachment_on(cls, test_name=None, attachment=None, journal=None):
+        """
+        :param str test_name:
+        :param ir.attachment attachment:
+        :param account.journal journal:
+        :return: the created move object from the attachment/file
+        :rtype: account.move
+        """
+        assert bool(test_name) ^ bool(attachment), "Either `filename` or `attachment` must be provided, but not both."
         journal = journal or cls.company_data["default_journal_purchase"]
-        if file_path:
-            attachment = cls._import_as_attachment(file_path)
+        if test_name:
+            attachment = cls._import_as_attachment(test_name)
         return journal._create_document_from_attachment(attachment.id)
 
 
@@ -172,8 +195,8 @@ class TestUblCiiBECommon(TestUblCiiCommon):
         })
         return company
 
-    def subfolder(self):
-        return f'{super().subfolder()}/be'
+    def subfolder_export(self):
+        return f'{super().subfolder_export()}/be'
 
 
 class TestUblCiiFRCommon(TestUblCiiCommon):
@@ -191,8 +214,8 @@ class TestUblCiiFRCommon(TestUblCiiCommon):
         })
         return company
 
-    def subfolder(self):
-        return f'{super().subfolder()}/fr'
+    def subfolder_export(self):
+        return f'{super().subfolder_export()}/fr'
 
 
 class TestUblBis3Common(TestUblCiiCommon):
@@ -212,5 +235,5 @@ class TestUblBis3Common(TestUblCiiCommon):
     # EXPORT HELPERS
     # -------------------------------------------------------------------------
 
-    def subfolder(self):
-        return super().subfolder().replace('export', 'export/bis3/invoice')
+    def subfolder_export(self):
+        return super().subfolder_export().replace('export', 'export/bis3/invoice')

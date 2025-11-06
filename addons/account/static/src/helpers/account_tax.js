@@ -1463,4 +1463,1131 @@ export const accountTaxHelpers = {
     can_be_discounted(tax) {
         return !["fixed", "code"].includes(tax.amount_type);
     },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    merge_tax_details(tax_details_1, tax_details_2) {
+        const results = {};
+        for (const prefix of ["raw_", ""]) {
+            for (const field of ["total_excluded", "total_included"]) {
+                for (const suffix of ["_currency", ""]) {
+                    const key = `${prefix}${field}${suffix}`;
+                    results[key] = tax_details_1[key] + tax_details_2[key];
+                }
+            }
+        }
+        for (const suffix of ["_currency", ""]) {
+            const field = `delta_total_excluded${suffix}`;
+            results[field] = tax_details_1[field] + tax_details_2[field];
+        }
+
+        const agg_taxes_data = {};
+        for (const tax_details of [tax_details_1, tax_details_2]) {
+            for (const tax_data of tax_details.taxes_data) {
+                const tax = tax_data.tax;
+                const tax_id_str = tax.id.toString();
+                if (tax_id_str in agg_taxes_data) {
+                    const agg_tax_data = agg_taxes_data[tax_id_str];
+                    for (const prefix of ["raw_", ""]) {
+                        for (const suffix of ["_currency", ""]) {
+                            for (const field of ["base_amount", "tax_amount"]) {
+                                const field_with_prefix = `${prefix}${field}${suffix}`;
+                                agg_tax_data[field_with_prefix] += tax_data[field_with_prefix];
+                            }
+                        }
+                    }
+                } else {
+                    agg_taxes_data[tax_id_str] = { ...tax_data };
+                }
+            }
+        }
+        results.taxes_data = Object.values(agg_taxes_data);
+
+        // In case there is some taxes that are in tax_details_1 but not on tax_details_2,
+        // we have to shift manually the base amount. It happens with fixed taxes in which the base
+        // is meaningless but still used in the computations.
+        const taxes_data_in_2 = new Set(tax_details_2.taxes_data.map((td) => td.tax.id));
+        const not_discountable_taxes_data = new Set(
+            tax_details_1.taxes_data
+                .filter((td) => !taxes_data_in_2.has(td.tax.id))
+                .map((td) => td.tax.id)
+        );
+        for (const tax_data of results.taxes_data) {
+            if (not_discountable_taxes_data.has(tax_data.tax.id)) {
+                for (const suffix of ["_currency", ""]) {
+                    for (const prefix of ["raw_", ""]) {
+                        tax_data[`${prefix}base_amount${suffix}`] +=
+                            tax_details_2[`${prefix}total_excluded${suffix}`];
+                    }
+                    tax_data[`base_amount${suffix}`] +=
+                        tax_details_2[`delta_total_excluded${suffix}`];
+                }
+            }
+        }
+
+        return results;
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    fix_base_lines_tax_details_on_manual_tax_amounts(
+        base_lines,
+        company,
+        { filter_function = null } = {}
+    ) {
+        for (const base_line of base_lines) {
+            const tax_details = base_line.tax_details;
+            const taxes_data = tax_details.taxes_data;
+
+            base_line.manual_total_excluded_currency =
+                tax_details.total_excluded_currency + tax_details.delta_total_excluded_currency;
+            base_line.manual_total_excluded =
+                tax_details.total_excluded + tax_details.delta_total_excluded;
+
+            if (!taxes_data.length) {
+                continue;
+            }
+
+            base_line.manual_tax_amounts = {};
+            for (const tax_data of taxes_data) {
+                if (tax_data.is_reverse_charge) {
+                    continue;
+                }
+                const tax = tax_data.tax;
+                const tax_id_str = tax.id.toString();
+                base_line.manual_tax_amounts[tax_id_str] = {};
+                if (filter_function && !filter_function(base_line, tax_data)) {
+                    continue;
+                }
+
+                base_line.manual_tax_amounts[tax_id_str] = {
+                    tax_amount_currency: tax_data.tax_amount_currency,
+                    tax_amount: tax_data.tax_amount,
+                    base_amount_currency: tax_data.base_amount_currency,
+                    base_amount: tax_data.base_amount,
+                };
+            }
+        }
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    split_tax_data(base_line, tax_data, company, target_factors) {
+        const currency = base_line.currency_id;
+
+        const factors = this.normalize_target_factors(target_factors);
+
+        const new_taxes_data = [];
+
+        // Distribution of raw amounts.
+        for (const index_factor of factors) {
+            const factor = index_factor[1];
+            new_taxes_data.push({
+                ...tax_data,
+                raw_tax_amount_currency: factor * tax_data.raw_tax_amount_currency,
+                raw_tax_amount: factor * tax_data.raw_tax_amount,
+                raw_base_amount_currency: factor * tax_data.raw_base_amount_currency,
+                raw_base_amount: factor * tax_data.raw_base_amount,
+            });
+        }
+
+        // Distribution of rounded amounts.
+        const new_target_factors = new_taxes_data.map((new_tax_data, index) => ({
+            factor: target_factors[index].factor,
+            tax_data: new_tax_data,
+        }));
+
+        for (const [delta_currency_indicator, delta_currency] of [
+            ["_currency", currency],
+            ["", company.currency_id],
+        ]) {
+            for (const prefix of ["tax", "base"]) {
+                const field = `${prefix}_amount${delta_currency_indicator}`;
+                const amounts_to_distribute = this.distribute_delta_amount_smoothly(
+                    delta_currency.decimal_places,
+                    tax_data[field],
+                    new_target_factors
+                );
+                for (let i = 0; i < new_target_factors.length; i++) {
+                    const target_factor = new_target_factors[i];
+                    const amount_to_distribute = amounts_to_distribute[i];
+                    const new_tax_data = target_factor.tax_data;
+                    new_tax_data[field] = amount_to_distribute;
+                }
+            }
+        }
+        return new_taxes_data;
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    split_tax_details(base_line, company, target_factors) {
+        const currency = base_line.currency_id;
+        const tax_details = base_line.tax_details;
+
+        const factors = this._normalize_target_factors(target_factors);
+
+        const new_tax_details_list = [];
+
+        // Distribution of raw amounts.
+        for (const index_factor of factors) {
+            const factor = index_factor[1];
+            new_tax_details_list.push({
+                raw_total_excluded_currency: factor * tax_details.raw_total_excluded_currency,
+                raw_total_excluded: factor * tax_details.raw_total_excluded,
+                raw_total_included_currency: factor * tax_details.raw_total_included_currency,
+                raw_total_included: factor * tax_details.raw_total_included,
+                delta_total_excluded_currency: 0.0,
+                delta_total_excluded: 0.0,
+                taxes_data: [],
+            });
+        }
+
+        // Manage 'taxes_data'.
+        for (const tax_data of tax_details.taxes_data) {
+            const new_taxes_data = this.split_tax_data(
+                base_line,
+                tax_data,
+                company,
+                target_factors
+            );
+            for (let i = 0; i < new_tax_details_list.length; i++) {
+                const new_tax_details = new_tax_details_list[i];
+                const new_tax_data = new_taxes_data[i];
+                new_tax_details.taxes_data.push(new_tax_data);
+            }
+        }
+
+        // Distribution of rounded amounts.
+        for (const [delta_currency_indicator, delta_currency] of [
+            ["_currency", currency],
+            ["", company.currency_id],
+        ]) {
+            const new_target_factors = new_tax_details_list.map((new_tax_details) => ({
+                factor: new_tax_details[`raw_total_excluded${delta_currency_indicator}`],
+                tax_details: new_tax_details,
+            }));
+            const field = `total_excluded${delta_currency_indicator}`;
+            const delta_amount = tax_details[field];
+            const amounts_to_distribute = this.distribute_delta_amount_smoothly(
+                delta_currency.decimal_places,
+                delta_amount,
+                new_target_factors
+            );
+            for (let i = 0; i < new_target_factors.length; i++) {
+                const target_factor = new_target_factors[i];
+                const amount_to_distribute = amounts_to_distribute[i];
+                const new_tax_details = target_factor.tax_details;
+                new_tax_details[field] = amount_to_distribute;
+            }
+        }
+
+        // Manage 'total_included'.
+        for (const new_tax_details of new_tax_details_list) {
+            for (const delta_currency_indicator of ["_currency", ""]) {
+                new_tax_details[`total_included${delta_currency_indicator}`] =
+                    new_tax_details[`total_excluded${delta_currency_indicator}`] +
+                    new_tax_details.taxes_data.reduce(
+                        (sum, new_tax_data) =>
+                            sum + new_tax_data[`tax_amount${delta_currency_indicator}`],
+                        0
+                    );
+            }
+        }
+        return new_tax_details_list;
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    split_base_line(base_line, company, target_factors, { populate_function = null } = {}) {
+        const factors = this.normalize_target_factors(target_factors);
+
+        // Split 'tax_details'.
+        const new_tax_details_list = this.split_tax_details(base_line, company, target_factors);
+
+        // Split 'base_line'.
+        const new_base_lines = factors.map((x) => null);
+        for (let i = 0; i < factors.length; i++) {
+            const index = factors[i][0];
+            const factor = factors[i][1];
+            const new_tax_details = new_tax_details_list[i];
+            const target_factor = target_factors[i];
+
+            const kwargs = {
+                price_unit: factor * base_line.price_unit,
+                tax_details: new_tax_details,
+            };
+
+            if (populate_function) {
+                populate_function(base_line, target_factor, kwargs);
+            }
+
+            new_base_lines[index] = this.prepare_base_line_for_taxes_computation(base_line, kwargs);
+        }
+        return new_base_lines;
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     * DEPRECATED: TO BE REMOVED IN MASTER
+     */
+    compute_subset_base_lines_total(base_lines, company) {
+        let base_amount_currency = 0.0;
+        let tax_amount_currency = 0.0;
+        let base_amount = 0.0;
+        let tax_amount = 0.0;
+        const tax_amounts_mapping = {};
+        let raw_total_included_currency = 0.0;
+        let raw_total_included = 0.0;
+        for (const base_line of base_lines) {
+            const tax_details = base_line.tax_details;
+            base_amount_currency +=
+                tax_details.total_excluded_currency + tax_details.delta_total_excluded_currency;
+            base_amount += tax_details.total_excluded + tax_details.delta_total_excluded;
+            raw_total_included_currency += tax_details.raw_total_excluded_currency;
+            raw_total_included += tax_details.raw_total_excluded;
+            for (const tax_data of tax_details.taxes_data) {
+                const tax = tax_data.tax;
+                if (!this.can_be_discounted(tax)) {
+                    continue;
+                }
+
+                const tax_id_str = tax.id.toString();
+                if (!(tax_id_str in tax_amounts_mapping)) {
+                    tax_amounts_mapping[tax_id_str] = {
+                        tax_amount_currency: 0.0,
+                        tax_amount: 0.0,
+                    };
+                }
+
+                tax_amount_currency += tax_data.tax_amount_currency;
+                tax_amount += tax_data.tax_amount;
+                tax_amounts_mapping[tax_id_str].tax_amount_currency += tax_data.tax_amount_currency;
+                tax_amounts_mapping[tax_id_str].tax_amount += tax_data.tax_amount;
+                raw_total_included_currency += tax_data.raw_tax_amount_currency;
+                raw_total_included += tax_data.raw_tax_amount;
+            }
+        }
+        return {
+            base_amount_currency: base_amount_currency,
+            tax_amount_currency: tax_amount_currency,
+            base_amount: base_amount,
+            tax_amount: tax_amount,
+            tax_amounts_mapping: tax_amounts_mapping,
+            raw_total_included_currency: raw_total_included_currency,
+            raw_total_included: raw_total_included,
+            rate: raw_total_included ? raw_total_included_currency / raw_total_included : 0.0,
+        };
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    reduce_base_lines_with_grouping_function(
+        base_lines,
+        { grouping_function = null, aggregate_function = null, computation_key = null } = {}
+    ) {
+        const base_line_map = {};
+        for (const base_line of base_lines) {
+            const price_unit_after_discount =
+                base_line.price_unit * (1 - base_line.discount / 100.0);
+            const new_base_line = this.prepare_base_line_for_taxes_computation(base_line, {
+                price_unit: base_line.quantity * price_unit_after_discount,
+                quantity: 1.0,
+                discount: 0.0,
+            });
+            const raw_grouping_key = {
+                tax_ids: new_base_line.tax_ids.map((tax) => tax.id),
+                computation_key: base_line.computation_key,
+            };
+            const grouping_key = {
+                tax_ids: new_base_line.tax_ids.map((tax) => tax),
+                computation_key: base_line.computation_key,
+            };
+            if (grouping_function) {
+                const generated_grouping_key = grouping_function(new_base_line);
+
+                // There is no FrozenDict in javascript.
+                // When the key is a record, it can't be jsonified so this is a trick to provide both the
+                // raw_grouping_key (to be jsonified) from the grouping_key (to be added to the values).
+                if ("raw_grouping_key" in generated_grouping_key) {
+                    Object.assign(raw_grouping_key, generated_grouping_key.raw_grouping_key);
+                    Object.assign(grouping_key, generated_grouping_key.grouping_key);
+                } else {
+                    Object.assign(raw_grouping_key, generated_grouping_key);
+                    Object.assign(grouping_key, generated_grouping_key);
+                }
+            }
+
+            const grouping_key_json = JSON.stringify(raw_grouping_key);
+            let target_base_line = base_line_map[grouping_key_json];
+            if (target_base_line) {
+                target_base_line.price_unit += new_base_line.price_unit;
+                target_base_line.tax_details = this.merge_tax_details(
+                    target_base_line.tax_details,
+                    base_line.tax_details
+                );
+                if (aggregate_function) {
+                    aggregate_function(target_base_line, base_line);
+                }
+            } else {
+                target_base_line = this.prepare_base_line_for_taxes_computation(new_base_line, {
+                    ...grouping_key,
+                    computation_key: computation_key,
+                    tax_details: {
+                        ...base_line.tax_details,
+                        taxes_data: base_line.tax_details.taxes_data.map((tax_data) =>
+                            Object.assign({}, tax_data)
+                        ),
+                    },
+                });
+                base_line_map[grouping_key_json] = target_base_line;
+                if (aggregate_function) {
+                    aggregate_function(target_base_line, base_line);
+                }
+            }
+        }
+
+        // Remove zero lines.
+        const reduced_base_lines = Object.values(base_line_map).filter(
+            (base_line) => !floatIsZero(base_line.price_unit, base_line.currency_id.decimal_places)
+        );
+        return reduced_base_lines;
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     * DEPRECATED: TO BE REMOVED IN MASTER
+     */
+    apply_base_lines_manual_amounts_to_reach(
+        base_lines,
+        company,
+        target_base_amount_currency,
+        target_base_amount,
+        target_tax_amounts_mapping
+    ) {
+        const currency = base_lines[0].currency_id;
+
+        // Smooth distribution of the delta accross the base line, starting at the biggest one.
+        const sorted_base_lines = base_lines.sort((base_line_1, base_line_2) => {
+            const key_1 = [
+                Boolean(base_line_1.special_type),
+                -base_line_1.tax_details.total_excluded_currency,
+            ];
+            const key_2 = [
+                Boolean(base_line_2.special_type),
+                -base_line_2.tax_details.total_excluded_currency,
+            ];
+
+            if (key_1[0] !== key_2[0]) {
+                return key_1[0] - key_2[0];
+            }
+            return key_1[1] - key_2[1];
+        });
+        const base_lines_totals = this.compute_subset_base_lines_total(base_lines, company);
+        for (const [delta_suffix, delta_target_base_amount, delta_currency] of [
+            ["_currency", target_base_amount_currency, currency],
+            ["", target_base_amount, company.currency_id],
+        ]) {
+            const target_factors = sorted_base_lines.map((base_line) => ({
+                factor: Math.abs(
+                    (base_line.tax_details.total_excluded_currency +
+                        base_line.tax_details.delta_total_excluded_currency) /
+                        base_lines_totals.base_amount_currency
+                ),
+                base_line: base_line,
+            }));
+            const amounts_to_distribute = this.distribute_delta_amount_smoothly(
+                delta_currency.decimal_places,
+                delta_target_base_amount - base_lines_totals[`base_amount${delta_suffix}`],
+                target_factors
+            );
+            for (let i = 0; i < target_factors.length; i++) {
+                const target_factor = target_factors[i];
+                const amount_to_distribute = amounts_to_distribute[i];
+                const base_line = target_factor.base_line;
+                const tax_details = base_line.tax_details;
+                const taxes_data = tax_details.taxes_data;
+                if (delta_suffix === "_currency") {
+                    base_line.price_unit +=
+                        amount_to_distribute / Math.abs(base_line.quantity || 1.0);
+                }
+                if (!taxes_data.length) {
+                    continue;
+                }
+
+                const first_batch = taxes_data[0].batch;
+                for (const tax_data of taxes_data) {
+                    const tax = tax_data.tax;
+                    if (first_batch.includes(tax)) {
+                        tax_data[`base_amount${delta_suffix}`] += amount_to_distribute;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        for (const [tax_id_str, tax_amounts] of Object.entries(target_tax_amounts_mapping)) {
+            for (const [delta_suffix, delta_target_tax_amount, delta_currency] of [
+                ["_currency", tax_amounts.tax_amount_currency, currency],
+                ["", tax_amounts.tax_amount, company.currency_id],
+            ]) {
+                const current_tax_amounts = base_lines_totals.tax_amounts_mapping[tax_id_str];
+                if (!current_tax_amounts.tax_amount_currency) {
+                    continue;
+                }
+
+                const target_factors = [];
+                for (const base_line of sorted_base_lines) {
+                    for (const tax_data of base_line.tax_details.taxes_data) {
+                        if (tax_data.tax.id.toString() === tax_id_str) {
+                            target_factors.push({
+                                factor: Math.abs(
+                                    tax_data.tax_amount_currency /
+                                        current_tax_amounts.tax_amount_currency
+                                ),
+                                tax_data: tax_data,
+                            });
+                        }
+                    }
+                }
+                const amounts_to_distribute = this.distribute_delta_amount_smoothly(
+                    delta_currency.decimal_places,
+                    delta_target_tax_amount - current_tax_amounts[`tax_amount${delta_suffix}`],
+                    target_factors
+                );
+                for (let i = 0; i < target_factors.length; i++) {
+                    const target_factor = target_factors[i];
+                    const amount_to_distribute = amounts_to_distribute[i];
+                    const tax_data = target_factor.tax_data;
+                    tax_data[`tax_amount${delta_suffix}`] += amount_to_distribute;
+                }
+            }
+        }
+
+        this.fix_base_lines_tax_details_on_manual_tax_amounts(base_lines, company);
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    reduce_base_lines_to_target_amount(
+        base_lines,
+        company,
+        amount_type,
+        amount,
+        { computation_key = null, grouping_function = null, aggregate_function = null } = {}
+    ) {
+        if (!base_lines.length) {
+            return [];
+        }
+
+        const currency = base_lines[0].currency_id;
+        const rate = base_lines[0].rate;
+
+        // Compute the current total amount of the base lines.
+        function grouping_function_total(base_line, tax_data) {
+            return true;
+        }
+
+        let base_lines_aggregated_values = this.aggregate_base_lines_tax_details(
+            base_lines,
+            grouping_function_total
+        );
+        let values_per_grouping_key = this.aggregate_base_lines_aggregated_values(
+            base_lines_aggregated_values
+        );
+        const total_amount_currency = Object.values(values_per_grouping_key).reduce(
+            (acc, values) => acc + values.total_excluded_currency + values.tax_amount_currency,
+            0
+        );
+        const total_amount = Object.values(values_per_grouping_key).reduce(
+            (acc, values) => acc + values.total_excluded + values.tax_amount,
+            0
+        );
+
+        // Compute the current total tax amount per tax.
+        function grouping_function_tax(base_line, tax_data) {
+            return tax_data ? tax_data.tax.id.toString() : null;
+        }
+
+        base_lines_aggregated_values = this.aggregate_base_lines_tax_details(
+            base_lines,
+            grouping_function_tax
+        );
+        values_per_grouping_key = this.aggregate_base_lines_aggregated_values(
+            base_lines_aggregated_values
+        );
+        const tax_amounts_per_tax = {};
+        for (const [grouping_key, values] of Object.entries(values_per_grouping_key)) {
+            if (!grouping_key) {
+                continue;
+            }
+
+            tax_amounts_per_tax[grouping_key] = {
+                tax_amount_currency: values.tax_amount_currency,
+                tax_amount: values.tax_amount,
+                base_amount_currency: values.base_amount_currency,
+                base_amount: values.base_amount,
+            };
+        }
+
+        // Turn the 'amount_type' / 'amount' into a percentage and the total amounts to be reached
+        // from the base lines.
+        const sign = amount < 0.0 ? -1 : 1;
+        const signed_amount = sign * amount;
+        let percentage, expected_total_amount_currency, expected_total_amount;
+        if (amount_type === "fixed") {
+            percentage = total_amount_currency ? signed_amount / total_amount_currency : 0.0;
+            expected_total_amount_currency = roundPrecision(amount, currency.rounding);
+            expected_total_amount = rate
+                ? roundPrecision(
+                      expected_total_amount_currency / rate,
+                      company.currency_id.rounding
+                  )
+                : 0.0;
+        } else {
+            percentage = signed_amount / 100.0;
+            expected_total_amount_currency = roundPrecision(
+                total_amount_currency * sign * percentage,
+                currency.rounding
+            );
+            expected_total_amount = roundPrecision(
+                total_amount * sign * percentage,
+                company.currency_id.rounding
+            );
+        }
+
+        // Compute the expected amounts.
+        const expected_tax_amounts = {};
+        for (const [grouping_key, values] of Object.entries(tax_amounts_per_tax)) {
+            expected_tax_amounts[grouping_key] = {
+                tax_amount_currency: roundPrecision(
+                    values.tax_amount_currency * sign * percentage,
+                    currency.rounding
+                ),
+                tax_amount: roundPrecision(
+                    values.tax_amount * sign * percentage,
+                    company.currency_id.rounding
+                ),
+                base_amount_currency: roundPrecision(
+                    values.base_amount_currency * sign * percentage,
+                    currency.rounding
+                ),
+                base_amount: roundPrecision(
+                    values.base_amount * sign * percentage,
+                    company.currency_id.rounding
+                ),
+            };
+        }
+        const expected_base_amount_currency =
+            expected_total_amount_currency -
+            Object.values(expected_tax_amounts).reduce((acc, v) => acc + v.tax_amount_currency, 0);
+        const expected_base_amount =
+            expected_total_amount -
+            Object.values(expected_tax_amounts).reduce((acc, v) => acc + v.tax_amount, 0);
+
+        // Reduce the base lines to minimize the number of lines.
+        const reduced_base_lines = this.reduce_base_lines_with_grouping_function(base_lines, {
+            grouping_function: grouping_function,
+            aggregate_function: aggregate_function,
+            computation_key: computation_key,
+        });
+        if (!reduced_base_lines.length) {
+            return [];
+        }
+
+        // Reduce the unit price to approach the target amount.
+        const new_base_lines = reduced_base_lines.map((base_line) =>
+            this.prepare_base_line_for_taxes_computation(base_line, {
+                price_unit: base_line.price_unit * sign * percentage,
+                computation_key: computation_key,
+            })
+        );
+        this.add_tax_details_in_base_lines(new_base_lines, company);
+        this.round_base_lines_tax_details(new_base_lines, company);
+
+        // Smooth distribution of the delta tax/base amounts.
+        const sorted_base_lines = new_base_lines.sort((base_line_1, base_line_2) => {
+            const key_1 = [
+                Boolean(base_line_1.special_type),
+                -base_line_1.tax_details.total_excluded_currency,
+            ];
+            const key_2 = [
+                Boolean(base_line_2.special_type),
+                -base_line_2.tax_details.total_excluded_currency,
+            ];
+
+            if (key_1[0] !== key_2[0]) {
+                return key_1[0] - key_2[0];
+            }
+            return key_1[1] - key_2[1];
+        });
+        base_lines_aggregated_values = this.aggregate_base_lines_tax_details(
+            new_base_lines,
+            grouping_function_tax
+        );
+        values_per_grouping_key = this.aggregate_base_lines_aggregated_values(
+            base_lines_aggregated_values
+        );
+        const current_tax_amounts_per_tax = {};
+        for (const [grouping_key, values] of Object.entries(values_per_grouping_key)) {
+            if (!grouping_key) {
+                continue;
+            }
+            current_tax_amounts_per_tax[grouping_key] = {
+                tax_amount_currency: values.tax_amount_currency,
+                tax_amount: values.tax_amount,
+                base_amount_currency: values.base_amount_currency,
+                base_amount: values.base_amount,
+            };
+        }
+        for (const [tax_id_str, tax_amounts] of Object.entries(current_tax_amounts_per_tax)) {
+            const tax_amount_currency = tax_amounts.tax_amount_currency;
+            if (!tax_amount_currency) {
+                continue;
+            }
+
+            for (const [delta_suffix, delta_tax_amount, delta_base_amount, delta_currency] of [
+                [
+                    "_currency",
+                    expected_tax_amounts[tax_id_str].tax_amount_currency -
+                        tax_amounts.tax_amount_currency,
+                    expected_tax_amounts[tax_id_str].base_amount_currency -
+                        tax_amounts.base_amount_currency,
+                    currency,
+                ],
+                [
+                    "",
+                    expected_tax_amounts[tax_id_str].tax_amount - tax_amounts.tax_amount,
+                    expected_tax_amounts[tax_id_str].base_amount - tax_amounts.base_amount,
+                    company.currency_id,
+                ],
+            ]) {
+                // Tax amount.
+                const tax_amount_currency = tax_amounts.tax_amount_currency;
+                if (tax_amount_currency) {
+                    const target_factors = [];
+                    for (const base_line of sorted_base_lines) {
+                        for (const tax_data of base_line.tax_details.taxes_data) {
+                            if (tax_data.tax.id.toString() === tax_id_str) {
+                                target_factors.push({
+                                    factor: Math.abs(
+                                        tax_data.tax_amount_currency / tax_amount_currency
+                                    ),
+                                    base_line: base_line,
+                                    tax_data: tax_data,
+                                });
+                            }
+                        }
+                    }
+                    const amounts_to_distribute = this.distribute_delta_amount_smoothly(
+                        delta_currency.decimal_places,
+                        delta_tax_amount,
+                        target_factors
+                    );
+                    for (const [i, target_factor] of target_factors.entries()) {
+                        const amount_to_distribute = amounts_to_distribute[i];
+                        target_factor.tax_data[`tax_amount${delta_suffix}`] += amount_to_distribute;
+                    }
+                }
+
+                // Base amount.
+                const base_amount_currency = tax_amounts.base_amount_currency;
+                if (base_amount_currency) {
+                    const target_factors = [];
+                    for (const base_line of sorted_base_lines) {
+                        for (const tax_data of base_line.tax_details.taxes_data) {
+                            if (tax_data.tax.id.toString() === tax_id_str) {
+                                target_factors.push({
+                                    factor: Math.abs(
+                                        tax_data.base_amount_currency / base_amount_currency
+                                    ),
+                                    base_line: base_line,
+                                    tax_data: tax_data,
+                                });
+                            }
+                        }
+                    }
+                    const amounts_to_distribute = this.distribute_delta_amount_smoothly(
+                        delta_currency.decimal_places,
+                        delta_base_amount,
+                        target_factors
+                    );
+                    for (const [i, target_factor] of target_factors.entries()) {
+                        const amount_to_distribute = amounts_to_distribute[i];
+                        target_factor.tax_data[`base_amount${delta_suffix}`] +=
+                            amount_to_distribute;
+                    }
+                }
+            }
+        }
+
+        base_lines_aggregated_values = this.aggregate_base_lines_tax_details(
+            new_base_lines,
+            grouping_function_total
+        );
+        values_per_grouping_key = this.aggregate_base_lines_aggregated_values(
+            base_lines_aggregated_values
+        );
+        const current_base_amount_currency = Object.values(values_per_grouping_key).reduce(
+            (acc, values) => acc + values.total_excluded_currency,
+            0
+        );
+        const current_base_amount = Object.values(values_per_grouping_key).reduce(
+            (acc, values) => acc + values.total_excluded,
+            0
+        );
+        for (const [delta_suffix, delta_base_amount, delta_currency] of [
+            ["_currency", expected_base_amount_currency - current_base_amount_currency, currency],
+            ["", expected_base_amount - current_base_amount, company.currency_id],
+        ]) {
+            const target_factors = sorted_base_lines.map((base_line) => ({
+                factor: Math.abs(
+                    (base_line.tax_details.total_excluded_currency +
+                        base_line.tax_details.delta_total_excluded_currency) /
+                        current_base_amount_currency
+                ),
+                base_line: base_line,
+            }));
+            const amounts_to_distribute = this.distribute_delta_amount_smoothly(
+                delta_currency.decimal_places,
+                delta_base_amount,
+                target_factors
+            );
+            for (const [i, target_factor] of target_factors.entries()) {
+                const base_line = target_factor.base_line;
+                const amount_to_distribute = amounts_to_distribute[i];
+                const tax_details = base_line.tax_details;
+                tax_details[`delta_total_excluded${delta_suffix}`] += amount_to_distribute;
+                if (delta_suffix === "_currency") {
+                    base_line.price_unit += amount_to_distribute;
+                }
+            }
+        }
+        return new_base_lines;
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    partition_base_lines_taxes(base_lines, partition_function) {
+        let has_taxes_to_exclude = false;
+        const base_lines_partition_taxes = [];
+        for (const base_line of base_lines) {
+            const tax_details = base_line.tax_details;
+            const taxes_data = tax_details.taxes_data;
+            const taxes_to_keep = [];
+            const taxes_to_exclude = [];
+            for (const tax_data of taxes_data) {
+                const tax = tax_data.tax;
+                if (partition_function(base_line, tax_data)) {
+                    taxes_to_keep.push(tax);
+                } else {
+                    taxes_to_exclude.push(tax);
+                }
+            }
+            if (taxes_to_exclude.length > 0) {
+                has_taxes_to_exclude = true;
+            }
+            base_lines_partition_taxes.push([base_line, taxes_to_keep, taxes_to_exclude]);
+        }
+        return [base_lines_partition_taxes, has_taxes_to_exclude];
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    prepare_discountable_base_lines(base_lines, company, { exclude_function = null } = {}) {
+        function dispatch_exclude_function(base_line, tax_data) {
+            return (
+                !this.can_be_discounted(tax_data.tax) ||
+                (exclude_function && exclude_function(base_line, tax_data))
+            );
+        }
+
+        return this.dispatch_taxes_into_new_base_lines(
+            base_lines,
+            company,
+            dispatch_exclude_function.bind(this)
+        );
+    },
+
+    // -------------------------------------------------------------------------
+    // GLOBAL DISCOUNT
+    // -------------------------------------------------------------------------
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    prepare_global_discount_lines(
+        base_lines,
+        company,
+        amount_type,
+        amount,
+        { computation_key = "global_discount", grouping_function = null } = {}
+    ) {
+        const discountable_base_lines = this.prepare_discountable_base_lines(base_lines, company);
+        const new_base_lines = this.reduce_base_lines_to_target_amount(
+            discountable_base_lines,
+            company,
+            amount_type,
+            -amount,
+            { computation_key: computation_key, grouping_function: grouping_function }
+        );
+        this.fix_base_lines_tax_details_on_manual_tax_amounts(new_base_lines, company);
+        return new_base_lines;
+    },
+
+    // -------------------------------------------------------------------------
+    // DOWN PAYMENT
+    // -------------------------------------------------------------------------
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    prepare_base_lines_for_down_payment(base_lines, company, { exclude_function = null } = {}) {
+        function dispatch_exclude_function(base_line, tax_data) {
+            return (
+                !this.can_be_discounted(tax_data.tax) ||
+                (exclude_function && exclude_function(base_line, tax_data))
+            );
+        }
+
+        const new_base_lines = this.dispatch_taxes_into_new_base_lines(
+            base_lines,
+            company,
+            dispatch_exclude_function.bind(this)
+        );
+        return new_base_lines.concat(
+            this.turn_removed_taxes_into_new_base_lines(new_base_lines, company)
+        );
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    prepare_down_payment_lines(
+        base_lines,
+        company,
+        amount_type,
+        amount,
+        { computation_key = "down_payment", grouping_function = null } = {}
+    ) {
+        const base_lines_for_dp = this.prepare_base_lines_for_down_payment(base_lines, company);
+        const new_base_lines = this.reduce_base_lines_to_target_amount(
+            base_lines_for_dp,
+            company,
+            amount_type,
+            amount,
+            { computation_key: computation_key, grouping_function: grouping_function }
+        );
+        this.fix_base_lines_tax_details_on_manual_tax_amounts(new_base_lines, company);
+        return new_base_lines;
+    },
+
+    // -------------------------------------------------------------------------
+    // DISPATCHING OF LINES
+    // -------------------------------------------------------------------------
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    dispatch_taxes_into_new_base_lines(base_lines, company, exclude_function) {
+        function partition_function(base_line, tax_data) {
+            return !exclude_function(base_line, tax_data);
+        }
+
+        const base_lines_partition_taxes = this.partition_base_lines_taxes(
+            base_lines,
+            partition_function
+        )[0];
+
+        const new_base_lines_list = base_lines.map(() => []);
+        const to_process = [];
+        base_lines_partition_taxes.forEach(
+            ([base_line, taxes_to_keep, taxes_to_exclude], index) => {
+                to_process.push([index, base_line, taxes_to_exclude]);
+            }
+        );
+        while (to_process.length) {
+            const [index, base_line, taxes_to_exclude] = to_process.shift();
+
+            const tax_details = base_line.tax_details;
+            const taxes_data = tax_details.taxes_data;
+
+            // Get the index of the next 'tax_data' to exclude.
+            let next_split_index = null;
+            for (let i = 0; i < taxes_data.length; i++) {
+                if (taxes_to_exclude.includes(taxes_data[i].tax)) {
+                    next_split_index = i;
+                    break;
+                }
+            }
+
+            if (next_split_index === null) {
+                new_base_lines_list[index].push({ ...base_line });
+                continue;
+            }
+
+            const common_taxes_data = taxes_data.slice(0, next_split_index);
+            const tax_data_to_remove = taxes_data[next_split_index];
+            const remaining_taxes_data = taxes_data.slice(next_split_index + 1);
+
+            // Split 'tax_details'.
+            const first_tax_details = {
+                raw_total_excluded_currency: tax_details.raw_total_excluded_currency,
+                raw_total_excluded: tax_details.raw_total_excluded,
+                total_excluded_currency: tax_details.total_excluded_currency,
+                total_excluded: tax_details.total_excluded,
+                delta_total_excluded_currency: tax_details.delta_total_excluded_currency,
+                delta_total_excluded: tax_details.delta_total_excluded,
+                taxes_data: common_taxes_data,
+            };
+            first_tax_details.raw_total_included_currency =
+                first_tax_details.raw_total_excluded_currency +
+                common_taxes_data.reduce((sum, t) => sum + t.raw_tax_amount_currency, 0);
+            first_tax_details.total_included_currency =
+                first_tax_details.total_excluded_currency +
+                first_tax_details.delta_total_excluded_currency +
+                common_taxes_data.reduce((sum, t) => sum + t.tax_amount_currency, 0);
+            first_tax_details.raw_total_included =
+                first_tax_details.raw_total_excluded +
+                common_taxes_data.reduce((sum, t) => sum + t.raw_tax_amount, 0);
+            first_tax_details.total_included =
+                first_tax_details.total_excluded +
+                first_tax_details.delta_total_excluded +
+                common_taxes_data.reduce((sum, t) => sum + t.tax_amount, 0);
+
+            const second_tax_details = {
+                raw_total_excluded_currency: tax_data_to_remove.raw_tax_amount_currency,
+                raw_total_excluded: tax_data_to_remove.raw_tax_amount,
+                total_excluded_currency: tax_data_to_remove.tax_amount_currency,
+                total_excluded: tax_data_to_remove.tax_amount,
+                delta_total_excluded_currency: 0.0,
+                delta_total_excluded: 0.0,
+                raw_total_included_currency: tax_data_to_remove.raw_tax_amount_currency,
+                raw_total_included: tax_data_to_remove.raw_tax_amount,
+                total_included_currency: tax_data_to_remove.tax_amount_currency,
+                total_included: tax_data_to_remove.tax_amount,
+                taxes_data: [],
+            };
+
+            const target_factors = [
+                {
+                    factor: first_tax_details.raw_total_excluded_currency,
+                    tax_details: first_tax_details,
+                },
+                {
+                    factor: second_tax_details.raw_total_excluded_currency,
+                    tax_details: second_tax_details,
+                },
+            ];
+            for (const remaining_tax_data of remaining_taxes_data) {
+                let first_tax_data;
+                if (tax_data_to_remove.taxes.includes(remaining_tax_data.tax)) {
+                    const new_remaining_taxes_data = this.split_tax_data(
+                        base_line,
+                        remaining_tax_data,
+                        company,
+                        target_factors
+                    );
+
+                    first_tax_data = new_remaining_taxes_data[0];
+
+                    second_tax_details.taxes_data.push(new_remaining_taxes_data[1]);
+                    second_tax_details.raw_total_included_currency +=
+                        new_remaining_taxes_data[1].raw_tax_amount_currency;
+                    second_tax_details.raw_total_included +=
+                        new_remaining_taxes_data[1].raw_tax_amount;
+                    second_tax_details.total_included_currency +=
+                        new_remaining_taxes_data[1].tax_amount_currency;
+                    second_tax_details.total_included += new_remaining_taxes_data[1].tax_amount;
+                } else {
+                    first_tax_data = remaining_tax_data;
+                }
+
+                first_tax_details.taxes_data.push(first_tax_data);
+                first_tax_details.raw_total_included_currency +=
+                    first_tax_data.raw_tax_amount_currency;
+                first_tax_details.raw_total_included += first_tax_data.raw_tax_amount;
+                first_tax_details.total_included_currency += first_tax_data.tax_amount_currency;
+                first_tax_details.total_included += first_tax_data.tax_amount;
+            }
+
+            // Split 'base_line'.
+            const first_taxes = first_tax_details.taxes_data.map((tax_data) => tax_data.tax);
+            const first_base_line = this.prepare_base_line_for_taxes_computation(base_line, {
+                tax_ids: first_taxes,
+                tax_details: first_tax_details,
+            });
+
+            const second_taxes = second_tax_details.taxes_data.map((tax_data) => tax_data.tax);
+            const second_base_line = this.prepare_base_line_for_taxes_computation(base_line, {
+                tax_ids: second_taxes,
+                price_unit:
+                    (second_tax_details.raw_total_excluded_currency +
+                        second_tax_details.taxes_data
+                            .filter((t) => t.tax.price_include)
+                            .reduce((sum, t) => sum + t.raw_tax_amount_currency, 0)) /
+                    (base_line.quantity || 1.0),
+                tax_details: second_tax_details,
+                _removed_tax_data: tax_data_to_remove,
+            });
+
+            to_process.unshift(
+                [index, first_base_line, taxes_to_exclude],
+                [index, second_base_line, taxes_to_exclude]
+            );
+        }
+
+        const final_base_lines = [];
+        new_base_lines_list.forEach((new_base_lines) => {
+            new_base_lines[0].removed_taxes_data_base_lines = new_base_lines.slice(1);
+            final_base_lines.push(new_base_lines[0]);
+        });
+        return final_base_lines;
+    },
+
+    /**
+     * [!] Mirror of the same method in account_tax.py.
+     * PLZ KEEP BOTH METHODS CONSISTENT WITH EACH OTHERS.
+     */
+    turn_removed_taxes_into_new_base_lines(
+        base_lines,
+        company,
+        { grouping_function = null, aggregate_function = null } = {}
+    ) {
+        let extra_base_lines = [];
+        for (const base_line of base_lines) {
+            extra_base_lines = extra_base_lines.concat(
+                base_line.removed_taxes_data_base_lines || []
+            );
+        }
+        return this.reduce_base_lines_with_grouping_function(extra_base_lines, {
+            grouping_function: grouping_function,
+            aggregate_function: aggregate_function,
+        });
+    },
 };
