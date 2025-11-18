@@ -1,11 +1,13 @@
+import { Plugin } from "@html_editor/plugin";
+import { withSequence } from "@html_editor/utils/resource";
+import { registry } from "@web/core/registry";
+import { DYNAMIC_SNIPPET_CAROUSEL } from "@website/builder/plugins/options/dynamic_snippet_carousel_option_plugin";
 import {
     DYNAMIC_SNIPPET,
     setDatasetIfUndefined,
 } from "@website/builder/plugins/options/dynamic_snippet_option_plugin";
-import { Plugin } from "@html_editor/plugin";
-import { withSequence } from "@html_editor/utils/resource";
-import { registry } from "@web/core/registry";
 import { DynamicSnippetBlogPostsOption } from "./dynamic_snippet_blog_posts_option";
+import { DynamicSnippetBlogPostsCarouselOption } from "./dynamic_snippet_blog_posts_carousel_option";
 
 /**
  * @typedef { Object } DynamicSnippetBlogPostsOptionShared
@@ -15,12 +17,18 @@ import { DynamicSnippetBlogPostsOption } from "./dynamic_snippet_blog_posts_opti
 
 class DynamicSnippetBlogPostsOptionPlugin extends Plugin {
     static id = "dynamicSnippetBlogPostsOption";
-    static dependencies = ["dynamicSnippetOption"];
+    static dependencies = ["dynamicSnippetOption", "dynamicSnippetCarouselOption"];
     static shared = ["fetchBlogs", "getModelNameFilter"];
+    static blogSelector = [
+        `${DynamicSnippetBlogPostsOption.selector}, ${DynamicSnippetBlogPostsCarouselOption.selector}`,
+    ];
     modelNameFilter = "blog.post";
     /** @type {import("plugins").WebsiteResources} */
     resources = {
-        builder_options: withSequence(DYNAMIC_SNIPPET, DynamicSnippetBlogPostsOption),
+        builder_options: [
+            withSequence(DYNAMIC_SNIPPET, DynamicSnippetBlogPostsOption),
+            withSequence(DYNAMIC_SNIPPET_CAROUSEL, DynamicSnippetBlogPostsCarouselOption),
+        ],
         on_snippet_dropped_handlers: this.onSnippetDropped.bind(this),
     };
     setup() {
@@ -30,12 +38,19 @@ class DynamicSnippetBlogPostsOptionPlugin extends Plugin {
         return this.modelNameFilter;
     }
     async onSnippetDropped({ snippetEl }) {
-        if (snippetEl.matches(DynamicSnippetBlogPostsOption.selector)) {
+        if (snippetEl.matches(DynamicSnippetBlogPostsOptionPlugin.blogSelector)) {
             setDatasetIfUndefined(snippetEl, "filterByBlogId", -1);
-            await this.dependencies.dynamicSnippetOption.setOptionsDefaultValues(
-                snippetEl,
-                this.modelNameFilter
-            );
+            if (snippetEl.matches(DynamicSnippetBlogPostsOption.selector)) {
+                await this.dependencies.dynamicSnippetOption.setOptionsDefaultValues(
+                    snippetEl,
+                    this.modelNameFilter
+                );
+            } else {
+                await this.dependencies.dynamicSnippetCarouselOption.setOptionsDefaultValues(
+                    snippetEl,
+                    this.modelNameFilter
+                );
+            }
         }
     }
     async fetchBlogs() {
