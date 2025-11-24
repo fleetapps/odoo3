@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <templates xml:space="preserve">
-    <t t-name="delivery.locationSelector.dialog">
+    <t t-name="website_sale.locationSelector.dialog">
         <Dialog
             title="this.title"
             bodyClass="'d-flex flex-column p-0 px-md-3'"
@@ -9,7 +9,7 @@
             <!-- Mobile view -->
             <t t-if="this.state.isSmall">
                 <!-- Search bar -->
-                <t t-call="delivery.locationSelector.searchbar"/>
+                <t t-call="website_sale.locationSelector.searchbar"/>
 
                 <!-- "List view / Map view" navigation -->
                 <div class="nav nav-tabs">
@@ -17,14 +17,16 @@
                         class="o_location_selector_mobile_tab btn flex-grow-1 border-0 rounded-0 py-3 bg-transparent"
                         t-att-class="{'border-bottom active': this.state.viewMode === 'list'}"
                         t-on-click="() => this.state.viewMode = 'list'"
-                        t-out="this.listViewButtonLabel"
-                    />
+                    >
+                        List view
+                    </button>
                     <button
                         class="o_location_selector_mobile_tab btn flex-grow-1 border-0 rounded-0 py-3 bg-transparent"
                         t-att-class="{'border-bottom border-primary fw-bold active' : this.state.viewMode === 'map'}"
                         t-on-click="() => this.state.viewMode = 'map'"
-                        t-out="this.mapViewButtonLabel"
-                    />
+                    >
+                        Map view
+                    </button>
                 </div>
 
                 <!-- Component -->
@@ -38,10 +40,10 @@
                         validateSelection.bind="this.validateSelection"
                     />
                     <t t-else="">
-                        <p t-if="this.state.error" class="p-3 fw-bold" t-out="this.errorMessage"/>
+                        <p t-if="this.state.error" class="p-3 fw-bold">No result</p>
                         <div t-else="" class="position-absolute start-50 top-50 translate-middle">
                             <div class="spinner-border" role="status">
-                                <span class="visually-hidden" t-out="this.loadingMessage"/>
+                                <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
                     </t>
@@ -58,7 +60,7 @@
                 >
 
                     <!-- Search bar -->
-                    <t t-call="delivery.locationSelector.searchbar">
+                    <t t-call="website_sale.locationSelector.searchbar">
                         <t t-set="wrapClass" t-value="'d-flex'"/>
                     </t>
 
@@ -71,10 +73,10 @@
                         validateSelection.bind="this.validateSelection"
                     />
                     <t t-else="">
-                        <p t-if="this.state.error" class="p-3 fw-bold" t-out="this.errorMessage"/>
+                        <p t-if="this.state.error" class="p-3 fw-bold">No result</p>
                         <div t-else="" class="position-absolute start-50 top-50 translate-middle">
                             <div class="spinner-border" role="status">
-                                <span class="visually-hidden" t-out="this.loadingMessage"/>
+                                <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
                     </t>
@@ -99,21 +101,22 @@
                         id="submit_location_small"
                         class="btn btn-primary w-100"
                         t-att-disabled="!this.state.selectedLocationId"
-                        t-on-click="this.validateSelection"
-                        t-out="this.validationButtonLabel"
-                    />
+                        t-on-click="validateSelection"
+                    >
+                        Choose this location
+                    </button>
                 </div>
             </t>
         </Dialog>
     </t>
 
-    <t t-name="delivery.locationSelector.searchbar">
+    <t t-name="website_sale.locationSelector.searchbar">
         <div role="search" class="input-group p-3 border-bottom" t-att-class="wrapClass">
             <input
                 id="o_location_selector_search"
                 class="search-query form-control oe_search_box border-0 text-bg-light"
                 t-custom-model.lazy="this.state.zipCode"
-                t-att-placeholder="this.postalCodePlaceholder"
+                placeholder="Your postal code"
             />
             <button
                 t-on-click="this.debouncedSearchButton"

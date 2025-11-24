@@ -1,10 +1,10 @@
 import { useLayoutEffect } from "@web/owl2/utils";
-import { Location } from '@delivery/js/location_selector/location/location';
+import { Location } from '@website_sale/js/location_selector/location/location';
 import { Component, onMounted } from '@odoo/owl';
 
 export class LocationList extends Component {
     static components = { Location };
-    static template = 'delivery.locationSelector.locationList';
+    static template = 'website_sale.locationSelector.locationList';
     static props = {
         locations: {
             type: Array,
@@ -24,15 +24,15 @@ export class LocationList extends Component {
                     street: String,
                     city: String,
                     zip_code: String,
-                    state: { type: String, optional: true},
+                    state: { type: String, optional: true },
                     country_code: String,
-                    additional_data: { type: Object, optional: true},
+                    additional_data: { type: Object, optional: true },
                     latitude: String,
                     longitude: String,
                 }
             },
         },
-        selectedLocationId: [String, {value: false}],
+        selectedLocationId: [String, { value: false }],
         setSelectedLocation: Function,
         validateSelection: Function,
     };
