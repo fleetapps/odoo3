@@ -63,6 +63,9 @@ class SaleOrder(models.Model):
             order._create_delivery_line(carrier, amount)
         return True
 
+    def _get_additional_delivery_wizard_context(self):
+        return {}
+
     def action_open_delivery_wizard(self):
         view_id = self.env.ref('delivery.choose_delivery_carrier_view_form').id
         if self.env.context.get('carrier_recompute'):
@@ -87,7 +90,8 @@ class SaleOrder(models.Model):
             'context': {
                 'default_order_id': self.id,
                 'default_carrier_id': carrier.id,
-                'default_total_weight': self._get_estimated_weight()
+                'default_total_weight': self._get_estimated_weight(),
+                **self._get_additional_delivery_wizard_context(),
             }
         }
 

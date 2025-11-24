@@ -45,8 +45,9 @@ class TestWebsite(ClickAndCollectCommon):
         """
         self.website.warehouse_id = self.warehouse_2
         self._add_product_qty_to_wh(self.storable_product.id, 5, self.warehouse_2.lot_stock_id.id)
+        partner = self._create_partner(type='delivery', parent_id=self.partner.id, pickup_location_data={'id': self.warehouse_2.id, 'name': 'WH1'})
         order = self._create_in_store_delivery_order(
-            pickup_location_data={'id': self.warehouse_2.id, 'name': 'WH1'}
+            partner_shipping_id=partner.id,
         )
         with MockRequest(self.env, website=self.website, sale_order_id=order.id):
             free_qty = self.website._get_product_available_qty(self.storable_product, order=order)

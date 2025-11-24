@@ -66,6 +66,14 @@ class TestSaleOrder(WebsiteSaleCommon, SaleCommon):
         )
 
     def test_avoid_setting_pickup_location_as_default_delivery_address(self):
-        self._create_partner(type='delivery', parent_id=self.partner.id, is_pickup_location=True)
+        delivery_method = self.env['delivery.carrier'].create(
+            {
+                'name': 'Delivery 1',
+                'delivery_type': 'fixed',
+                'product_id': self.product.id,
+                'is_published': True,
+            }
+        )
+        self._create_partner(type='delivery', parent_id=self.partner.id, pickup_delivery_method_id=delivery_method.id)
         so = self._create_so(order_line=[])
-        self.assertFalse(so.partner_shipping_id.is_pickup_location)
+        self.assertFalse(so.partner_shipping_id.pickup_delivery_method_id)

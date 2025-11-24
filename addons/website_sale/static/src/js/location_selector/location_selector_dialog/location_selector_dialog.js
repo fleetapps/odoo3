@@ -13,6 +13,8 @@ export class LocationSelectorDialog extends Component {
     static template = 'website_sale.locationSelector.dialog';
     static props = {
         isFrontend: { type: Boolean, optional: true },
+        carrierId: { type: Number, optional: true },
+        countryId: { type: Number, optional: true },
         zipCode: String,
         selectedLocationId: { type: String, optional: true },
         save: Function,
@@ -66,23 +68,17 @@ export class LocationSelectorDialog extends Component {
     get locations() { return this.state.locations; }
 
     /**
-     * Fetch the closest pickup locations based on the zip code.
-     *
-     * @private
-     * @return {Object} The result values.
-     */
-    async _getLocations() {
-        return await rpc(this.getLocationUrl, this._getLocationsParams());
-    }
-
-    /**
      * Fetch the information needed to get the closest pickup locations
      *
      * @private
      * @return {Object} The result values.
      */
     _getLocationsParams() {
-        return { zip_code: this.state.zipCode };
+        return { 
+            zip_code: this.state.zipCode,
+            carrier_id: this.props.carrierId,
+            country_id: this.props.countryId
+         };
     }
 
     //--------------------------------------------------------------------------
@@ -100,7 +96,7 @@ export class LocationSelectorDialog extends Component {
      */
     async _loadLocations() {
         this.state.error = false;
-        const { pickup_locations, error } = await this._getLocations();
+        const { pickup_locations, error } = await rpc(this.getLocationUrl, this._getLocationsParams());
         if (error) {
             this.state.error = error;
             console.error(error);

@@ -7,21 +7,22 @@ from .delivery import Delivery
 class LocationSelector(Delivery):
 
     @route('/website_sale/get_pickup_locations', type='jsonrpc', auth='public', website=True)
-    def website_sale_get_pickup_locations(self, order_id=None, **kwargs):
+    def website_sale_get_pickup_locations(self, carrier_id=None, country_id=None, **kwargs):
         """ Fetch the record or the order from the request and return the pickup locations close to a given zip code.
 
-        :param int order_id: The sales order, as a `sale.order` id.
+        :param int carrier_id: ID of delivery.carrier
+        :param int country_id: ID of res.country
         :return: The close pickup locations data.
         :rtype: dict
         """
-        order = request.env['sale.order'].browse(order_id).sudo() if order_id else request.cart
-        if request.geoip.country_code:
-            country = request.env['res.country'].search(
-                [('code', '=', request.geoip.country_code)], limit=1,
-            )
+        if country_code := request.geoip.country_code:
+            country = request.env['res.country'].search([('code', '=', country_code)], limit=1)
+        elif country_id:
+            country = request.env['res.country'].browse(country_id)
         else:
-            country = order.partner_id.country_id
-        return order._get_pickup_locations(country=country, **kwargs)
+            country = request.cart.partner_shipping_id.country_id
+        carrier = request.env['delivery.carrier'].browse(carrier_id) if carrier_id else request.cart.carrier_id
+        return carrier._get_pickup_locations(country=country, **kwargs)
 
     @route('/website_sale/set_pickup_location', type='jsonrpc', auth='public', website=True)
     def website_sale_set_pickup_location(self, pickup_location_data):
@@ -32,5 +33,5 @@ class LocationSelector(Delivery):
         :rtype: dict
         """
         order_sudo = request.cart
-        order_sudo._set_pickup_location(pickup_location_data)
+        order_sudo.set_pickup_location(pickup_location_data)
         return self._order_summary_values(order_sudo)
