@@ -94,7 +94,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
     #   2: _get_channels_as_member
     #       - search discuss_channel (member_domain)
     #       - search discuss_channel (pinned_member_domain)
-    #   34: channel _to_store_defaults:
+    #   35: channel _to_store_defaults:
     #       - read mail.message model for get_annotatable models and check access
     #       - read group member (prefetch _compute_self_member_id from _compute_is_member)
     #       - read group member (_compute_invited_member_ids)

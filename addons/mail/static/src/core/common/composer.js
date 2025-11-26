@@ -1,4 +1,11 @@
-import { reactive, useChildSubEnv, useExternalListener, useLayoutEffect, useRef, useState } from "@web/owl2/utils";
+import {
+    reactive,
+    useChildSubEnv,
+    useExternalListener,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from "@web/owl2/utils";
 import { AttachmentList } from "@mail/core/common/attachment_list";
 import { useAttachmentUploader } from "@mail/core/common/attachment_uploader_hook";
 import { useCustomDropzone } from "@web/core/dropzone/dropzone_hook";
@@ -7,6 +14,7 @@ import { NavigableList } from "@mail/core/common/navigable_list";
 import { MAIL_PLUGINS, MAIL_SMALL_UI_PLUGINS } from "@mail/core/common/plugin/plugin_sets";
 import { useSuggestion } from "@mail/core/common/suggestion_hook";
 import { useSelection } from "@mail/utils/common/hooks";
+import { getInnerHtml } from "@mail/utils/common/html";
 import { isDragSourceExternalFile } from "@mail/utils/common/misc";
 import { Wysiwyg } from "@html_editor/wysiwyg";
 
@@ -15,18 +23,12 @@ import { isEventHandled, markEventHandled } from "@web/core/utils/misc";
 import { browser } from "@web/core/browser/browser";
 import { useDebounced } from "@web/core/utils/timing";
 
-import {
-    Component,
-    markup,
-    onMounted,
-    onWillUnmount,
-    toRaw,
-    EventBus,
-} from "@odoo/owl";
+import { Component, markup, onMounted, onWillUnmount, toRaw, EventBus } from "@odoo/owl";
 
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
 import {
+    createDocumentFragmentFromContent,
     htmlFormatList,
     htmlJoin,
     isHtmlEmpty,
@@ -745,6 +747,20 @@ export class Composer extends Component {
             if (allRecipients.some((recipient) => !recipient.email || !isEmail(recipient.email))) {
                 return;
             }
+        } else {
+            const externalPartners = composer.mentionedPartners.filter(
+                (partner) => partner.partner_share
+            );
+            composer.mentionedPartners = composer.mentionedPartners.filter(
+                (partner) => !partner.partner_share
+            );
+            const fragment = createDocumentFragmentFromContent(composer.composerHtml);
+            for (const partner of externalPartners) {
+                fragment
+                    .querySelectorAll(`a.o_mail_redirect[data-oe-id="${partner.id}"]`)
+                    .forEach((link) => link.replaceWith(link.textContent));
+            }
+            composer.composerHtml = getInnerHtml(fragment);
         }
         const { specialMentions, roles } = this.store.getMentionsFromText(composer.composerHtml, {
             mentionedRoles: composer.mentionedRoles,
