@@ -2042,3 +2042,295 @@ class TestPoSSale(TestPointOfSaleHttpCommon):
         for picking in pos_order_refund_record.picking_ids:
             picking.button_validate()
         self.assertEqual(sale_order.order_line.qty_delivered, 2)
+<<<<<<< 71d176d462b9db743788e4889974931ae9afc94d
+||||||| 1b67b6b62859ef706b63a1ef34393013bf96d39e
+
+    def test_settle_groupable_lot_total_amount(self):
+        groupable_uom_unit = self.env['uom.uom'].create({
+            'name': 'Groupable Unit',
+            'is_pos_groupable': True,
+        })
+
+        groupable_uom_dozens = self.env['uom.uom'].create({
+            'name': 'Groupable Dozens',
+            'relative_factor': 12,
+            'relative_uom_id': groupable_uom_unit.id,
+        })
+
+        self.product = self.env['product.product'].create({
+            'name': 'Product',
+            'available_in_pos': True,
+            'is_storable': True,
+            'lst_price': 1.0,
+            'taxes_id': False,
+            'categ_id': self.product_category.id,
+            'tracking': 'lot',
+            'uom_id': groupable_uom_unit.id,
+        })
+
+        self.warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+
+        self.shelf = self.env['stock.location'].create({
+            'name': 'Shelf 1',
+            'usage': 'internal',
+            'location_id': self.warehouse.lot_stock_id.id,
+        })
+
+        quants = self.env['stock.quant'].with_context(inventory_mode=True).create({
+            'product_id': self.product.id,
+            'inventory_quantity': 10_000,
+            'location_id': self.shelf.id,
+            'lot_id': self.env['stock.lot'].create({
+                'name': '1001',
+                'product_id': self.product.id,
+                'location_id': self.shelf.id,
+            }).id,
+        })
+
+        quants.action_apply_inventory()
+
+        sale_order = self.env['sale.order'].create({
+            'partner_id': self.env['res.partner'].create({'name': 'Test Partner'}).id,
+            'order_line': [(0, 0, {
+                'product_id': self.product.id,
+                'name': self.product.name,
+                'product_uom_qty': 1,
+                'product_uom_id': groupable_uom_dozens.id,
+                'price_unit': 12.0,
+            })],
+        })
+
+        sale_order.action_confirm()
+        self.main_pos_config.open_ui()
+        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'test_settle_groupable_lot_total_amount', login="accountman")
+
+    def test_downpayment_fixed_tax_require_tax(self):
+        """Make sure that when a tax is required for all invoice line, fixed tax downpayment have a tax"""
+        fixed_tax = self.env['account.tax'].sudo().create({
+            'name': 'Fixed Tax',
+            'amount_type': 'fixed',
+            'amount': 10,
+        })
+
+        product_a = self.env['product.product'].sudo().create({
+            'name': 'Product A',
+            'available_in_pos': True,
+            'lst_price': 100,
+            'taxes_id': [fixed_tax.id],
+        })
+
+        sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner_a.id,
+            'order_line': [Command.create({
+                'product_id': product_a.id,
+                'name': product_a.name,
+                'product_uom_qty': 1,
+                'price_unit': product_a.lst_price,
+            })],
+        })
+        sale_order.action_confirm()
+        self.main_pos_config.down_payment_product_id = self.env.ref("pos_sale.default_downpayment_product")
+
+        self.main_pos_config.open_ui()
+        pos_order = {
+           'amount_paid': 20,
+           'amount_return': 0,
+           'amount_tax': 0,
+           'amount_total': 20,
+           'company_id': self.env.company.id,
+           'date_order': fields.Datetime.to_string(fields.Datetime.now()),
+           'fiscal_position_id': False,
+           'to_invoice': True,
+           'partner_id': self.partner_a.id,
+           'pricelist_id': self.main_pos_config.available_pricelist_ids[0].id,
+           'lines': [[0,
+             0,
+             {'discount': 0,
+              'pack_lot_ids': [],
+              'price_unit': 20,
+              'product_id': self.main_pos_config.down_payment_product_id.id,
+              'price_subtotal': 20,
+              'price_subtotal_incl': 20,
+              'sale_order_line_id': sale_order.order_line[0].id,
+              'sale_order_origin_id': sale_order.id,
+              'qty': 1,
+              'tax_ids': []}]],
+           'name': 'Order 00044-003-0014',
+           'session_id': self.main_pos_config.current_session_id.id,
+           'sequence_number': self.main_pos_config.journal_id.id,
+           'payment_ids': [[0,
+             0,
+             {'amount': 20,
+              'name': fields.Datetime.now(),
+              'payment_method_id': self.main_pos_config.payment_method_ids[0].id}]],
+           'user_id': self.env.uid,
+           'uuid': str(uuid.uuid4()),
+            }
+
+        with patch('odoo.addons.account.models.account_move.AccountMove.require_tax_ids_on_invoice_lines', return_value=True):
+            res = self.env['pos.order'].sync_from_ui([pos_order])
+            tax_0_percent = self.env['account.tax'].search([('amount_type', '=', 'percent'), ('amount', '=', 0)], limit=1)
+            self.assertTrue(tax_0_percent)
+            pos_order = self.env['pos.order'].browse(res['pos.order'][0]['id'])
+            self.assertEqual(pos_order.account_move.line_ids.tax_ids, tax_0_percent, "The downpayment line should have the fixed tax applied")
+=======
+
+    def test_settle_groupable_lot_total_amount(self):
+        groupable_uom_unit = self.env['uom.uom'].create({
+            'name': 'Groupable Unit',
+            'is_pos_groupable': True,
+        })
+
+        groupable_uom_dozens = self.env['uom.uom'].create({
+            'name': 'Groupable Dozens',
+            'relative_factor': 12,
+            'relative_uom_id': groupable_uom_unit.id,
+        })
+
+        self.product = self.env['product.product'].create({
+            'name': 'Product',
+            'available_in_pos': True,
+            'is_storable': True,
+            'lst_price': 1.0,
+            'taxes_id': False,
+            'categ_id': self.product_category.id,
+            'tracking': 'lot',
+            'uom_id': groupable_uom_unit.id,
+        })
+
+        self.warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
+
+        self.shelf = self.env['stock.location'].create({
+            'name': 'Shelf 1',
+            'usage': 'internal',
+            'location_id': self.warehouse.lot_stock_id.id,
+        })
+
+        quants = self.env['stock.quant'].with_context(inventory_mode=True).create({
+            'product_id': self.product.id,
+            'inventory_quantity': 10_000,
+            'location_id': self.shelf.id,
+            'lot_id': self.env['stock.lot'].create({
+                'name': '1001',
+                'product_id': self.product.id,
+                'location_id': self.shelf.id,
+            }).id,
+        })
+
+        quants.action_apply_inventory()
+
+        sale_order = self.env['sale.order'].create({
+            'partner_id': self.env['res.partner'].create({'name': 'Test Partner'}).id,
+            'order_line': [(0, 0, {
+                'product_id': self.product.id,
+                'name': self.product.name,
+                'product_uom_qty': 1,
+                'product_uom_id': groupable_uom_dozens.id,
+                'price_unit': 12.0,
+            })],
+        })
+
+        sale_order.action_confirm()
+        self.main_pos_config.open_ui()
+        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'test_settle_groupable_lot_total_amount', login="accountman")
+
+    def test_downpayment_fixed_tax_require_tax(self):
+        """Make sure that when a tax is required for all invoice line, fixed tax downpayment have a tax"""
+        fixed_tax = self.env['account.tax'].sudo().create({
+            'name': 'Fixed Tax',
+            'amount_type': 'fixed',
+            'amount': 10,
+        })
+
+        product_a = self.env['product.product'].sudo().create({
+            'name': 'Product A',
+            'available_in_pos': True,
+            'lst_price': 100,
+            'taxes_id': [fixed_tax.id],
+        })
+
+        sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner_a.id,
+            'order_line': [Command.create({
+                'product_id': product_a.id,
+                'name': product_a.name,
+                'product_uom_qty': 1,
+                'price_unit': product_a.lst_price,
+            })],
+        })
+        sale_order.action_confirm()
+        self.main_pos_config.down_payment_product_id = self.env.ref("pos_sale.default_downpayment_product")
+
+        self.main_pos_config.open_ui()
+        pos_order = {
+           'amount_paid': 20,
+           'amount_return': 0,
+           'amount_tax': 0,
+           'amount_total': 20,
+           'company_id': self.env.company.id,
+           'date_order': fields.Datetime.to_string(fields.Datetime.now()),
+           'fiscal_position_id': False,
+           'to_invoice': True,
+           'partner_id': self.partner_a.id,
+           'pricelist_id': self.main_pos_config.available_pricelist_ids[0].id,
+           'lines': [[0,
+             0,
+             {'discount': 0,
+              'pack_lot_ids': [],
+              'price_unit': 20,
+              'product_id': self.main_pos_config.down_payment_product_id.id,
+              'price_subtotal': 20,
+              'price_subtotal_incl': 20,
+              'sale_order_line_id': sale_order.order_line[0].id,
+              'sale_order_origin_id': sale_order.id,
+              'qty': 1,
+              'tax_ids': []}]],
+           'name': 'Order 00044-003-0014',
+           'session_id': self.main_pos_config.current_session_id.id,
+           'sequence_number': self.main_pos_config.journal_id.id,
+           'payment_ids': [[0,
+             0,
+             {'amount': 20,
+              'name': fields.Datetime.now(),
+              'payment_method_id': self.main_pos_config.payment_method_ids[0].id}]],
+           'user_id': self.env.uid,
+           'uuid': str(uuid.uuid4()),
+            }
+
+        with patch('odoo.addons.account.models.account_move.AccountMove.require_tax_ids_on_invoice_lines', return_value=True):
+            res = self.env['pos.order'].sync_from_ui([pos_order])
+            tax_0_percent = self.env['account.tax'].search([('amount_type', '=', 'percent'), ('amount', '=', 0)], limit=1)
+            self.assertTrue(tax_0_percent)
+            pos_order = self.env['pos.order'].browse(res['pos.order'][0]['id'])
+            self.assertEqual(pos_order.account_move.line_ids.tax_ids, tax_0_percent, "The downpayment line should have the fixed tax applied")
+
+    def test_settle_changed_price_with_lots(self):
+        """
+        Tests that when we change the price of a line in the quotation, it will not be reverted when
+        settling it through the PoS
+        """
+        partner = self.env['res.partner'].create({'name': 'Test Partner'})
+        product_lot_tracked = self.env['product.product'].create({
+            'name': 'Settle Lots',
+            'available_in_pos': True,
+            'lst_price': 100.0,
+            'taxes_id': False,
+            'tracking': 'lot',
+        })
+        self.env['sale.order'].create({
+            'partner_id': partner.id,
+            'order_line': [
+                (0, 0, {
+                    'product_id': product_lot_tracked.id,
+                    'product_uom_qty': 1,
+                    'price_unit': 120.0,
+                }),
+                (0, 0, {
+                    'product_id': product_lot_tracked.id,
+                    'product_uom_qty': 1,
+                    'price_unit': 60.0,
+                })
+            ]
+        })
+        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'test_settle_changed_price_with_lots', login="accountman")
+>>>>>>> d9c6a7b0f5d2a969906b6ab7c2186c5f1b40ec0d
