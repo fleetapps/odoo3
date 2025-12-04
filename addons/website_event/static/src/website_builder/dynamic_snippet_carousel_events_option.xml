@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="website_event.DynamicSnippetCarouselEventsOption" t-inherit="website.DynamicSnippetCarouselOption">
+    <xpath expr="//BuilderRow[*[@id=&quot;'filter_opt'&quot;]]" position="after">
+        <t t-call="website_event.EventsTagOption"/>
+    </xpath>
+    <xpath expr="//BuilderRow[*[@id=&quot;'template_opt'&quot;]]" position="after">
+        <t t-call="website_event.EventsTemplateOption"/>
+    </xpath>
+</t>
+
+</templates>
