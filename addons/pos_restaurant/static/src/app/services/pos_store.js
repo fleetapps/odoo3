@@ -626,7 +626,7 @@ patch(PosStore.prototype, {
                 currentOrder.update({ table_id: table });
                 this.selectedOrderUuid = currentOrder.uuid;
             } else {
-                this.addNewOrder({ table_id: table });
+                currentOrder = this.addNewOrder({ table_id: table });
             }
         }
     },
