@@ -627,6 +627,7 @@ patch(PosStore.prototype, {
                 this.selectedOrderUuid = currentOrder.uuid;
             } else {
                 this.addNewOrder({ table_id: table });
+                // currentOrder = this.addNewOrder({ table_id: table });
             }
         }
     },
@@ -914,7 +915,7 @@ patch(PosStore.prototype, {
         return this.floorScrollPositions[floorId];
     },
     shouldCreatePendingOrder(order) {
-        return super.shouldCreatePendingOrder(order) || order.course_ids?.length > 0;
+        return super.shouldCreatePendingOrder(order) || order.course_ids?.length > 0|| Boolean(order.table_id);
     },
     setOrder(order) {
         order?.ensureCourseSelection();
