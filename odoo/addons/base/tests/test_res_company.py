@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from unittest.mock import patch
+
 from odoo.exceptions import ValidationError
-from odoo.tests.common import tagged, TransactionCase
+from odoo.tests.common import Command, tagged, TransactionCase
 
 
 @tagged('at_install', '-post_install')  # LEGACY at_install
@@ -55,6 +57,7 @@ class TestCompany(TransactionCase):
     def test_create_branch_with_default_parent_id(self):
         branch = self.env['res.company'].with_context(default_parent_id=self.env.company.id).create({'name': 'Branch Company'})
         self.assertFalse(branch.partner_id.parent_id)
+<<<<<<< 3af323d544ca7dfbc8dca961d431dc832a226616
 
     def test_correct_order_of_company(self):
         """Ensure that companies are correctly ordered in a hierarchy"""
@@ -75,3 +78,16 @@ class TestCompany(TransactionCase):
             [main_company.id, second_company.id],
             "Companies are not in the correct order",
         )
+||||||| 654f7c11fcffebe047f9d56ee11eea2939365e52
+=======
+
+    def test_write_company_root_delegated_field_names(self):
+        self.env['res.company'].with_context(default_parent_id=self.env.company.id).create({'name': 'foo'})
+        new_currency = self.env['res.currency'].create({
+            'name': 'AAA',
+            'symbol': 'AAA',
+            'rate_ids': [Command.create({'name': '2009-09-09', 'rate': 1})]
+        })
+        with patch('odoo.addons.base.models.res_company.ResCompany._get_company_root_delegated_field_names', return_value=["currency_id", "zip"]):
+            self.env.company.write({'currency_id': new_currency.id, 'zip': '12345'})
+>>>>>>> 3d924d1901a8ba0df06ea391d130d5a35bef0b49
