@@ -2,6 +2,7 @@
 from odoo import Command
 from odoo.tests import Form
 
+from odoo.addons.base.tests.common import BaseCommon
 from odoo.addons.mail.tests.common import mail_new_test_user
 from odoo.addons.stock.tests.common import TestStockCommon
 
@@ -280,3 +281,82 @@ class TestMrpCommon(TestStockCommon):
             (0, 0, {'dayofweek': '5', 'hour_from': 0, 'hour_to': 24}),
             (0, 0, {'dayofweek': '6', 'hour_from': 0, 'hour_to': 24}),
         ]})
+
+
+class TestBomCostCommon(BaseCommon):
+
+    @classmethod
+    def _create_product(cls, name, price):
+        vals = {
+            'name': name,
+            'is_storable': True,
+            'standard_price': price
+        }
+        return cls.Product.create(vals)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Required for `uom_id` to be visible in the view
+        cls.env.user.group_ids += cls.env.ref('uom.group_uom')
+        # Required for `product_id` to be visible in the view
+        cls.env.user.group_ids += cls.env.ref('product.group_product_variant')
+        cls.Product = cls.env['product.product']
+        cls.Bom = cls.env['mrp.bom']
+
+        # Products.
+        cls.dining_table = cls._create_product('Dining Table', 1000)
+        cls.table_head = cls._create_product('Table Head', 300)
+        cls.screw = cls._create_product('Screw', 10)
+
+        # Unit of Measure.
+        cls.uom = cls.env.ref("uom.product_uom_unit")
+        cls.dozen = cls.env.ref("uom.product_uom_dozen")
+
+        # Bills Of Materials.
+        # -------------------------------------------------------------------------------
+        # Cost of BoM (Dining Table 1 Unit)
+        # Component Cost =  Table Head   1 Unit * 300 = 300 (318.75 from it's components)
+        #                   Screw        5 Unit *  10 =  50
+        # Total = 350 [368.75 if components of Table Head considered] (for 1 Unit)
+        # -------------------------------------------------------------------------------
+
+        bom_form = Form(cls.Bom)
+        bom_form.product_id = cls.dining_table
+        bom_form.product_tmpl_id = cls.dining_table.product_tmpl_id
+        bom_form.product_qty = 1.0
+        bom_form.uom_id = cls.uom
+        bom_form.type = 'normal'
+        with bom_form.bom_line_ids.new() as line:
+            line.product_id = cls.table_head
+            line.product_qty = 1
+        with bom_form.bom_line_ids.new() as line:
+            line.product_id = cls.screw
+            line.product_qty = 5
+        cls.bom_1 = bom_form.save()
+
+        # Table Head's components.
+        cls.plywood_sheet = cls._create_product('Plywood Sheet', 200)
+        cls.corner_slide = cls._create_product('Corner Slide', 25)
+
+        # -----------------------------------------------------------------
+        # Cost of BoM (Table Head 1 Dozen)
+        # Component Cost =  Plywood Sheet   12 Unit * 200 = 2400
+        #                   Corner Slide    57 Unit * 25  = 1425
+        #                                           Total = 3825
+        #                          1 Unit price (3825/12) =  318.75
+        # -----------------------------------------------------------------
+
+        bom_form2 = Form(cls.Bom)
+        bom_form2.product_id = cls.table_head
+        bom_form2.product_tmpl_id = cls.table_head.product_tmpl_id
+        bom_form2.product_qty = 1.0
+        bom_form2.uom_id = cls.dozen
+        bom_form2.type = 'phantom'
+        with bom_form2.bom_line_ids.new() as line:
+            line.product_id = cls.plywood_sheet
+            line.product_qty = 12
+        with bom_form2.bom_line_ids.new() as line:
+            line.product_id = cls.corner_slide
+            line.product_qty = 57
+        cls.bom_2 = bom_form2.save()
