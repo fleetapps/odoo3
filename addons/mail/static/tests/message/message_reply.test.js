@@ -1,12 +1,15 @@
-import { insertText as htmlInsertText } from "@html_editor/../tests/_helpers/user_actions";
+import {
+    insertText as htmlInsertText,
+    pasteHtml,
+} from "@html_editor/../tests/_helpers/user_actions";
 import {
     click,
     contains,
     defineMailModels,
     openDiscuss,
+    openFormView,
     start,
     startServer,
-    openFormView,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, test } from "@odoo/hoot";
 import { queryFirst } from "@odoo/hoot-dom";
@@ -182,7 +185,9 @@ test("reply to logged note in chatter keeps prefilled mention in html composer",
     await click(".o-mail-Message:contains('Test message from B') [title='Reply']");
     await contains("button.active:text('Log note')");
     await contains(".o-mail-Composer.o-focused .o-mail-Composer-html.odoo-editor-editable");
-    await contains(".o-mail-Composer-html.odoo-editor-editable a.o_mail_redirect:text('@Partner B')");
+    await contains(
+        ".o-mail-Composer-html.odoo-editor-editable a.o_mail_redirect:text('@Partner B')"
+    );
     const editor = {
         document,
         editable: queryFirst(".o-mail-Composer-html.odoo-editor-editable"),
@@ -266,4 +271,49 @@ test("replying to a note restores focus on an already open composer", async () =
     await contains(".o-mail-Composer.o-focused", { count: 0 });
     await click(".o-mail-Message-actions [title='Reply']");
     await contains(".o-mail-Composer.o-focused");
+});
+
+test.tags("focus required", "html composer");
+test("replying again to a note preserves edited composer content with formatting", async () => {
+    const pyEnv = await startServer();
+    pyEnv["mail.message"].create([
+        {
+            author_id: pyEnv["res.partner"].create({ name: "Batman" }),
+            body: "I am Justice",
+            model: "res.partner",
+            res_id: serverState.partnerId,
+            subtype_id: pyEnv["mail.message.subtype"].search([
+                ["subtype_xmlid", "=", "mail.mt_note"],
+            ])[0],
+        },
+    ]);
+    await start();
+    const composerService = getService("mail.composer");
+    composerService.setHtmlComposer();
+    await openFormView("res.partner", serverState.partnerId);
+    await click(".o-mail-Message:contains(I am Justice) [title='Reply']");
+    await contains(".o-mail-Composer.o-focused");
+    const editor = {
+        document,
+        editable: document.querySelector(".o-mail-Composer-html.odoo-editor-editable"),
+    };
+    pasteHtml(editor, "<strong>Strong Text</strong>");
+    await contains(".o-mail-Composer-html.odoo-editor-editable", {
+        text: "@Batman\uFEFF\u00A0Strong Text",
+        contains: [
+            ["a.o_mail_redirect[contenteditable=false]:text(@Batman)"],
+            ["strong:text(Strong Text)"],
+        ],
+    });
+    await click("button.active:text('Log note')");
+    await contains(".o-mail-Composer", { count: 0 });
+    await click(".o-mail-Message:contains(I am Justice) [title='Reply']");
+    await contains(".o-mail-Composer.o-focused");
+    await contains(".o-mail-Composer-html.odoo-editor-editable", {
+        text: "@Batman\uFEFF\u00A0Strong Text",
+        contains: [
+            ["a.o_mail_redirect[contenteditable=false]:text(@Batman)"],
+            ["strong:text(Strong Text)"],
+        ],
+    });
 });
