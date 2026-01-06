@@ -15,7 +15,6 @@ import traceback
 
 import odoo.sql_db
 import odoo.tools.sql
-import odoo.tools.translate
 from odoo import api, tools
 from odoo.tools import OrderedSet
 from odoo.tools.convert import convert_file, IdRef, ConvertMode as LoadMode
@@ -259,6 +258,7 @@ def load_module_graph(
             package.state = 'installed'
             module.env.flush_all()
             module.env.cr.commit()
+            registry.signal_changes()
 
         test_time = 0.0
         test_queries = 0
@@ -327,6 +327,7 @@ def _check_module_names(cr: BaseCursor, module_names: Iterable[str]) -> None:
 
 def load_modules(
     registry: Registry,
+    cr: BaseCursor,
     *,
     update_module: bool = False,
     upgrade_modules: Collection[str] = (),
@@ -347,7 +348,7 @@ def load_modules(
 
     initialize_sys_path()
 
-    with registry.cursor() as cr:
+    if True:  # to keep same indentation as before
         # prevent endless wait for locks on schema changes (during online
         # installs) if a concurrent transaction has accessed the table;
         # connection settings are automatically reset when the connection is
@@ -577,18 +578,8 @@ def load_modules(
         # STEP 10: check that we can trust nullable columns
         registry.check_null_constraints(cr)
 
-        if update_module:
-            cr.execute(
-                """
-                INSERT INTO ir_config_parameter(key, value)
-                SELECT 'base.partially_updated_database', '1'
-                WHERE EXISTS(SELECT FROM ir_module_module WHERE state IN ('to upgrade', 'to install', 'to remove'))
-                ON CONFLICT DO NOTHING
-                """
-            )
 
-
-def reset_modules_state(db_name: str) -> None:
+def reset_modules_state(cr: BaseCursor) -> None:
     """
     Resets modules flagged as "to x" to their original state
     """
@@ -598,8 +589,7 @@ def reset_modules_state(db_name: str) -> None:
     # installation/upgrade/uninstallation fails, which is the only known case
     # for which modules can stay marked as 'to %' for an indefinite amount
     # of time
-    db = odoo.sql_db.db_connect(db_name)
-    with db.cursor() as cr:
+    if True:  # to keep same indentation as before
         if not odoo.tools.sql.table_exists(cr, 'ir_module_module'):
             _logger.info('skipping reset_modules_state, ir_module_module table does not exists')
             return
