@@ -3,7 +3,7 @@
     <record id="res_config_settings_view_form_menu" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.pos_online_payment.view</field>
         <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="inherit_id" ref="pos_stock.res_config_settings_view_form_inherit_pos_stock"/>
         <field name="arch" type="xml">
             <xpath expr="//div[@id='self-payment-after']" position="after">
                 <div class="content-group row" invisible="not pos_self_ordering_mode == 'mobile'">

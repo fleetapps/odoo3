@@ -3,7 +3,7 @@
     <record id="res_config_settings_view_form_menu" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.pos_self_order.view</field>
         <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="inherit_id" ref="pos_stock.res_config_settings_view_form_inherit_pos_stock"/>
         <field name="arch" type="xml">
             <block id="restaurant_section" position="after">
                 <block title="Mobile self-order &amp; Kiosk" id="self_ordering_section">
