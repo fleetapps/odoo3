@@ -34,7 +34,7 @@ publicWidget.registry.GoogleMap = publicWidget.Widget.extend({
             });
         }
 
-        await google.maps.importLibrary("maps");
+        const { Map } = await google.maps.importLibrary("maps");
         // Define a default map's colors set
         const std = [];
         new google.maps.StyledMapType(std, {name: "Std Map"});
@@ -51,12 +51,13 @@ publicWidget.registry.GoogleMap = publicWidget.Widget.extend({
             scrollwheel: false,
             mapTypeControlOptions: {
                 mapTypeIds: [google.maps.MapTypeId.ROADMAP, 'map_style']
-            }
+            },
+            mapId: this.el.dataset.mapId || "DEMO_MAP_ID",
         };
 
         // Render Map
         const mapC = this.$('.map_container');
-        const map = new google.maps.Map(mapC.get(0), myOptions);
+        const map = new Map(mapC.get(0), myOptions);
 
         // Update GPS position
         const p = this.el.dataset.mapGps.substring(1).slice(0, -1).split(',');
@@ -71,13 +72,14 @@ publicWidget.registry.GoogleMap = publicWidget.Widget.extend({
         // Create Marker & Infowindow
         const markerOptions = {
             map: map,
-            animation: google.maps.Animation.DROP,
             position: new google.maps.LatLng(p[0], p[1])
         };
         if (this.el.dataset.pinStyle === 'flat') {
-            markerOptions.icon = '/website/static/src/img/snippets_thumbs/s_google_map_marker.png';
+            const iconImg = document.createElement('img');
+            iconImg.src = '/website/static/src/img/snippets_thumbs/s_google_map_marker.png';
+            markerOptions.content = iconImg;
         }
-        new google.maps.Marker(markerOptions);
+        new (await google.maps.importLibrary("marker")).AdvancedMarkerElement(markerOptions);
 
         map.setMapTypeId(google.maps.MapTypeId[this.el.dataset.mapType]); // Update Map Type
         map.setZoom(parseInt(this.el.dataset.mapZoom)); // Update Map Zoom
@@ -89,5 +91,12 @@ publicWidget.registry.GoogleMap = publicWidget.Widget.extend({
             map.mapTypes.set('map_style', new google.maps.StyledMapType(mapColor, {name: "Styled Map"}));
             map.setMapTypeId('map_style');
         }
+    },
+    /**
+     * @override
+     */
+    destroy() {
+        this._super(...arguments);
+        this.$('.map_container').empty();
     },
 });

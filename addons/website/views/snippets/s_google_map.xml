@@ -20,6 +20,10 @@
                 <we-button data-select-data-attribute="">Default</we-button>
                 <we-button data-select-data-attribute="flat">Flat</we-button>
             </we-select>
+            <we-input class="o_we_large" string="Map ID" data-select-data-attribute="" data-attribute-name="mapId"/>
+            <we-alert class="mt-2">
+                Get a <a href="https://developers.google.com/maps/documentation/javascript/map-ids/get-map-id" target="_blank">Map ID</a> from your GCP console.
+            </we-alert>
             <we-select string="Type" data-no-preview="true" data-reset-map-color="" data-attribute-name="mapType">
                 <we-button data-name="roadmap_opt" data-select-data-attribute="ROADMAP">RoadMap</we-button>
                 <we-button data-select-data-attribute="TERRAIN">Terrain</we-button>
