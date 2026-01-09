@@ -536,6 +536,7 @@ class TestAccountMoveSend(TestAccountMoveSendCommon):
     def test_invoice_single(self):
         invoice = self.init_invoice("out_invoice", amounts=[1000], post=True)
         wizard = self.create_send_and_print(invoice, sending_methods=['email', 'manual'])
+        template = wizard.template_id
         self.assertRecordValues(wizard, [{
             'move_id': invoice.id,
             'sending_methods': ['email', 'manual'],
@@ -574,6 +575,7 @@ class TestAccountMoveSend(TestAccountMoveSendCommon):
 
         # Send it again. The PDF must not be created again.
         wizard = self.create_send_and_print(invoice, sending_methods=['email', 'manual'])
+        wizard.template_id = template
         with patch('odoo.addons.account.models.account_move_send.AccountMoveSend._hook_invoice_document_after_pdf_report_render') as mocked_method:
             results = wizard.action_send_and_print()
             mocked_method.assert_not_called()
@@ -842,6 +844,7 @@ class TestAccountMoveSend(TestAccountMoveSendCommon):
 
         # Resend.
         wizard = self.create_send_and_print(invoice, sending_methods=['email'])
+        wizard.template_id = template
         pdf_report_values['id'] = invoice.invoice_pdf_report_id.id
         self._assert_mail_attachments_widget(wizard, [
             pdf_report_values,
