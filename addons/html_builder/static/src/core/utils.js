@@ -1,4 +1,12 @@
-import { reactive, useComponent, useEnv, useLayoutEffect, useRef, useState, useSubEnv } from "@web/owl2/utils";
+import {
+    reactive,
+    useComponent,
+    useEnv,
+    useLayoutEffect,
+    useRef,
+    useState,
+    useSubEnv,
+} from "@web/owl2/utils";
 import { isElement, isTextNode } from "@html_editor/utils/dom_info";
 import {
     Component,
@@ -52,13 +60,13 @@ export function useDomState(getState, { checkEditingElement = true } = {}) {
     return state;
 }
 
-export function useActionInfo() {
+export function useActionInfo({ stringify = true } = {}) {
     const comp = useComponent();
 
     const getParam = (paramName) => {
         let param = comp.props[paramName];
         param = param === undefined ? comp.env.weContext[paramName] : param;
-        if (typeof param === "object") {
+        if (stringify && typeof param === "object") {
             param = JSON.stringify(param);
         }
         return param;
@@ -75,6 +83,8 @@ export function useActionInfo() {
         styleActionValue: comp.props.styleActionValue,
         attributeAction: getParam("attributeAction"),
         attributeActionValue: comp.props.attributeActionValue,
+        dataAttributeAction: getParam("dataAttributeAction"),
+        dataAttributeActionValue: comp.props.dataAttributeActionValue,
     };
 }
 
@@ -236,6 +246,7 @@ export function useGetItemValue() {
 export function useSelectableComponent(id, { onItemChange } = {}) {
     useBuilderComponent();
     const selectableItems = [];
+    const ltrRtlBoundItems = new Map();
     const refreshCurrentItemDebounced = useDebounced(refreshCurrentItem, 0, { immediate: true });
     const env = useEnv();
 
@@ -261,6 +272,60 @@ export function useSelectableComponent(id, { onItemChange } = {}) {
         }
         if (currentItem) {
             onItemChange?.(currentItem);
+        }
+    }
+
+    function handleLtrRtl({ ltrRtlSharedId, isLabelLinkedToContent, langDir }) {
+        const linkedItems = ltrRtlBoundItems.get(ltrRtlSharedId);
+        if (linkedItems.length === 2) {
+            const labelProps = ["title", "label", "slots"];
+            if (langDir.content === "ltr" && langDir.builder === "ltr") {
+                return;
+            }
+            if (langDir.builder === "rtl" && !isLabelLinkedToContent) {
+                revertItemPropsState(linkedItems, labelProps);
+            }
+            // The action depends on whether both builder and iframe have the
+            // same direction or not: if both are the same, the 1st button
+            // should have a "start" action (in English: left = start, in
+            // Arabic: right = start). If both are different, the 1st button
+            // should have an "end" action (builder in English with an iframe
+            // in Arabic: left = end, right = start).
+            if (langDir.content !== langDir.builder) {
+                const revertProps = [
+                    "className",
+                    "actionParam",
+                    "actionValue",
+                    "classAction",
+                    "styleAction",
+                    "styleActionValue",
+                    "attributeAction",
+                    "attributeActionValue",
+                    "dataAttributeAction",
+                    "dataAttributeActionValue",
+                ];
+                if (isLabelLinkedToContent) {
+                    revertProps.push(...labelProps);
+                }
+                revertItemPropsState(linkedItems, revertProps);
+            }
+        } else if (linkedItems.length > 2) {
+            throw new Error(
+                `ltrRtlSharedId "${ltrRtlSharedId}" has been found more than twice. They should always come in pair.`
+            );
+        }
+    }
+
+    function revertItemPropsState(items, propsState) {
+        const startItemState = items[0].getItemState();
+        const endItemState = items[1].getItemState();
+        for (const prop of propsState) {
+            if (startItemState[prop] !== undefined || endItemState[prop] !== undefined) {
+                [endItemState[prop], startItemState[prop]] = [
+                    startItemState[prop],
+                    endItemState[prop],
+                ];
+            }
         }
     }
 
@@ -295,6 +360,25 @@ export function useSelectableComponent(id, { onItemChange } = {}) {
             items: selectableItems,
             refreshCurrentItem: () => refreshCurrentItem(),
             getSelectableState: () => state,
+            addLtrRtlBoundItem: (item) => {
+                if (!ltrRtlBoundItems.has(item.ltrRtlSharedId)) {
+                    ltrRtlBoundItems.set(item.ltrRtlSharedId, [item]);
+                } else {
+                    ltrRtlBoundItems.get(item.ltrRtlSharedId).push(item);
+                }
+            },
+            removeLtrRtlBoundItem: (item) => {
+                const boundItems = ltrRtlBoundItems.get(item.ltrRtlSharedId);
+                if (boundItems.length === 1) {
+                    ltrRtlBoundItems.delete(item.ltrRtlSharedId);
+                    return;
+                }
+                const index = boundItems.indexOf(item);
+                if (index !== -1) {
+                    boundItems.splice(index, 1);
+                }
+            },
+            updateLtrRtlBoundItem: handleLtrRtl,
         },
     });
 }
@@ -364,6 +448,53 @@ export function useSelectableItemComponent(id, { getLabel = () => {} } = {}) {
     }
 
     return { state, operation };
+}
+/**
+ * Registers selectable items to be able to switch their props if needed in some
+ * contexts with RTL languages.
+ *
+ * Many options are selectable components (BuilderButtonGroup or BuilderSelect)
+ * with at least a "Left" and a "Right" button, but their action actually
+ * depends on the start and end of the line (e.g. `flex-row` vs
+ * `flex-row-reverse`). They need some logic to work across all 4 possible
+ * combinations of LTR / RTL in the builder and the iframe (LTR-LTR, LTR-RTL,
+ * RTL-LTR, RTL-RTL).
+ *
+ * The place of the button (visually on the left or on the right) depends on the
+ * _backend language_: in English, the 1st button is on the left, the 2nd is on
+ * the right. In Arabic, the 1st button is on the right, the 2nd is on the left.
+ * Similarly, in a dropdown, LTR-speaking people will think of "left" as the 1st
+ * element: it comes at the top. But RTL-speaking people will think of "right"
+ * as the 1st element: it should come at the top.
+ * That is why we need to adapt each button's label, icon, and action.
+ *
+ * @param {{ ltrRtlSharedId: string, isLabelLinkedToContent: boolean, getItemState: Function}}
+ */
+export function useSelectableLtrRtlComponent({
+    ltrRtlSharedId,
+    isLabelLinkedToContent,
+    getItemState = () => {},
+}) {
+    const env = useEnv();
+    if (ltrRtlSharedId && env.selectableContext) {
+        const ltrRtlBoundItem = {
+            ltrRtlSharedId,
+            isLabelLinkedToContent,
+            getItemState,
+            langDir: env.langDir,
+        };
+        env.selectableContext.addLtrRtlBoundItem(ltrRtlBoundItem);
+
+        onWillStart(() => {
+            env.selectableContext.updateLtrRtlBoundItem(ltrRtlBoundItem);
+        });
+        onWillUpdateProps(async () => {
+            env.selectableContext.updateLtrRtlBoundItem(ltrRtlBoundItem);
+        });
+        onWillDestroy(() => {
+            env.selectableContext.removeLtrRtlBoundItem(ltrRtlBoundItem);
+        });
+    }
 }
 
 function usePrepareAction(getAllActions) {

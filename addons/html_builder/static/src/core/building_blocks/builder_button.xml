@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-<t t-name="html_builder.BuilderButton">
+<t t-name="html_builder.BuilderButtonInternal">
     <BuilderComponent>
         <button type="button" class="o-hb-btn btn" t-att-style="this.props.style"
             t-att-data-action-id="info.actionId"
@@ -12,13 +12,15 @@
             t-att-data-style-action-value="info.styleActionValue"
             t-att-data-attribute-action="info.attributeAction"
             t-att-data-attribute-action-value="info.attributeActionValue"
+            t-att-data-data-attribute-action="info.dataAttributeAction"
+            t-att-data-data-attribute-action-value="info.dataAttributeActionValue"
             t-att-class="className"
             t-att-title="(state.isActive and props.titleActive) or props.title"
             t-att-aria-label="props.title"
             t-on-click="() => this.onClick()"
             t-on-pointerenter="() => this.onPointerEnter(props.id)"
             t-on-pointerleave="() => this.onPointerLeave(props.id)">
-            <Image t-if="props.iconImg" src="props.iconImg" attrs="{alt:props.iconImgAlt}"/>
+            <Image t-if="props.iconImg" src="props.iconImg" attrs="{ alt: props.iconImgAlt }" style="this.props.iconImgStyle"/>
             <i t-if="props.icon" t-att-class="iconClassName" role="img"/>
             <t t-if="props.label"  t-out="props.label"/>
             <t t-slot="default"/>
