@@ -1,14 +1,15 @@
-import { Component } from "@odoo/owl";
+import { Component, xml } from "@odoo/owl";
 import {
     clickableBuilderComponentProps,
     useActionInfo,
     useSelectableItemComponent,
 } from "../utils";
 import { BuilderComponent } from "./builder_component";
+import { BuilderSelectableWrapperComponent } from "./builder_selectable_wrapper_component";
 import { Image } from "../img";
 
-export class BuilderButton extends Component {
-    static template = "html_builder.BuilderButton";
+export class BuilderButtonInternal extends Component {
+    static template = "html_builder.BuilderButtonInternal";
     static components = { BuilderComponent, Image };
     static props = {
         ...clickableBuilderComponentProps,
@@ -18,6 +19,7 @@ export class BuilderButton extends Component {
         label: { type: String, optional: true },
         iconImg: { type: String, optional: true },
         iconImgAlt: { type: String, optional: true },
+        iconImgStyle: { type: String, optional: true },
         icon: { type: String, optional: true },
         className: { type: String, optional: true },
         classActive: { type: String, optional: true },
@@ -30,6 +32,7 @@ export class BuilderButton extends Component {
     static defaultProps = {
         type: "secondary",
         titleActive: "",
+        iconImgStyle: "",
     };
 
     setup() {
@@ -68,5 +71,32 @@ export class BuilderButton extends Component {
             return `oi ${this.props.icon}`;
         }
         return "";
+    }
+}
+
+export class BuilderButton extends BuilderSelectableWrapperComponent {
+    static template = xml`
+        <BuilderButtonInternal t-props="this.itemProps">
+            <t t-slot="default"/>
+        </BuilderButtonInternal>
+        `;
+    static components = { BuilderButtonInternal };
+
+    get itemProps() {
+        const forwardedProps = super.itemProps;
+        return { ...forwardedProps, iconImgStyle: this.iconImgStyle };
+    }
+
+    get iconImgStyle() {
+        let iconImgStyle = this.props.iconImgStyle || "";
+        if (this.props.ltrRtlSharedId && this.props.iconImg) {
+            const shouldMirrorIcon = this.props.isLabelLinkedToContent
+                ? this.env.langDir.content !== this.env.langDir.builder
+                : this.env.langDir.builder === "rtl";
+            if (shouldMirrorIcon) {
+                iconImgStyle = `transform: scaleX(-1); ${iconImgStyle}`;
+            }
+        }
+        return iconImgStyle;
     }
 }
