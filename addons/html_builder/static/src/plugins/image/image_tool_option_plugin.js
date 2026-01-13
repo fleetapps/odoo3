@@ -5,32 +5,19 @@ import { ImageToolOption } from "./image_tool_option";
 import { VideoSizeOption } from "./video_size_option";
 import { isImageCorsProtected } from "@html_editor/utils/image";
 import { withSequence } from "@html_editor/utils/resource";
-import {
-    REPLACE_MEDIA,
-    IMAGE_TOOL,
-    ALIGNMENT_STYLE_PADDING,
-} from "@html_builder/utils/option_sequence";
+import { REPLACE_MEDIA, IMAGE_TOOL } from "@html_builder/utils/option_sequence";
 import {
     ReplaceMediaOption,
     searchSupportedParentLinkEl,
-    socialMediaElementsSelector,
-} from "./replace_media_option";
+} from "@html_builder/plugins/image/replace_media_option";
 import { computeMaxDisplayWidth } from "@html_builder/plugins/image/image_format_option";
 import { BuilderAction } from "@html_builder/core/builder_action";
-import { ClassAction } from "@html_builder/core/core_builder_action_plugin";
 import { selectElements } from "@html_editor/utils/dom_traversal";
 import { isCSSColor } from "@web/core/utils/colors";
 import { getCSSVariableValue, getHtmlStyle } from "@html_editor/utils/formatting";
-import { BaseOptionComponent } from "@html_builder/core/utils";
 
-const IMAGE_LINK_ALIGN_CLASSES = ["mx-auto", "ms-auto", "me-auto"];
+export const IMAGE_LINK_ALIGN_CLASSES = ["mx-auto", "ms-auto", "me-auto"];
 
-export class ImageAndFaOption extends BaseOptionComponent {
-    static template = "html_builder.ImageAndFaOption";
-    static selector = "span.fa, i.fa, img";
-    static exclude = `[data-oe-type='image'] > img, [data-oe-xpath], ${socialMediaElementsSelector}`;
-    static name = "imageAndFaOption";
-}
 class ImageToolOptionPlugin extends Plugin {
     static id = "imageToolOption";
     static dependencies = [
@@ -47,11 +34,9 @@ class ImageToolOptionPlugin extends Plugin {
         builder_options: [
             withSequence(REPLACE_MEDIA, ReplaceMediaOption),
             withSequence(IMAGE_TOOL, ImageToolOption),
-            withSequence(ALIGNMENT_STYLE_PADDING, ImageAndFaOption),
             withSequence(IMAGE_TOOL, VideoSizeOption),
         ],
         builder_actions: {
-            ImageAlignClassAction,
             CropImageAction,
             ResetCropAction,
             ReplaceMediaAction,
@@ -222,34 +207,6 @@ export class SetLinkAction extends BuilderAction {
     isApplied({ editingElement }) {
         const parentEl = searchSupportedParentLinkEl(editingElement);
         return parentEl.tagName === "A";
-    }
-}
-
-export class ImageAlignClassAction extends ClassAction {
-    static id = "imageAlignClassAction";
-    apply(context) {
-        super.apply(context);
-        this.syncLinkAlignment(context.editingElement);
-    }
-    syncLinkAlignment(editingElement) {
-        const linkEl = editingElement.parentElement;
-        if (
-            !linkEl ||
-            linkEl.tagName !== "A" ||
-            linkEl.firstElementChild !== editingElement ||
-            linkEl.childElementCount !== 1 ||
-            linkEl.textContent.replace(/\u200B/g, "").trim() // ignore ZWSP
-        ) {
-            return;
-        }
-        // Mirror image alignment classes on the wrapping <a> (only when it
-        // wraps just this image) so flex layouts stay consistent.
-        const alignClasses = IMAGE_LINK_ALIGN_CLASSES.filter((cls) =>
-            editingElement.classList.contains(cls)
-        );
-        for (const className of IMAGE_LINK_ALIGN_CLASSES) {
-            linkEl.classList.toggle(className, alignClasses.includes(className));
-        }
     }
 }
 
