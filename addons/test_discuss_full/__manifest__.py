@@ -17,6 +17,7 @@
         "mail",
         "mail_bot",
         "project_todo",
+        "rating",
         "website_livechat",
         "website_sale",
         "website_slides",

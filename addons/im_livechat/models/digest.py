@@ -16,16 +16,24 @@ class DigestDigest(models.Model):
 
     def _compute_kpi_livechat_rating_value(self):
         self._raise_if_not_member_of('im_livechat.im_livechat_group_manager')
-        channels = self.env['discuss.channel'].search([('channel_type', '=', 'livechat')])
         start, end, __ = self._get_kpi_compute_parameters()
         domain = [
-            ('create_date', '>=', start),
-            ('create_date', '<', end),
+            ("channel_type", "=", "livechat"),
+            ("livechat_rating", "!=", "0"),
+            ("create_date", ">=", start),
+            ("create_date", "<", end),
         ]
-        ratings = channels.rating_get_grades(domain)
+        ratings_data = dict(
+            self.env["discuss.channel"]._read_group(
+                domain,
+                ["livechat_rating"],
+                ["__count"],
+            )
+        )
+        total_count = sum(ratings_data.values())
         self.kpi_livechat_rating_value = (
-            ratings['great'] * 100 / sum(ratings.values())
-            if sum(ratings.values()) else 0
+            ratings_data.get("5", 0) * 100 / total_count
+            if total_count else 0
         )
 
     def _compute_kpi_livechat_conversations_value(self):
