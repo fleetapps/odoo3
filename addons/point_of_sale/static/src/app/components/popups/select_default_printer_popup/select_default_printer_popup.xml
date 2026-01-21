@@ -17,6 +17,9 @@
                     </label>
                 </div>
             </t>
+            <div t-if="props.note" class="text-warning">
+                <t t-esc="props.note" />
+            </div>
             <t t-set-slot="footer">
                 <button class="btn btn-primary" t-on-click="confirmSelection" t-att-disabled="!state.selectedId">
                     Confirm
