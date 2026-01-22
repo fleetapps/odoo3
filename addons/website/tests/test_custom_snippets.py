@@ -191,6 +191,79 @@ class TestCustomSnippet(TransactionCase):
             'Parseltongue Text',
             view.with_context(lang=parseltongue.code).arch)
 
+    def test_delayed_translations_with_custom_snippet(self):
+        ResLang = self.env['res.lang']
+        View = self.env['ir.ui.view']
+
+        # 1. Setup website and languages
+        parseltongue = ResLang.create({
+            'name': 'Parseltongue',
+            'code': 'pa_GB',
+            'iso_code': 'pa_GB',
+            'url_code': 'pa_GB',
+        })
+        ResLang._activate_lang(parseltongue.code)
+        website = self.env.ref('website.default_website')
+        website.language_ids = [Command.link(parseltongue.id)]
+        data_name_attr = "Custom Text Block Test Translations"
+        # Note that `s_custom_snippet` is supposed to be added by the JS when
+        # sending a snippet arch to the `save_snippet` python method.
+        # Adding it here to mimick the real flow, but at this point it really is
+        # just a regular snippet.
+        snippet_arch = f"""
+            <section class="s_text_block s_custom_snippet" data-name="{data_name_attr}">
+                <div class="custom_snippet_website_1">English Text</div>
+            </section>
+        """
+
+        # 2. Create a view containing a snippet and translate it
+        view1 = View.create({
+            'name': 'Specific View Test Translation 1',
+            'type': 'qweb',
+            'arch': f'''
+                <body><p>Hello</p><div>{snippet_arch}</div><h1/></body>
+            ''',
+            'key': 'test.specific_view_test_translation_1',
+            'website_id': website.id,
+        })
+        view1.update_field_translations('arch_db', {
+            parseltongue.code: {
+                'English Text': 'Texte Francais',
+            }
+        })
+        self.assertIn('Texte Francais', view1.with_context(lang=parseltongue.code).arch)
+
+        # 3. Save the snippet as custom snippet and ensure it is translated
+        self.env['ir.ui.view'].with_context(
+            website_id=website.id,
+            model=view1._name,
+            # `arch` is not the field in DB (it's a compute), this is also
+            # testing that it works in such cases (raw sql query would fail)
+            field='arch',
+            resId=view1.id,
+        ).save_snippet(
+            name=data_name_attr,
+            arch=snippet_arch,
+            thumbnail_url='/website/static/src/img/snippets_thumbs/s_text_block.svg',
+            snippet_key='s_text_block',
+            template_key='website.snippets'
+        )
+        custom_snippet_view = View.search([('name', '=', data_name_attr)], limit=1)
+        self.assertIn(
+            'Texte Francais',
+            custom_snippet_view.with_context(lang=parseltongue.code).arch)
+
+        # 4. Simulate edition of page with delayed translation, and ensure the
+        #    translated version is the last confirmed one
+        view1.with_context(delay_translations=True).save("<h1>Some New Text</h1>", xpath='/body[1]/h1[1]')
+
+        self.assertNotIn(
+            'Some New Text',
+            view1.with_context(lang=parseltongue.code).arch)
+        self.assertIn(
+            'Some New Text',
+            view1.with_context(lang=parseltongue.code, check_translations=True).arch)
+
 
 @tagged('post_install', '-at_install')
 class TestHttpCustomSnippet(HttpCase):
