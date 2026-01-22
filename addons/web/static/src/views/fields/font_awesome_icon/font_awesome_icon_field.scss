@@ -1,0 +1,16 @@
+.o_fa_icon_field_selector_menu {
+    min-width: 0;
+    min-height: 350px;
+
+    .o_select_menu_item {
+        display: inline-block !important;
+        padding: .5em;
+        width: auto;
+        line-height: 1;
+    }
+
+    .o_font_awesome_icon_selector_value {
+        width: 22px;
+        height: 22px;
+    }
+}
