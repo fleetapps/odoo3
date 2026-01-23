@@ -84,6 +84,13 @@
             <xpath expr="//group[@name='sale_info_group']/field[@name='ref']" position="after">
                 <field name="l10n_tr_original_invoice_date" string="Original Invoice Date" invisible="country_code != 'TR' or move_type != 'out_refund' or reversed_entry_id" required="country_code == 'TR' and not reversed_entry_id and move_type == 'out_refund'"/>
             </xpath>
+            <group id="header_left_group" position="inside">
+                <field name="l10n_tr_public_spending_unit_id"
+                       widget="res_partner_many2one"
+                       readonly="state != 'draft'"
+                       invisible="move_type != 'out_invoice' or l10n_tr_gib_invoice_scenario != 'KAMU'"
+                       required="move_type == 'out_invoice' and l10n_tr_gib_invoice_scenario == 'KAMU'"/>
+            </group>
         </field>
     </record>
 
