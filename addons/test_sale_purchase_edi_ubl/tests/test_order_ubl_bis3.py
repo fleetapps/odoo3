@@ -1,5 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from lxml import etree
+
 from odoo.exceptions import UserError
 from odoo.fields import Command
 from odoo.tests import tagged
@@ -307,3 +309,70 @@ class TestOrderEdiUbl(TestAccountEdiUblCii, SaleCommon):
         po = self.env['purchase.order'].with_context(default_partner_id=self.env.user.partner_id.id)._create_records_from_attachments(xml_attachment)
         # Should have same payment term as PO
         self.assertEqual(po.payment_term_id, payment_term)
+
+    def test_so_import_line_allowance_charges(self):
+        po_line_vals = [{
+            'product_id': self.place_prdct.id,
+            'price_unit': 30.0,
+            'product_uom_id': self.uom_units.id,
+            'product_qty': 10.0,
+            'tax_ids': self.purchase_tax.ids,
+        }]
+        xml_attachment = self.get_purchase_xml(po_line_vals)
+
+        xml_root = etree.fromstring(xml_attachment.raw)
+        modifying_xpath = """
+            <xpath expr="(//*[local-name()='OrderLine']//*[local-name()='LineExtensionAmount'])" position="after">
+                <AllowanceCharge>
+                    <ChargeIndicator>true</ChargeIndicator>
+                    <AllowanceChargeReason>FREIGHT</AllowanceChargeReason>
+                    <Amount currencyID="EUR">20</Amount>
+                </AllowanceCharge>
+                <AllowanceCharge>
+                    <ChargeIndicator>true</ChargeIndicator>
+                    <AllowanceChargeReason>FUEL SURCHARGE</AllowanceChargeReason>
+                    <Amount currencyID="EUR">10</Amount>
+                </AllowanceCharge>
+            </xpath>"""
+        xml_with_allowance = self.with_applied_xpath(xml_root, modifying_xpath)
+        xml_attachment.raw = etree.tostring(xml_with_allowance)
+
+        so = self.env['sale.order'].with_context(default_partner_id=self.env.user.partner_id.id)._create_records_from_attachments(xml_attachment)
+        self.assertEqual(len(so.order_line), 3)
+        allowance_lines = so.order_line.filtered(lambda l: not l.product_id)
+        self.assertEqual(len(allowance_lines), 2)
+        self.assertIn('FREIGHT', allowance_lines[0].name)
+        self.assertIn('FUEL SURCHARGE', allowance_lines[1].name)
+
+    def test_po_import_line_allowance_charges(self):
+        so_line_vals = [{
+            'product_id': self.place_prdct.id,
+            'product_uom_id': self.uom_units.id,
+            'product_uom_qty': 10.0,
+            'tax_ids': self.sale_tax.ids,
+        }]
+        xml_attachment = self.get_sale_xml(so_line_vals)
+
+        xml_root = etree.fromstring(xml_attachment.raw)
+        modifying_xpath = """
+            <xpath expr="(//*[local-name()='OrderLine']//*[local-name()='LineExtensionAmount'])" position="after">
+                <AllowanceCharge>
+                    <ChargeIndicator>true</ChargeIndicator>
+                    <AllowanceChargeReason>FREIGHT</AllowanceChargeReason>
+                    <Amount currencyID="EUR">20</Amount>
+                </AllowanceCharge>
+                <AllowanceCharge>
+                    <ChargeIndicator>true</ChargeIndicator>
+                    <AllowanceChargeReason>FUEL SURCHARGE</AllowanceChargeReason>
+                    <Amount currencyID="EUR">10</Amount>
+                </AllowanceCharge>
+            </xpath>"""
+        xml_with_allowance = self.with_applied_xpath(xml_root, modifying_xpath)
+        xml_attachment.raw = etree.tostring(xml_with_allowance)
+
+        po = self.env['purchase.order'].with_context(default_partner_id=self.env.user.partner_id.id)._create_records_from_attachments(xml_attachment)
+        self.assertEqual(len(po.order_line), 3)
+        allowance_lines = po.order_line.filtered(lambda l: not l.product_id)
+        self.assertEqual(len(allowance_lines), 2)
+        self.assertIn('FREIGHT', allowance_lines[0].name)
+        self.assertIn('FUEL SURCHARGE', allowance_lines[1].name)
