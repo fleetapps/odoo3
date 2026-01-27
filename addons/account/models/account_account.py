@@ -8,7 +8,7 @@ import json
 from odoo import api, fields, models, _, Command
 from odoo.osv import expression
 from odoo.exceptions import UserError, ValidationError, RedirectWarning
-from odoo.tools import SQL, Query
+from odoo.tools import SQL, Query, ormcache
 
 
 ACCOUNT_REGEX = re.compile(r'(?:(\S*\d+\S*))?(.*)')
@@ -782,6 +782,7 @@ class AccountAccount(models.Model):
         ))]
 
     @api.model
+    @ormcache('company_id', 'partner_id', 'move_type', 'journal_id')
     def _get_most_frequent_account_for_partner(self, company_id, partner_id, move_type=None, journal_id=None):
         most_frequent_account = self._get_most_frequent_accounts_for_partner(company_id, partner_id, move_type, filter_never_user_accounts=True, limit=1, journal_id=journal_id)
         return most_frequent_account[0] if most_frequent_account else False
