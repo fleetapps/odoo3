@@ -1321,6 +1321,10 @@ class CrmLead(models.Model):
         }
         return action
 
+    def action_convert_to_opportunity(self):
+        self.ensure_one()
+        self.convert_opportunity(self.partner_id.id)
+
     # ------------------------------------------------------------
     # VIEWS
     # ------------------------------------------------------------
