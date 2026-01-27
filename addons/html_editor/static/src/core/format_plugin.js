@@ -293,6 +293,8 @@ export class FormatPlugin extends Plugin {
                     ((isTextNode(n) &&
                         (isVisibleTextNode(n) ||
                             isZWS(n) ||
+                            // keep FEFF for stable reselection
+                            isZwnbsp(n) ||
                             (/^\n+$/.test(n.nodeValue) && !applyStyle))) ||
                         (n.nodeName === "BR" &&
                             (isFakeLineBreak(n) ||
@@ -306,6 +308,10 @@ export class FormatPlugin extends Plugin {
         );
 
         const unformattedTextNodes = selectedNodes.filter((n) => {
+            // Don't apply formatting to FEFF.
+            if (isZwnbsp(n)) {
+                return false;
+            }
             const listItem = closestElement(n, "li");
             if (listItem && this.dependencies.selection.isNodeContentsFullySelected(listItem)) {
                 const hasFontSizeStyle =
