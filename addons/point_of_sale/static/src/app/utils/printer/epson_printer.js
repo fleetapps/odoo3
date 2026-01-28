@@ -121,7 +121,6 @@ export class EpsonPrinter extends BasePrinter {
     setup({ printer }) {
         super.setup(...arguments);
         this.printer_ip = printer.printer_ip;
-        this.iface_cashdrawer = printer.iface_cashdrawer;
     }
 
     get address() {

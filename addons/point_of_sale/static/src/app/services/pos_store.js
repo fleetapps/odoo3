@@ -136,7 +136,6 @@ export class PosStore extends WithLazyGetterTrap {
         this.selectedPartner = null;
         this.selectedCategory = null;
         this.searchProductWord = "";
-        this.active_printer = null;
         this.ready = new Promise((resolve) => {
             this.markReady = resolve;
         });
@@ -166,25 +165,7 @@ export class PosStore extends WithLazyGetterTrap {
         });
 
         this.handleQRPaymentLines();
-        // If a default printer is set.
-        const storedPrinterId = Number(
-            localStorage.getItem(DEFAULT_PRINTER_STORAGE_KEY + this.config.id)
-        );
-        if (storedPrinterId) {
-            const relPrinter = Array.from(this.ticketPrinter.printers).find(
-                (d) => d.id === storedPrinterId
-            );
-            if (relPrinter) {
-                localStorage.setItem(
-                    DEFAULT_PRINTER_STORAGE_KEY + this.config.id,
-                    String(relPrinter.id)
-                );
-                this.active_printer = relPrinter;
-                return;
-            }
-        } else if (["ProductScreen", "FloorScreen"].includes(this.router.state.current)) {
-            this.selectPrinter();
-        }
+        this.initActivePrinter();
     }
 
     handleQRPaymentLines() {
@@ -265,6 +246,24 @@ export class PosStore extends WithLazyGetterTrap {
 
         this.router.navigate(routeName, routeParams);
         return true;
+    }
+
+    initActivePrinter() {
+        // If a default printer is set.
+        const storedPrinterId = Number(
+            localStorage.getItem(DEFAULT_PRINTER_STORAGE_KEY + this.config.id)
+        );
+        if (storedPrinterId) {
+            const relPrinter = Array.from(this.ticketPrinter.printers).find(
+                (d) => d.id === storedPrinterId
+            );
+            if (relPrinter) {
+                this.ticketPrinter.activePrinter = relPrinter;
+                return;
+            }
+        } else if (["ProductScreen", "FloorScreen"].includes(this.router.state.current)) {
+            this.selectPrinter();
+        }
     }
 
     navigateToFirstPage() {
@@ -436,7 +435,6 @@ export class PosStore extends WithLazyGetterTrap {
                 }
             }
             this.session.state = "closed";
-            this.removeDefaultPrinter();
         }
 
         setTimeout(() => {
@@ -451,9 +449,7 @@ export class PosStore extends WithLazyGetterTrap {
     get company() {
         return this.config.company_id;
     }
-    removeDefaultPrinter() {
-        localStorage.removeItem(DEFAULT_PRINTER_STORAGE_KEY + this.config.id);
-    }
+
     async processServerData() {
         // Used to identify the device when several devices are connected to the same POS
         this.device = this.data.device;
@@ -519,41 +515,40 @@ export class PosStore extends WithLazyGetterTrap {
         return makeAwaitable(this.dialog, CashMovePopup);
     }
     async selectPrinter({ force = false } = {}) {
+        const receiptPrinters = this.ticketPrinter.receiptPrinters;
         const printer_id = Number(
             localStorage.getItem(DEFAULT_PRINTER_STORAGE_KEY + this.config.id)
         );
-        if (!force && (printer_id || !this.ticketPrinter.printers.length)) {
+        if (!force && (printer_id || !receiptPrinters.length)) {
             return;
         }
-        if (this.ticketPrinter.printers.length == 1) {
-            const relPrinter = Array.from(this.ticketPrinter.printers)[0];
-            localStorage.setItem(
-                DEFAULT_PRINTER_STORAGE_KEY + this.config.id,
-                String(relPrinter.id)
-            );
-            this.active_printer = relPrinter;
+        if (receiptPrinters.length == 1) {
+            this.ticketPrinter.activePrinter = Array.from(receiptPrinters)[0];
             return;
         }
         const defaultPrinter = await makeAwaitable(this.dialog, SelectDefaultPrinterPopup, {
-            receipt_printers: Array.from(this.ticketPrinter.printers),
-            selectedId: printer_id || this.ticketPrinter.printers[0].id,
-            title: _t("Several receipt printers are available"),
-            header: _t("Which one would you like to use as default for this device?"),
-            note: _t("You can change your choice from the menu, under printer item"),
+            receipt_printers: Array.from(receiptPrinters),
+            selectedId: printer_id,
         });
         if (defaultPrinter) {
-            const relPrinter = Array.from(this.ticketPrinter.printers).find(
+            const relPrinter = Array.from(receiptPrinters).find(
                 (printer) => printer.id === parseInt(defaultPrinter)
             );
             localStorage.setItem(
                 DEFAULT_PRINTER_STORAGE_KEY + this.config.id,
                 String(relPrinter.id)
             );
-            this.active_printer = relPrinter;
+            this.ticketPrinter.activePrinter = relPrinter;
         }
     }
+    get canOpenCashdrawer() {
+        return (
+            this.config.receipt_printer_ids.length &&
+            this.ticketPrinter?.activePrinter?.iface_cashdrawer
+        );
+    }
     async openCashbox(action = undefined) {
-        if (this.config.receipt_printer_ids.length && this.active_printer.iface_cashdrawer) {
+        if (this.canOpenCashdrawer) {
             await this.ticketPrinter.openCashbox();
 
             if (action) {

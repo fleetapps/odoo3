@@ -31,10 +31,7 @@ export class MoneyDetailsPopup extends Component {
                 : Object.fromEntries(this.pos.models["pos.bill"].map((bill) => [bill.value, 0])),
         });
         this.env.dialogData.dismiss = () => {
-            if (
-                this.pos.config.receipt_printer_ids.length &&
-                this.pos.active_printer.iface_cashdrawer
-            ) {
+            if (this.pos.canOpenCashdrawer) {
                 this.pos.logEmployeeMessage(this.props.action, "ACTION_CANCELLED");
             }
         };
