@@ -1418,6 +1418,27 @@ options.registry.ReplaceMedia.include({
 });
 
 options.registry.ImageTools.include({
+    /**
+     * Compute and set default shape colors for images that have a data-shape
+     * but are missing data-shape-colors (e.g. s_cta_mockups, s_closer_look).
+     *
+     * @override
+     */
+    async _applyOptions() {
+        const img = await this._super(...arguments);
+        // TODO remove in master: kept for stable.
+        if (img && img.dataset.shape && !img.dataset.shapeColors) {
+            const shapeName = img.dataset.shape.split("/")[2];
+            const shape = this.shapeCache[shapeName];
+            if (shape) {
+                const defaultColors = Object.values(weUtils.DEFAULT_PALETTE).map((color, i) =>
+                    shape.includes(color) ? color : null
+                );
+                img.dataset.shapeColors = defaultColors.join(";");
+            }
+        }
+        return img;
+    },
     async _computeWidgetVisibility(widgetName, params) {
         if (params.optionsPossibleValues.selectStyle
                 && params.cssProperty === 'width'
