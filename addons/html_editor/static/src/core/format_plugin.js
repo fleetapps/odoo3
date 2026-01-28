@@ -57,9 +57,17 @@ function isFormatted(formatPlugin, format) {
  *      applyStyle: boolean,
  * }) => void | boolean)[]} on_will_format_selection_handlers
  * @typedef {(() => void)[]} on_all_formats_removed_handlers
+ * @typedef {((root: Node) => void)[]} on_will_merge_adjacent_siblings_handlers
  *
  * @typedef {((className: string) => boolean | undefined)[]} is_format_class_predicates
  * @typedef {((node: Node) => boolean | undefined)[]} has_format_predicates
+ *
+ * @typedef {(({
+ *      node: Node,
+ *      nodeStyle: CSSStyleProperties,
+ *      node2: Node,
+ *      node2Style: CSSStyleProperties,
+ * }) => void | true)[]} are_similar_elements_overrides
  */
 
 export class FormatPlugin extends Plugin {
@@ -688,20 +696,13 @@ export class FormatPlugin extends Plugin {
      * @param {boolean} [options.preserveSelection=true]
      */
     mergeAdjacentInlines(root, { preserveSelection = true } = {}) {
+        this.trigger("on_will_merge_adjacent_siblings_handlers", root);
         let selectionToRestore = null;
         for (const node of [root, ...descendants(root)].filter(isElement)) {
             if (this.shouldBeMergedWithPreviousSibling(node)) {
                 if (preserveSelection) {
                     selectionToRestore ??= this.dependencies.selection.preserveSelection();
                     selectionToRestore.update(callbacksForCursorUpdate.merge(node));
-                }
-                if (node.matches("code.o_inline_code")) {
-                    while (
-                        node.previousSibling?.nodeType === Node.TEXT_NODE &&
-                        /^\uFEFF*$/.test(node.previousSibling.nodeValue)
-                    ) {
-                        node.previousSibling.remove();
-                    }
                 }
                 node.previousSibling.append(...childNodes(node));
                 node.remove();
@@ -714,15 +715,7 @@ export class FormatPlugin extends Plugin {
         const isMergeable = (node) =>
             FORMATTABLE_TAGS.includes(node.nodeName) &&
             (this.checkPredicates("is_node_splittable_predicates", node) ?? true);
-        let previousSibling = node.previousSibling;
-        if (node.matches("code.o_inline_code")) {
-            while (
-                previousSibling?.nodeType === Node.TEXT_NODE &&
-                /^\uFEFF*$/.test(previousSibling.nodeValue)
-            ) {
-                previousSibling = previousSibling.previousSibling;
-            }
-        }
+        const previousSibling = node.previousSibling;
         return (
             !isSelfClosingElement(node) &&
             this.areSimilarElements(node, previousSibling) &&
@@ -762,12 +755,10 @@ export class FormatPlugin extends Plugin {
         }
         const nodeStyle = getComputedStyle(node);
         const node2Style = getComputedStyle(node2);
-        if (node.matches("code.o_inline_code")) {
-            if (
-                nodeStyle.padding === node2Style.padding &&
-                nodeStyle.margin === node2Style.margin
-            ) {
-                return true;
+        for (const override of this.getResource("are_similar_elements_overrides")) {
+            const overrideResult = override({ node, nodeStyle, node2, node2Style });
+            if (overrideResult !== undefined) {
+                return overrideResult;
             }
         }
         return (
