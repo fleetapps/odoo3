@@ -1,7 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 from bisect import bisect
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime, time
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
@@ -143,10 +143,15 @@ class ProductProduct(models.Model):
         self.company_currency_id = company_id.currency_id
         products = self._with_valuation_context()
 
-        at_date = fields.Datetime.to_datetime(self.env.context.get('to_date'))
+        at_date = self.env.context.get('to_date')
+        original_value = at_date
+        at_date = fields.Datetime.to_datetime(at_date)
+        if (isinstance(original_value, date) and not isinstance(original_value, datetime)) or \
+            (isinstance(original_value, str) and len(original_value) == 10):
+            at_date = datetime.combine(at_date.date(), time.max)
+
         if at_date:
-            at_date = at_date.replace(hour=23, minute=59, second=59)
-            products = self.with_context(at_date=at_date)
+            products = products.with_context(at_date=at_date, to_date=at_date)
 
         # PERF: Pre-compute:the sum of 'total_value' of lots per product in go
         std_price_by_product_id = {}
