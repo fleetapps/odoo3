@@ -1,0 +1,11 @@
+.o_offline_systray_content {
+  width: 300px;
+
+  .o_horizontal_separator {
+    box-shadow: 0 $border-width 0 $o-form-separator-color;
+  }
+
+  .cursor-auto {
+    cursor: auto !important;
+  }
+}

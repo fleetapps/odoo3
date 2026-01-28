@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="web.OfflineSystray">
+        <Dropdown
+            t-if="this.offlineService.offline or offlineService.hasScheduledCalls"
+            navigationOptions="{ 'shouldFocusChildInput': false }"
+            disabled="!offlineService.hasScheduledCalls">
+            <div t-on-click="() => this.offlineService.checkConnection()">
+                <i t-if="env.isSmall"
+                    t-attf-class="fa {{ inError? 'fa-exclamation' : 'fa-chain-broken' }} o_nav_entry text-danger offline_systray"
+                    role="img"
+                    t-att-aria-label="labelText"
+                    t-att-data-tooltip="labelText"/>
+                <button t-else=""
+                    class="o_nav_entry px-2 o_tag text-bg-danger offline_systray"
+                    data-available-offline=""
+                    data-tooltip="Click to check connection and Sync">
+                    <i t-attf-class="fa {{ inError ? 'fa-exclamation' : 'fa-chain-broken'}} me-1"/><t t-esc="labelText"></t><i t-if="offlineService.hasScheduledCalls" class="fa fa-caret-down ms-2"/>
+                </button>
+            </div>
+            <t t-set-slot="content">
+                <div class="o_offline_systray_content ps-2">
+                    <t t-foreach="groupEntries" t-as="entry" t-key="entry[0]">
+                        <div class="o_horizontal_separator text-uppercase fw-bolder small">
+                            <span t-esc="entry[0]"/> 
+                        </div>
+                        <t t-foreach="entry[1]" t-as="element" t-key="element.id">
+                            <DropdownItem
+                                onSelected="() => element.clickable and this.openView(element.id)"
+                                closingMode="element.clickable ? 'all' : 'none'"
+                                class="{'ps-3': true, 'd-flex': true, 'cursor-auto': !element.clickable }">
+                                <div t-attf-class="text-truncate {{element.error ? 'text-danger': ''}} {{ element.clickable ? '' : 'text-muted'}}">
+                                    <i t-if="element.error" class="o_button_icon fa fa-fw fa-exclamation-circle text-danger me-1"/>
+                                    <span
+                                        t-att-title="element.displayName"
+                                        t-esc="element.displayName"/>
+                                </div>
+                                <div
+                                    class="ms-auto"
+                                    t-att-data-tooltip-template="'web.OfflineSystrayTooltip'"
+                                    t-att-data-tooltip-info="element.tooltip">
+                                    <span t-attf-class="o_tag mw-100 align-items-center o_badge badge rounded-pill {{ 'o_tag_color_' + element.statusColor }}">
+                                        <div class="o_tag_badge_text o_badge_text">
+                                            <t t-esc="element.status"/>
+                                        </div>
+                                    </span>
+                                </div>
+                                <div>
+                                    <button
+                                        class="btn btn-link text-danger fa fa-trash py-0"
+                                        title="Discard offline changes"
+                                        data-available-offline=""
+                                        t-on-click.stop="() => this.offlineService.removeScheduledORM(element.id)"/>
+                                </div>
+                            </DropdownItem>
+                        </t>
+                    </t>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="web.OfflineSystrayTooltip">
+        <div>
+            On <t t-esc="timeStamp"/>
+        </div>
+        <t t-foreach="changes" t-as="entry" t-key="entry[0]">
+            <div>
+               - <t t-esc="entry[0]"/>: <t t-esc="entry[1]"/>
+            </div>
+        </t>
+    </t>
+</templates>
