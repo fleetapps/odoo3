@@ -134,6 +134,7 @@
                                 <h1 class="mb-0 w-75">
                                     <field options="{'line_breaks': False}" widget="text" class="text-break d-block" name="name" default_focus="1" placeholder="Name (company or person)" required="type == 'contact'"/>
                                 </h1>
+<<<<<<< 6cc4ff63909b84ddba763100c7faa97e95b60dd3
                                 <div class="d-flex align-items-baseline w-md-50">
                                     <i class="fa fa-fw me-1 fa-building text-primary" title="Company"/>
                                     <field name="parent_id" class="w-100"
@@ -143,6 +144,11 @@
                                         context="{'default_user_id': user_id}"/>
                                 </div>
                                 <div class="d-flex align-items-baseline w-md-50">
+||||||| 06eb290e1084117e40005583cf06f803606859a6
+                                <div class="d-flex align-items-baseline w-50">
+=======
+                                <div class="d-flex align-items-baseline w-md-50">
+>>>>>>> 32bbe4efa595648f469bdf93a7dfebf5b1107adf
                                     <i class="fa fa-fw me-1 fa-envelope text-primary" title="Email"/>
                                     <field name="email" class="w-100" widget="email" required="user_ids" placeholder="Email"/>
                                 </div>
