@@ -1,4 +1,4 @@
-import { Component, onWillStart, useState, markup } from '@odoo/owl';
+import { Component, onWillStart, useState } from '@odoo/owl';
 import { Dialog } from '@web/core/dialog/dialog';
 import { WarningDialog } from '@web/core/errors/error_dialogs';
 import { useService } from '@web/core/utils/hooks';
@@ -6,6 +6,7 @@ import {
     AlertDialog, ConfirmationDialog
 } from '@web/core/confirmation_dialog/confirmation_dialog';
 import { formatCurrency } from '@web/core/currency';
+import { renderToMarkup } from '@web/core/utils/render';
 import { _t } from '@web/core/l10n/translation';
 import { rpc } from '@web/core/network/rpc';
 import { QuantityButtons } from '@sale/js/quantity_buttons/quantity_buttons';
@@ -83,33 +84,34 @@ export class ReturnOrderDialog extends Component {
             });
             return;
         }
-        const selectedlines = this.state.returnableLines.filter(line => line.quantity);
+        const selectedLines = this.state.returnableLines.filter(line => line.quantity);
+        const isSinglePickingWithLabel = (
+            selectedLines.length > 0
+            && selectedLines.every(
+                line => line.delivery_id === selectedLines[0].delivery_id
+            )
+            && !!selectedLines[0].shipping_label_url
+
+        );
+        const cancelFunction = isSinglePickingWithLabel ?  () => {
+            this._downloadShippingLabel(selectedLines[0].shipping_label_url);
+        } : undefined;
         this.dialog.add(ConfirmationDialog, {
-            title: 'Print the return request label.',
-            body: markup(
-                _t("Download, print and add this label in your package and send it to this address:<br/><br/>") +
-                `<div class='card border'><div class='card-body'><b class="d-block mb-2">${this.content.company_name}</b><span class='text-muted'>${this.content.warehouse_address.replace('\n\n', ' ').replace('\n', ' ')}</span></div></div>`
-            ),
-            confirmLabel: _t("Download Label"),
-            confirm: async () => {
-                const params = {
-                    order_id: this.props.saleOrderId,
-                    access_token: this.props.accessToken,
-                    selected_lines: JSON.stringify(selectedlines),
-                    return_reason: returnReasonValue,
-                }
-                if (selectedlines.length <= 10) {
-                    const query = new URLSearchParams(params).toString();
-                    const url = `return_order/download_label?${query}`;
-                    window.open(url, '_blank');
-                } else {
-                    await download({url: 'return_order/download_label', data: params});
-                }
-                this.props.close();
-            },
+            title: _t("Print the return request label."),
+            body: renderToMarkup('sale_stock.ReturnLabelBody', {
+                companyName: this.content.company_name,
+                warehouseAddress: this.content.warehouse_address,
+                isSinglePickingWithLabel: isSinglePickingWithLabel,
+            }),
+            confirmLabel: _t("Download Return Label"),
+            confirm: async () => await this._downloadReturnLabel(selectedLines, returnReasonValue),
+            // Used cancel button as downloading shipping label
+            cancelLabel: _t("Download Shipping Label"),
+            cancel: cancelFunction,
             size: "md",
         });
     }
+
 
     _getErrorMessage() {
         const noSelectedLine = this.state.returnableLines.every(
@@ -120,6 +122,28 @@ export class ReturnOrderDialog extends Component {
         }
 
         return false;
+    }
+
+    async _downloadReturnLabel(selectedLines, returnReasonValue) {
+        const params = {
+            order_id: this.props.saleOrderId,
+            access_token: this.props.accessToken,
+            selected_lines: JSON.stringify(selectedLines),
+            return_reason: returnReasonValue,
+        }
+        if (selectedLines.length <= 10) {
+            const query = new URLSearchParams(params).toString();
+            const url = `return_order/download_label?${query}`;
+            window.open(url, '_blank');
+        } else {
+            await download({url: 'return_order/download_label', data: params});
+        }
+        this.props.close();
+    }
+
+    _downloadShippingLabel(shipping_label_url) {
+        window.open(shipping_label_url, '_blank');
+        this.props.close();
     }
 
 }

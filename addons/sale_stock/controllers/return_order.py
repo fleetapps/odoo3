@@ -16,7 +16,7 @@ class CustomerPortal(sale_portal.CustomerPortal):
         type='jsonrpc', auth='user', website=True, readonly=True
     )
     def return_order_content(self, order_id, access_token):
-        """Prepare return details of current order depending on deliveries.
+        """Prepare return details of order depending on deliveries.
 
         :param int order_id: The order for which we are preparing return content.
         :param str access_token: The access token used to authenticate the request.
@@ -55,30 +55,20 @@ class CustomerPortal(sale_portal.CustomerPortal):
 
             for move in line.move_ids:
                 picking = move.picking_id
-                if (
-                    picking.picking_type_id.code == 'outgoing'
-                    and picking.state == 'done'
-                ):
-                    returned_moved = picking.return_ids.move_ids.filtered(
-                        lambda m: (
-                            move in m.move_orig_ids
-                            and m.picking_id.state == 'done'
-                        )
-                    )
-                    remaining_delivered_qty = (
-                        move.quantity - sum(returned_moved.mapped('quantity'))
-                    )
-                    if remaining_delivered_qty:
-                        returnable_line_vals = {
-                            **common_line_vals,
-                            'delivery_id': picking.id,
-                            'delivery_name': picking.name,
-                            'delivered_qty': remaining_delivered_qty,
-                            'lot_name': (
-                                ', '.join(move.lot_ids.mapped('name')) if move.lot_ids else False
-                            ),
-                        }
-                        return_data['returnable_lines'].append(returnable_line_vals)
+                if picking.picking_type_code != 'outgoing' or picking.state != 'done':
+                    continue
+
+                returned_qty = move.returned_move_ids.filtered(
+                    lambda m: m.state == 'done'
+                ).mapped('quantity')
+                remaining_delivered_qty = move.quantity - returned_qty
+                if remaining_delivered_qty:
+                    return_data['returnable_lines'].append({
+                        **common_line_vals,
+                        **picking._get_return_details(),
+                        'delivered_qty': remaining_delivered_qty,
+                        'lot_name': move.lot_ids and ', '.join(move.lot_ids.mapped('name')) or '',
+                    })
 
         return return_data
 

@@ -32,7 +32,6 @@ export class ConfirmationDialog extends Component {
         cancel: { type: Function, optional: true },
         cancelLabel: { type: String, optional: true },
         dismiss: { type: Function, optional: true },
-        size: { type: String, optional: true },
     };
     static defaultProps = {
         confirmLabel: _t("Ok"),
