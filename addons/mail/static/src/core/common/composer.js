@@ -48,13 +48,33 @@ import { useComposerActions } from "@mail/core/common/composer_actions";
 import { ActionList } from "@mail/core/common/action_list";
 import { closestElement, lastLeaf } from "@html_editor/utils/dom_traversal";
 import { rightPos } from "@html_editor/utils/position";
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+||||||| d8fa7af27cf600050d471c2218fb23af6ee1dd82
+=======
+import { usePopover } from "@web/core/popover/popover_hook";
+>>>>>>> 664bcdd2bfaf99cd791d84695964389d9644753d
 
 const EDIT_CLICK_TYPE = {
     CANCEL: "cancel",
     SAVE: "save",
 };
 export const MENTION_AMOUNT_WARNING = 50;
+
+class FullComposerRecoveryPopover extends Component {
+    static props = ["composer", "onClickFullRecover", "onClickTextRecover", "close?"];
+    static template = "mail.FullComposerRecoveryPopover";
+
+    onClickFullRecover() {
+        this.props.onClickFullRecover();
+        this.props.close();
+    }
+
+    onClickTextRecover() {
+        this.props.onClickTextRecover();
+        this.props.close();
+    }
+}
 
 /**
  * @typedef {Object} Props
@@ -106,6 +126,7 @@ export class Composer extends Component {
 
     setup() {
         super.setup();
+        this.dialogService = useService("dialog");
         /** @type {import("@html_editor/editor").Editor} */
         this.editor = undefined;
         this.isMobileOS = isMobileOS();
@@ -134,6 +155,12 @@ export class Composer extends Component {
             isFullComposerOpen: false,
         });
         this.root = useRef("root");
+        this.fullComposerRecoveryPopover = usePopover(FullComposerRecoveryPopover, {
+            closeOnClickAway: false,
+            closeOnEscape: false,
+            position: "top-end",
+            popoverClass: "dropdown-menu bg-view overflow-visible o-rounded-bubble mx-1",
+        });
         this.fullComposerBus = new EventBus();
         this.selection = useSelection({
             refName: "textarea",
@@ -237,6 +264,32 @@ export class Composer extends Component {
                 this.props.composer.forceCursorMove = false;
             },
             () => [this.props.composer.forceCursorMove]
+        );
+        useEffect(
+            (isFullComposerOpen, restoredFromFullComposer, fullComposerButtonEl) => {
+                if (isFullComposerOpen || !restoredFromFullComposer || !fullComposerButtonEl) {
+                    this.fullComposerRecoveryPopover.close();
+                    return;
+                }
+                if (this.fullComposerRecoveryPopover.isOpen) {
+                    return;
+                }
+                this.fullComposerRecoveryPopover.open(fullComposerButtonEl, {
+                    composer: this.props.composer,
+                    onClickFullRecover: () => {
+                        this.onClickFullComposer();
+                        this.props.composer.restoredFromFullComposer = false;
+                    },
+                    onClickTextRecover: () => {
+                        this.props.composer.restoredFromFullComposer = false;
+                    },
+                });
+            },
+            () => [
+                this.state.isFullComposerOpen,
+                this.props.composer.restoredFromFullComposer,
+                this.root.el?.querySelector("button[name='open-full-composer']"),
+            ]
         );
         onMounted(() => {
             this.ref.el?.scrollTo({ top: 0, behavior: "instant" });
@@ -586,6 +639,7 @@ export class Composer extends Component {
     }
 
     async onClickFullComposer(ev) {
+        this.props.composer.restoredFromFullComposer = false;
         const allRecipients = [...this.thread.suggestedRecipients];
         if (this.props.type !== "note") {
             allRecipients.push(...this.thread.additionalRecipients);
@@ -660,8 +714,10 @@ export class Composer extends Component {
                     this.fullComposerBus.trigger("ACCIDENTAL_DISCARD", {
                         onAccidentalDiscard: (isEmpty) => {
                             if (!isEmpty) {
+                                this.state.isFullComposerOpen = true;
                                 this.saveContent();
                                 this.restoreContent();
+                                this.state.isFullComposerOpen = false;
                             }
                         },
                     });
@@ -945,10 +1001,14 @@ export class Composer extends Component {
 
     saveContent() {
         const composer = toRaw(this.props.composer);
+        if (composer.restoredFromFullComposer && !this.state.isFullComposerOpen) {
+            return;
+        }
         const saveContentToLocalStorage = ({
             composerHtml,
             emailAddSignature,
             replyToMessageId,
+            fromFullComposer = composer.restoredFromFullComposer,
         }) => {
             if (isHtmlEmpty(composerHtml)) {
                 browser.localStorage.removeItem(composer.localId);
@@ -961,19 +1021,22 @@ export class Composer extends Component {
                         composerHtml: isMarkup(composerHtml)
                             ? ["markup", composerHtml]
                             : composerHtml,
+                        fromFullComposer,
                     })
                 );
             }
         };
         if (this.state.isFullComposerOpen) {
             this.fullComposerBus.trigger("SAVE_CONTENT", {
-                onSaveContent: saveContentToLocalStorage,
+                onSaveContent: (...args) =>
+                    saveContentToLocalStorage({ ...args[0], fromFullComposer: true }),
             });
         } else {
             saveContentToLocalStorage({
                 composerHtml: composer.composerHtml,
                 emailAddSignature: true,
                 replyToMessageId: composer.replyToMessage?.id,
+                fromFullComposer: false,
             });
         }
     }
@@ -990,6 +1053,9 @@ export class Composer extends Component {
             return;
         }
         if (!isHtmlEmpty(config.composerHtml)) {
+            if (composer.thread && composer.thread?.model !== "discuss.channel") {
+                composer.restoredFromFullComposer = config.fromFullComposer;
+            }
             composer.emailAddSignature = config.emailAddSignature;
             composer.composerHtml = config.composerHtml;
         }

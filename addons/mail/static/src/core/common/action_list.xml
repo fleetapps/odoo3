@@ -46,15 +46,48 @@
     <t t-set="isInlineCircleButton" t-value="env.inComposer or (action.tags.includes('JOIN_LEAVE_CALL') and action.icon and !action.inlineName)"/>
     <!-- core-->
     <t t-set="btnClass" t-value="attClassObjectToString({
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
         'o-mail-ActionList-button btn btn-secondary btn-group-item position-relative': true,
+||||||| d8fa7af27cf600050d471c2218fb23af6ee1dd82
+        [action.btnClass ?? '']: true,
+        [action.tagClassNames]: true,
+        'position-relative': true,
+        'active': action.isActive,
+        'o-mail-ActionList-button btn btn-secondary btn-group-item': true,
+=======
+        [action.btnClass ?? '']: true,
+        [action.tagClassNames]: true,
+        'position-relative': true,
+        'active': action.isActive,
+        'o-mail-ActionList-button btn btn-group-item': true,
+>>>>>>> 664bcdd2bfaf99cd791d84695964389d9644753d
         'o-first': props.isFirstInGroup,
         'o-last': props.isLastInGroup,
         'active': action.isActive,
         'o-odooControlPanelSwitchStyle': props.odooControlPanelSwitchStyle,
         'o-hasBtnBg': hasBtnBg,
         'o-inline': props.inline,
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
+||||||| d8fa7af27cf600050d471c2218fb23af6ee1dd82
+        'o-p-0_5': props.inline and !hasBtnBg and !env.inComposer,
+        'border-0': props.inline and !hasBtnBg and action.icon,
+        'border-2 o-px-0_5 o-mx-0_5': props.inline and !hasBtnBg and !action.icon,
+        'px-3 py-2': props.dropdown and ui.isSmall,
+        'py-1': props.dropdown and !ui.isSmall,
+        'text-start px-2': !props.inline and !ui.isSmall,
+=======
+        'o-p-0_5': props.inline and !hasBtnBg and !env.inComposer,
+        'border-0': props.inline and !hasBtnBg and action.icon,
+        'border-2 o-px-0_5 o-mx-0_5': props.inline and !hasBtnBg and !action.icon,
+        'px-3 py-2': props.dropdown and ui.isSmall,
+        'py-1': props.dropdown and !ui.isSmall,
+        'text-start px-2': !props.inline and !ui.isSmall,
+        'btn-secondary': !action.tags.includes('DANGER') and !action.tags.includes('SUCCESS') and !action.tags.includes('PRIMARY'),
+        'btn-primary': action.tags.includes('PRIMARY'),
+>>>>>>> 664bcdd2bfaf99cd791d84695964389d9644753d
         'btn-danger': action.tags.includes('DANGER'),
         'btn-success': action.tags.includes('SUCCESS'),
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
     })"/>
     <!-- alignment -->
     <t t-set="btnClass" t-value="attClassObjectToString({
@@ -109,6 +142,17 @@
         [btnClass]: true,
         [action.btnClass ?? '']: true,
         [action.tagClassNames]: true,
+||||||| d8fa7af27cf600050d471c2218fb23af6ee1dd82
+        'o-text-white border-0 o-simulateDarkTheme': store.shouldSimulateDarkTheme(this),
+        'bg-700': store.shouldSimulateDarkTheme(this) and !action.tags.includes('DANGER') and !action.tags.includes('SUCCESS') and !action.tags.includes('CALL_LAYOUT'),
+        'bg-transparent': store.shouldSimulateDarkTheme(this) and action.tags.includes('CALL_LAYOUT'),
+        'opacity-75 opacity-100-hover': action.tags.includes('CALL_LAYOUT'),
+=======
+        'o-text-white border-0 o-simulateDarkTheme': store.shouldSimulateDarkTheme(this),
+        'bg-700': store.shouldSimulateDarkTheme(this) and !action.tags.includes('DANGER') and !action.tags.includes('SUCCESS') and !action.tags.includes('PRIMARY') and !action.tags.includes('CALL_LAYOUT'),
+        'bg-transparent': store.shouldSimulateDarkTheme(this) and action.tags.includes('CALL_LAYOUT'),
+        'opacity-75 opacity-100-hover': action.tags.includes('CALL_LAYOUT'),
+>>>>>>> 664bcdd2bfaf99cd791d84695964389d9644753d
     })"/>
     <t t-set="attrs" t-value="{ 'aria-label': action.name, 'disabled': action.disabledCondition, 'name': action.id, 'data-sequence': action.sequence, 'data-sequence-group': action.sequenceGroup, 'data-sequence-quick': action.sequenceQuick }"/>
     <t t-if="action.component and action.componentCondition" t-component="action.component" t-props="action.componentProps"/>
