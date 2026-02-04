@@ -162,17 +162,30 @@ class ResConfigSettings(models.TransientModel):
         """
         Generate the data needed to print the QR codes page
         """
+        name = ""
+        url = url_unquote(self.pos_config_id._get_self_order_url())
         if self.pos_self_ordering_mode == 'mobile' and self.pos_module_pos_restaurant:
             table_ids = self.pos_config_id.floor_ids.table_ids
-
             if not table_ids:
                 raise ValidationError(_("In Self-Order mode, you must have at least one table to generate QR codes"))
 
+<<<<<<< e9a8b81d4a972a57a8f46377864874190b04af2c
             url = url_unquote(self.pos_config_id._get_self_order_url(table_ids[0].id))
             name = table_ids[0].table_number
         else:
             url = url_unquote(self.pos_config_id._get_self_order_url())
             name = ""
+||||||| 2ddaa63c8c1f5fd1c9842c115d88db7f96e85c5f
+            url = url_unquote(self.pos_config_id._get_self_order_url(table_ids[0].id))
+            name = table_ids[0].name
+        else:
+            url = url_unquote(self.pos_config_id._get_self_order_url())
+            name = ""
+=======
+            if self.pos_self_ordering_service_mode == 'table':
+                url = url_unquote(self.pos_config_id._get_self_order_url(table_ids[0].id))
+                name = table_ids[0].name
+>>>>>>> 36421cafa82c6da0a0b43713431a4cbefbf026d4
 
         return self.env.ref("pos_self_order.report_self_order_qr_codes_page").report_action(
             [], data={
