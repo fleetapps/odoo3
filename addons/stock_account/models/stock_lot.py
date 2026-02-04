@@ -7,7 +7,7 @@ class StockLot(models.Model):
     _inherit = 'stock.lot'
 
     lot_valuated = fields.Boolean(related='product_id.lot_valuated', readonly=True, store=False)
-    avg_cost = fields.Monetary(string="Average Cost", compute='_compute_avg_cost', store=True, readonly=True, currency_field='company_currency_id')
+    avg_cost = fields.Monetary(string="Average Cost", compute='_compute_value', compute_sudo=True, store=False, readonly=True, currency_field='company_currency_id')
     total_value = fields.Monetary(string="Total Value", compute='_compute_value', compute_sudo=True, currency_field='company_currency_id')
     company_currency_id = fields.Many2one('res.currency', 'Valuation Currency', compute='_compute_value', compute_sudo=True)
     standard_price = fields.Float(
@@ -25,43 +25,48 @@ class StockLot(models.Model):
         company_id = self.env.company
         self.company_currency_id = company_id.currency_id
         at_date = fields.Datetime.to_datetime(self.env.context.get('to_date'))
-
         for lot in self:
             if not lot.lot_valuated:
                 lot.total_value = 0.0
+                lot.avg_cost = 0.0
                 continue
             valuated_product = lot.product_id.with_context(at_date=at_date, lot_id=lot.id)
             qty_valued = valuated_product.qty_available
             qty_available = valuated_product.with_context(warehouse_id=False).qty_available
             if valuated_product.uom_id.is_zero(qty_valued):
                 lot.total_value = 0
+                lot.avg_cost = 0.0
             elif valuated_product.cost_method == 'standard' or valuated_product.uom_id.is_zero(qty_available):
                 lot.total_value = lot.standard_price * qty_valued
+                lot.avg_cost = lot.standard_price
             elif valuated_product.cost_method == 'average':
-                lot.total_value = valuated_product.with_context(warehouse_id=False)._run_avco(at_date=at_date, lot=lot)[1] * qty_valued / qty_available
+                avco_result = valuated_product.with_context(warehouse_id=False)._run_avco(at_date=at_date, lot=lot)
+                lot.total_value = avco_result[1] * qty_valued / qty_available
+                lot.avg_cost = avco_result[0]
             else:
-                lot.total_value = valuated_product.with_context(warehouse_id=False)._run_fifo(qty_available, at_date=at_date, lot=lot) * qty_valued / qty_available
+                fifo_value = valuated_product.with_context(warehouse_id=False)._run_fifo(qty_available, at_date=at_date, lot=lot)
+                lot.total_value = fifo_value * qty_valued / qty_available
+                lot.avg_cost = fifo_value / qty_available if qty_available else 0.0
 
     # TODO: remove avg cost column in master and merge the two compute methods
-    @api.depends('product_id.lot_valuated')
-    @api.depends_context('to_date')
     def _compute_avg_cost(self):
-        """Compute totals of multiple svl related values"""
-        at_date = fields.Datetime.to_datetime(self.env.context.get('to_date'))
+        """
+        DEPRECATED: This method is no longer used.
 
-        self.avg_cost = 0.0
+        Historical context: This method was added to compute avg_cost with store=True,
+        but storing the field caused incorrect values in multi-company databases because
+        the computation is company-context-dependent (calls product._run_fifo() which
+        filters by env.company.id). Storing a single global value meant companies
+        saw the wrong value.
+
+        The computation was moved to _compute_value() which already handles company
+        context correctly and doesn't store the result.
+
+        This stub method is kept to avoid breaking any code that might call it directly,
+        but it intentionally does nothing.
+        """
         for lot in self:
-            if not lot.lot_valuated:
-                continue
-
-            qty_available = lot.product_qty
-            if lot.product_id.cost_method == 'standard':
-                total_value = lot.standard_price * qty_available
-            elif lot.product_id.cost_method == 'average':
-                total_value = lot.product_id._run_avco(at_date=at_date, lot=lot)[1]
-            else:
-                total_value = lot.product_id._run_fifo(qty_available, at_date=at_date, lot=lot)
-            lot.avg_cost = total_value / qty_available if qty_available else 0.0
+            lot.avg_cost = 0.0
 
     @api.model_create_multi
     def create(self, vals_list):
