@@ -31,6 +31,7 @@ export class CarouselSlidesOptionPlugin extends Plugin {
                 return true;
             }
         },
+        can_have_hover_effect_async_predicates: (el) => this.canHaveHoverEffect(el),
     };
 
     /**
@@ -50,6 +51,9 @@ export class CarouselSlidesOptionPlugin extends Plugin {
         for (const slideEl of noLinkSlideEls) {
             slideEl.classList.remove("clickable-slide");
         }
+    }
+    async canHaveHoverEffect(el) {
+        return !el.closest("*:has(> .slide-link)");
     }
 }
 
