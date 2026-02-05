@@ -181,6 +181,8 @@ class IrHttp(models.AbstractModel):
 
     @classmethod
     def _register_website_track(cls, response):
+        # TODO: This method is no longer used - remove it
+        # The X-Disable-Tracking header, disableTracking option in the website_event_track service_worker.js could be removed too?
         if request.env['ir.http'].is_a_bot():
             return False
         if getattr(response, 'status_code', 0) != 200 or request.httprequest.headers.get('X-Disable-Tracking') == '1':
@@ -267,7 +269,6 @@ class IrHttp(models.AbstractModel):
     @classmethod
     def _post_dispatch(cls, response):
         super()._post_dispatch(response)
-        cls._register_website_track(response)
 
     @api.model
     def get_nearest_lang(self, lang_code):

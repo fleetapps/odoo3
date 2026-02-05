@@ -223,6 +223,23 @@ class Website(Home):
         return super().web_login(*args, **kw)
 
     # ------------------------------------------------------
+    # Tracking
+    # ------------------------------------------------------
+
+    @http.route('/website/odoo_track', type='jsonrpc', auth='public', methods=['POST'], website=True, csrf=True)
+    def track(self, res_model, res_id, url, **kwargs):
+        extra_tracking_vals = {}
+        if res_model and res_id:
+            extra_tracking_vals = request.env[res_model].browse(res_id).sudo()._get_extra_tracking_values(**kwargs)
+        request.env['website.visitor']._get_visitor_from_request(
+            force_create=True,
+            force_track_values={
+                'url': url,
+                **extra_tracking_vals,
+            },
+        )
+
+    # ------------------------------------------------------
     # Business
     # ------------------------------------------------------
 

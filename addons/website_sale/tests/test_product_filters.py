@@ -177,7 +177,7 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
         viewed_products = self.black_case_M + self.pink_case_L + self.computer.product_variant_id
         dyn_filter = self.env.ref('website_sale.dynamic_filter_latest_viewed_products')
         with self.mock_request(user=self.env.user):
-            visitor = self.env['website.visitor']._upsert_visitor(self.env.user.partner_id.id)
+            visitor = self.env['website.visitor']._upsert_visitor(token_or_partner_id=self.env.user.partner_id.id, website_id=self.website.id)
             self.env['website.track'].create([{
                 'visitor_id': visitor[0],
                 'product_id': product_id,
