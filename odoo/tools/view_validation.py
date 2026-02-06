@@ -36,6 +36,7 @@ IGNORED_IN_EXPRESSION = {
     'abs',
     'len',
     'bool',
+    'int',
     'float',
     'str',
     'unicode',
