@@ -132,7 +132,7 @@ class AddPageTemplatePreview extends Component {
             const styleEl = document.createElement("style");
             // Prevent successive resizes.
             const fullHeight = getComputedStyle(document.querySelector(".o_action_manager")).height;
-            const halfHeight = `${Math.round(parseInt(fullHeight) / 2)}px`;
+            const threeQuarterHeight = `${Math.round((3 * parseInt(fullHeight)) / 4)}px`;
             const css = `
                 html, body {
                     /* Needed to prevent scrollbar to appear on chrome */
@@ -157,8 +157,8 @@ class AddPageTemplatePreview extends Component {
                         height: fit-content !important;
                     }
                 }
-                section.o_half_screen_height {
-                    min-height: ${halfHeight} !important;
+                section.o_three_quarter_height {
+                    min-height: ${threeQuarterHeight} !important;
                 }
                 section.o_full_screen_height {
                     min-height: ${fullHeight} !important;
