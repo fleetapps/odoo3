@@ -28,6 +28,12 @@ export class CartPage extends Component {
         });
 
         this.scrollShadow = useScrollShadow(useRef("scrollContainer"));
+        if (
+            this.selfOrder.currentOrder.preset_id?.service_at == "delivery" &&
+            !this.selfOrder._shouldDeliveryBeFree()
+        ) {
+            this.selfOrder.addDeliveryLine();
+        }
     }
 
     get showCancelButton() {
