@@ -233,6 +233,35 @@ export class SelfOrder extends Reactive {
         this.currentOrder.removeOrderline(line);
     }
 
+    _shouldDeliveryBeFree(deliveryTemplateId) {
+        const freeDeliveryMin = this.currentOrder?.preset_id?.free_delivery_min_amount || 0;
+        if (!freeDeliveryMin) {
+            return false;
+        }
+        const nonDeliveryLines = this.currentOrder.lines.filter(
+            (line) => line.product_id.product_tmpl_id?.id !== deliveryTemplateId
+        );
+        const totalData = this.currentOrder.getPriceWithOptions({ lines: nonDeliveryLines });
+        const orderTotal = this.currency.round(totalData.taxDetails.total_amount_no_rounding);
+        return orderTotal >= freeDeliveryMin;
+    }
+
+    async addDeliveryLine() {
+        const deliveryTemplate = this.models["product.template"].find(
+            (product) => product.default_code === "DELIVERY"
+        );
+        const existingLine = this.currentOrder.lines.find(
+            (line) => line.product_id.product_tmpl_id?.id === deliveryTemplate.id
+        );
+        if (existingLine) {
+            return;
+        }
+        const newLine = this.models["pos.order.line"].create(
+            getOrderLineValues(this, deliveryTemplate, 1, "", {}, {}, {})
+        );
+        newLine.full_product_name = _t("Delivery fee");
+    }
+
     async syncPresetSlotAvaibility(preset) {
         try {
             const presetAvailabilities = await rpc(`/pos-self-order/get-slots`, {
