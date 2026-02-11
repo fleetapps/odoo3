@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from freezegun import freeze_time
 
-from odoo import fields
+from odoo import Command, fields
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import tagged
 
@@ -453,6 +453,120 @@ class TestVNEDI(AccountTestInvoicingCommon):
              patch('odoo.addons.l10n_vn_edi_viettel.models.account_move.AccountMove._l10n_vn_edi_fetch_invoice_xml_file_data', return_value=xml_response), \
              patch('odoo.addons.l10n_vn_edi_viettel.models.account_move._l10n_vn_edi_send_request', return_value=(request_response, None)):
             self.env['account.move.send.wizard'].with_context(active_model=invoice._name, active_ids=invoice.ids).create({}).action_send_and_print()
+
+    @freeze_time('2024-01-01')
+    def test_line_note_in_json(self):
+        """
+        Test that a line_note display_type line generates a stripped-down itemInfo entry
+        containing only 'selection' (=2) and 'itemName', with no price/quantity fields.
+        """
+        invoice = self.init_invoice(
+            move_type='out_invoice',
+            products=self.product_a,
+            taxes=self.tax_sale_a,
+            post=False,
+        )
+        invoice.write({
+            'invoice_line_ids': [Command.create({
+                'display_type': 'line_note',
+                'name': 'This is a note line',
+            })]
+        })
+        invoice.action_post()
+        json_data = invoice._l10n_vn_edi_generate_invoice_json()
+
+        note_items = [item for item in json_data['itemInfo'] if item.get('selection') == 2]
+        self.assertEqual(len(note_items), 1, "Expected exactly one note line in itemInfo.")
+        note_item = note_items[0]
+        # Should only have 'selection' and 'itemName' — all price/quantity fields must be stripped
+        self.assertEqual(set(note_item.keys()), {'selection', 'itemName'})
+        self.assertEqual(note_item['itemName'], 'This is a note line')
+
+    @freeze_time('2024-01-01')
+    def test_sale_discount_product_in_json(self):
+        """
+        When a line's product matches the company's sale_discount_product_id, it should be
+        treated as a discount line: selection=3, isIncreaseItem=False, all amounts absolute.
+        Requires the 'sale' module to be installed.
+        """
+        if self.env['ir.module.module']._get('sale').state != 'installed':
+            self.skipTest('Sale module not installed')
+
+        discount_product = self.env['product.product'].create({
+            'name': 'Test Discount Product',
+            'type': 'service',
+        })
+        self.env.company.sale_discount_product_id = discount_product
+
+        invoice = self.init_invoice(
+            move_type='out_invoice',
+            products=self.product_a,
+            taxes=self.tax_sale_a,
+            post=False,
+        )
+        invoice.write({
+            'invoice_line_ids': [Command.create({
+                'product_id': discount_product.id,
+                'name': 'Discount',
+                'price_unit': -200.0,
+                'quantity': 1.0,
+                'tax_ids': [],
+            })]
+        })
+        invoice.action_post()
+        json_data = invoice._l10n_vn_edi_generate_invoice_json()
+
+        discount_items = [item for item in json_data['itemInfo'] if item.get('selection') == 3]
+        self.assertEqual(len(discount_items), 1, "Expected exactly one discount item in itemInfo.")
+        discount_item = discount_items[0]
+        self.assertFalse(discount_item['isIncreaseItem'])
+        self.assertGreaterEqual(discount_item['unitPrice'], 0, "unitPrice must be non-negative (abs value).")
+        self.assertGreaterEqual(discount_item['quantity'], 0, "quantity must be non-negative (abs value).")
+        self.assertGreaterEqual(discount_item['itemTotalAmountWithoutTax'], 0)
+        self.assertGreaterEqual(discount_item['itemTotalAmountAfterDiscount'], 0)
+        self.assertGreaterEqual(discount_item['itemTotalAmountWithTax'], 0)
+
+    @freeze_time('2024-01-01')
+    def test_downpayment_line_in_json(self):
+        """
+        A downpayment line (is_downpayment=True) should be treated as a discount line:
+        selection=3, isIncreaseItem=False, all amounts absolute.
+        Requires the 'sale' module to be installed.
+        """
+        if self.env['ir.module.module']._get('sale').state != 'installed':
+            self.skipTest('Sale module not installed')
+
+        invoice = self.init_invoice(
+            move_type='out_invoice',
+            products=self.product_a,
+            taxes=self.tax_sale_a,
+            post=False,
+        )
+        invoice.write({
+            'invoice_line_ids': [Command.create({
+                'product_id': self.product_a.id,
+                'name': 'Down Payment',
+                'price_unit': -150.0,
+                'quantity': 1.0,
+                'tax_ids': [],
+                'is_downpayment': True,
+            })]
+        })
+        invoice.action_post()
+        json_data = invoice._l10n_vn_edi_generate_invoice_json()
+
+        downpayment_items = [
+            item for item in json_data['itemInfo']
+            if item.get('selection') == 3 and item.get('itemName') == 'Down Payment'
+        ]
+        self.assertEqual(len(downpayment_items), 1, "Expected exactly one downpayment item treated as discount.")
+        dp_item = downpayment_items[0]
+        self.assertFalse(dp_item['isIncreaseItem'])
+        self.assertGreaterEqual(dp_item['unitPrice'], 0, "unitPrice must be non-negative (abs value).")
+        self.assertGreaterEqual(dp_item['quantity'], 0, "quantity must be non-negative (abs value).")
+        self.assertGreaterEqual(dp_item['itemTotalAmountWithoutTax'], 0)
+        self.assertGreaterEqual(dp_item['itemTotalAmountAfterDiscount'], 0)
+        self.assertGreaterEqual(dp_item['itemTotalAmountWithTax'], 0)
 
     @freeze_time('2024-01-01')
     def test_decimal_rounding(self):
