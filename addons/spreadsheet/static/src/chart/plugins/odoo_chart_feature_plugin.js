@@ -103,7 +103,7 @@ export class OdooChartFeaturePlugin extends OdooUIPlugin {
                     groupBy: newGroupBy,
                 },
                 metaData: {
-                    ...definition.metaData,
+                    ...definition.dataSource.metaData,
                     groupBy: newGroupBy,
                 },
             },

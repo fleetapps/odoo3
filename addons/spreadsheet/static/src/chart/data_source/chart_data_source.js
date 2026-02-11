@@ -78,7 +78,7 @@ export class ChartDataSource extends OdooViewsDataSource {
         }
 
         for (const point of dataPoints) {
-            labels.push(point.value.toString());
+            labels.push(point.value);
             for (let i = 0; i < groupBy.length; i++) {
                 datasets[i].data.push(point.labels[i]);
 
@@ -111,6 +111,7 @@ export class ChartDataSource extends OdooViewsDataSource {
     }
 }
 
+// TODO remove this.
 export function chartTypeToDataSourceMode(chartType) {
     switch (chartType) {
         case "odoo_bar":

@@ -38,7 +38,7 @@ export class OdooChart extends AbstractChart {
         super(definition, sheetId, getters);
         this.type = definition.type;
         this.metaData = {
-            ...definition.metaData,
+            ...definition.dataSource.metaData,
             mode: chartTypeToDataSourceMode(this.type),
             cumulated: definition.cumulative,
             cumulatedStart: definition.cumulatedStart,
@@ -63,16 +63,6 @@ export class OdooChart extends AbstractChart {
 
     static getDefinitionFromContextCreation() {
         throw new Error("It's not possible to convert an Odoo chart to a native chart");
-    }
-
-    /**
-     * @returns {OdooChartDefinitionDataSource}
-     */
-    getDefinitionForDataSource() {
-        return {
-            metaData: this.metaData,
-            searchParams: this.searchParams,
-        };
     }
 
     /**
