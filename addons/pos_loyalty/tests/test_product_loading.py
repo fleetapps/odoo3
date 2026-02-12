@@ -18,7 +18,11 @@ class TestPOSLoyaltyProductLoading(TestPointOfSaleHttpCommon):
             'taxes_id': False,
         })
 
-        program = self.env['loyalty.program'].create({
+        self.env['loyalty.program'].search([]).write({
+            'active': False,
+        })
+
+        self.env['loyalty.program'].create({
             'name': 'Program',
             'program_type': 'promotion',
             'trigger': 'auto',
@@ -30,9 +34,6 @@ class TestPOSLoyaltyProductLoading(TestPointOfSaleHttpCommon):
                 'required_points': 2,
             })],
         })
-        self.env['loyalty.program'].search([]).write({
-            'active': False,
-        })
 
         self.env['ir.config_parameter'].sudo().set_param('point_of_sale.limited_product_count', 1)
 
@@ -43,6 +44,7 @@ class TestPOSLoyaltyProductLoading(TestPointOfSaleHttpCommon):
             pos_limited_loading=True,
         ).load_data(['pos.config', 'product.template'])
 
+<<<<<<< a6e10db0fbb9829fddb1fa434c0d520ad8e6e68c
         self.assertNotIn(new_product.id, data['pos.config'][0]['_pos_special_products_ids'],
                         "Loyalty product should not be in _pos_special_products_ids when program is inactive.")
 
@@ -53,12 +55,32 @@ class TestPOSLoyaltyProductLoading(TestPointOfSaleHttpCommon):
             pos_limited_loading=True,
         ).load_data(['pos.config', 'product.template'])
 
+||||||| cce4c951a0a2ee18946213d148a20ae2877c5a6e
+        self.assertNotIn(new_product.id, data['pos.session'][0]['_pos_special_products_ids'],
+                        "Loyalty product should not be in _pos_special_products_ids when program is inactive.")
+
+        # Activate the program to ensure the product is loaded
+        program.write({'active': True})
+
+        data = current_session.with_context(
+            pos_limited_loading=True,
+        ).load_data(['pos.config', 'product.template'])
+
+=======
+>>>>>>> fbefe34d1153df96129031f123f8e8b52064f865
         self.assertIn(new_product.product_tmpl_id.id, [product['id'] for product in data['product.template']],
                         "Loyalty product should be loaded in the PoS session when program is active.")
 
+<<<<<<< a6e10db0fbb9829fddb1fa434c0d520ad8e6e68c
         self.assertNotIn(new_product.id, data['pos.config'][0]['_pos_special_products_ids'],
                         "Loyalty product should not be in _pos_special_products_ids since it is loaded.")
 
+||||||| cce4c951a0a2ee18946213d148a20ae2877c5a6e
+        self.assertNotIn(new_product.id, data['pos.session'][0]['_pos_special_products_ids'],
+                        "Loyalty product should not be in _pos_special_products_ids since it is loaded.")
+
+=======
+>>>>>>> fbefe34d1153df96129031f123f8e8b52064f865
         # Make the product not available in the PoS
         new_product.write({'available_in_pos': False})
 
@@ -69,9 +91,16 @@ class TestPOSLoyaltyProductLoading(TestPointOfSaleHttpCommon):
         self.assertIn(new_product.product_tmpl_id.id, [product['id'] for product in data['product.template']],
                         "Loyalty product should be loaded in the PoS session when it is used in a program, even if not available in the PoS.")
 
+<<<<<<< a6e10db0fbb9829fddb1fa434c0d520ad8e6e68c
         self.assertIn(new_product.id, data['pos.config'][0]['_pos_special_products_ids'],
                         "Loyalty product should be in _pos_special_products_ids since it is loaded but not available in the PoS.")
 
+||||||| cce4c951a0a2ee18946213d148a20ae2877c5a6e
+        self.assertIn(new_product.id, data['pos.session'][0]['_pos_special_products_ids'],
+                        "Loyalty product should be in _pos_special_products_ids since it is loaded but not available in the PoS.")
+
+=======
+>>>>>>> fbefe34d1153df96129031f123f8e8b52064f865
     def test_product_loading_without_gift_card(self):
         """
         Test that products are loaded correctly in the PoS session of company
