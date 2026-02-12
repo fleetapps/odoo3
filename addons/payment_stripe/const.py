@@ -12,13 +12,15 @@ DEFAULT_PAYMENT_METHODS_CODES = [
     'bancontact',
     'eps',
     'giropay',
-    'ideal',
+    'ideal_wero',
     'p24',
     # Brand payment methods.
     'visa',
     'mastercard',
     'amex',
     'discover',
+    'ideal',
+    'wero',
 ]
 
 # Mapping of payment method codes to Stripe codes.
