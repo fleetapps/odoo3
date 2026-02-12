@@ -1353,7 +1353,7 @@ class TestDiscussFullPerformance(HttpCase, MailCommon):
                 ],
                 "record_name": "general",
                 "reply_to": '"Ernest Employee" <catchall.test@test.mycompany.com>',
-                "res_id": 1,
+                "res_id": self.channel_general.id,
                 "scheduledDatetime": False,
                 "is_bookmarked": False,
                 "subject": False,
