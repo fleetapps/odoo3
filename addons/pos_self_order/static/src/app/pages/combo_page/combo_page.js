@@ -420,8 +420,9 @@ export class ComboPage extends Component {
     }
 
     addToCart() {
+        const productTemplate = this.props.productTemplate;
         this.selfOrder.addToCart(
-            this.props.productTemplate,
+            productTemplate,
             this.state.qty,
             "",
             {},
@@ -429,6 +430,10 @@ export class ComboPage extends Component {
             this.getComboSelection()
         );
 
+        if (productTemplate.pos_optional_product_ids.length) {
+            this.router.navigate("optional_product", { id: productTemplate.id });
+            return;
+        }
         this.goBack();
     }
 
