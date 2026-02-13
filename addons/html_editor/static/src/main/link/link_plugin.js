@@ -231,7 +231,10 @@ export class LinkPlugin extends Plugin {
         power_buttons: { commandId: "toggleLinkTools" },
 
         /** Handlers */
-        beforeinput_handlers: withSequence(5, this.onBeforeInput.bind(this)),
+        beforeinput_handlers: [
+            withSequence(5, this.onBeforeInput.bind(this)),
+            withSequence(20, this.onBeforeInputAfterOtherPlugins.bind(this)),
+        ],
         input_handlers: this.onInputDeleteNormalizeLink.bind(this),
         before_delete_handlers: this.updateCurrentLinkSyncState.bind(this),
         delete_handlers: this.onInputDeleteNormalizeLink.bind(this),
@@ -815,32 +818,25 @@ export class LinkPlugin extends Plugin {
 
     onBeforeInput(ev) {
         if (ev.inputType === "insertParagraph" || ev.inputType === "insertLineBreak") {
-            const nodeForSelectionRestore = this.handleAutomaticLinkInsertion();
-            if (nodeForSelectionRestore) {
-                this.dependencies.selection.setCursorStart(nodeForSelectionRestore);
-                this.dependencies.history.addStep();
-            }
+            this.insertLink = this.getAutomaticLinkInserter();
         }
         if (ev.inputType === "insertText" && ev.data === " ") {
-            const nodeForSelectionRestore = this.handleAutomaticLinkInsertion();
-            if (nodeForSelectionRestore) {
-                // Since we manually insert a space here, we will be adding a history step
-                // after link creation with selection at the end of the link and another
-                // after inserting the space. So first undo will remove the space, and the
-                // second will undo the link creation.
+            const insertLink = this.getAutomaticLinkInserter();
+            if (insertLink) {
+                const selection = this.dependencies.selection.getEditableSelection();
+                const text = selection.anchorNode.textContent;
+                selection.anchorNode.textContent =
+                    text.substring(0, selection.anchorOffset) +
+                    "\u00A0" +
+                    text.substring(selection.anchorOffset);
                 this.dependencies.selection.setSelection({
-                    anchorNode: nodeForSelectionRestore,
-                    anchorOffset: 0,
-                });
-                this.dependencies.history.addStep();
-                nodeForSelectionRestore.textContent =
-                    "\u00A0" + nodeForSelectionRestore.textContent;
-                this.dependencies.selection.setSelection({
-                    anchorNode: nodeForSelectionRestore,
-                    anchorOffset: 1,
+                    anchorNode: selection.anchorNode,
+                    anchorOffset: selection.anchorOffset + 1,
                 });
                 this.dependencies.history.addStep();
                 ev.preventDefault();
+                insertLink(selection);
+                this.dependencies.history.addStep();
             }
         }
         // Firefox: avoid corrupted selection inside link.
@@ -857,6 +853,21 @@ export class LinkPlugin extends Plugin {
             selection.collapse(selection.anchorNode, offset);
         }
         this.updateCurrentLinkSyncState();
+    }
+
+    onBeforeInputAfterOtherPlugins(ev) {
+        if (this.insertLink) {
+            if (ev.inputType === "insertParagraph" || ev.inputType === "insertLineBreak") {
+                this.dependencies.selection.modifySelection("move", "backward", "character");
+                const nodeForSelectionRestore = this.insertLink(
+                    this.dependencies.selection.getEditableSelection()
+                );
+                this.dependencies.selection.setCursorStart(nodeForSelectionRestore);
+                this.dependencies.selection.modifySelection("move", "forward", "character");
+                this.dependencies.history.addStep();
+            }
+            delete this.insertLink;
+        }
     }
 
     onInputDeleteNormalizeLink() {
@@ -894,8 +905,21 @@ export class LinkPlugin extends Plugin {
     /**
      * Inserts a link in the editor. Called after pressing space or (shif +) enter.
      * Performs a regex check to determine if the url has correct syntax.
+     * TODO Delete in master: kept for stable
      */
     handleAutomaticLinkInsertion() {
+        const insertLink = this.getAutomaticLinkInserter();
+        return insertLink?.(this.dependencies.selection.getEditableSelection());
+    }
+
+    /**
+     * If a link must be inserted after pressing space or (shift +) enter,
+     * return a function to insert the link.
+     * Performs a regex check to determine if the url has correct syntax.
+     *
+     * @returns {Function} that takes a selection as parameter and returns the nodeForSelectionRestore
+     */
+    getAutomaticLinkInserter() {
         let selection = this.dependencies.selection.getEditableSelection();
         if (
             isHtmlContentSupported(selection.anchorNode) &&
@@ -912,21 +936,23 @@ export class LinkPlugin extends Plugin {
             const match = [...potentialUrl.matchAll(new RegExp(URL_REGEX, "g"))].pop();
 
             if (match && !EMAIL_REGEX.test(match[0])) {
-                const nodeForSelectionRestore = selection.anchorNode.splitText(
-                    selection.anchorOffset
-                );
-                const url = match[2] ? match[0] : "http://" + match[0];
-                const startOffset = selection.anchorOffset - potentialUrl.length + match.index;
-                const text = selection.anchorNode.textContent.slice(
-                    startOffset,
-                    startOffset + match[0].length
-                );
-                const link = this.createLink(url, text);
-                // split the text node and replace the url text with the link
-                const textNodeToReplace = selection.anchorNode.splitText(startOffset);
-                textNodeToReplace.splitText(match[0].length);
-                selection.anchorNode.parentElement.replaceChild(link, textNodeToReplace);
-                return nodeForSelectionRestore;
+                return (selection) => {
+                    const nodeForSelectionRestore = selection.anchorNode.splitText(
+                        selection.anchorOffset
+                    );
+                    const url = match[2] ? match[0] : "http://" + match[0];
+                    const startOffset = selection.anchorOffset - potentialUrl.length + match.index;
+                    const text = selection.anchorNode.textContent.slice(
+                        startOffset,
+                        startOffset + match[0].length
+                    );
+                    const link = this.createLink(url, text);
+                    // split the text node and replace the url text with the link
+                    const textNodeToReplace = selection.anchorNode.splitText(startOffset);
+                    textNodeToReplace.splitText(match[0].length);
+                    selection.anchorNode.parentElement.replaceChild(link, textNodeToReplace);
+                    return nodeForSelectionRestore;
+                };
             }
         }
     }
