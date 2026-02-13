@@ -113,6 +113,7 @@
         >
             <t t-set="tx_sudo" t-value="order.get_portal_last_transaction()"/>
             <div
+                id="order_confirmation_banner"
                 t-if="tx_sudo"
                 t-attf-class="alert px-3 pb-0 pt-3 #{
                     (tx_sudo.state == 'pending' and 'alert-info') or
