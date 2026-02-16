@@ -235,3 +235,5 @@
     'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }
+
+# TODO-PDA script upgrade set suggest alt, acc and opt

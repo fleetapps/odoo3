@@ -61,6 +61,24 @@ class TestSuggestedProducts(WebsiteSaleCommon, CronMixinCase):
             'state': 'sale',
         })
 
+    def test_suggested_products_do_not_erase_existing_content_on_creation(self):
+        """Test that suggested products are not set on product creation if the fields are filled."""
+        self.env['res.config.settings'].create({
+            'group_automate_suggested_products': True
+        }).set_values()
+        self.product_with_alternatives = self.env['product.template'].create([
+            {
+                'name': 'Product with alternatives',
+                'alternative_product_ids': [Command.link(self.template_chair.id)],
+            }
+        ])
+        self.assertFalse(self.product_with_alternatives.suggest_alternative_products)
+
+        self.product_without_alternatives = self.env['product.template'].create([
+            {'name': 'Product without alternatives'}
+        ])
+        self.assertTrue(self.product_without_alternatives.suggest_alternative_products)
+
     def test_activate_automate_suggested_products_settings_triggers_cron(self):
         """Activating the website settings automatically triggers the cron
         updating the optional and alternative products."""
@@ -69,7 +87,9 @@ class TestSuggestedProducts(WebsiteSaleCommon, CronMixinCase):
             'website_sale.update_suggested_products_cron'
         ) as captured_triggers:
             # Enable the suggested products feature
-            self.env['res.config.settings'].create({'group_automate_suggested_products': True}).set_values()
+            self.env['res.config.settings'].create({
+                'group_automate_suggested_products': True
+            }).set_values()
         self.assertTrue(suggested_products_cron.active)
         # Assert that a trigger was created
         self.assertTrue(captured_triggers.records)
@@ -102,6 +122,7 @@ class TestSuggestedProducts(WebsiteSaleCommon, CronMixinCase):
         self.template_desk.suggest_optional_products = True
 
         # Write from cron context
+        # TODO PDA call _update_suggested_products directly instead of write
         self.template_desk.with_context(cron_id=1).write({
             'alternative_product_ids': [Command.link(self.template_chair.id)],
             'optional_product_ids': [Command.link(self.template_chair.id)],
@@ -126,8 +147,8 @@ class TestSuggestedProducts(WebsiteSaleCommon, CronMixinCase):
         """Test that calling _update_suggested_products from the action re-enables automation."""
         self.template_desk.suggest_alternative_products = False
         self.template_desk.suggest_optional_products = False
-        # Call from action (without cron_id context)
-        self.template_desk._update_suggested_products()
+        # Call from action
+        self.template_desk._update_suggested_products(force_update=True)
         self.assertTrue(self.template_desk.suggest_alternative_products)
         self.assertTrue(self.template_desk.suggest_optional_products)
 
