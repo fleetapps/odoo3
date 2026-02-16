@@ -691,7 +691,7 @@ export class PosStore extends WithLazyGetterTrap {
                 product = opts.presetVariant;
             }
             attributeLinesValues = attributeLinesValues.map((values) =>
-                values[0].attribute_id.create_variant === "no_variant"
+                values[0].attribute_id.create_variant === "no_variant" || !product
                     ? values
                     : values.filter((value) =>
                           product.product_template_attribute_value_ids.includes(value)
