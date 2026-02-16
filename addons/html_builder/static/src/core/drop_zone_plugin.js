@@ -364,9 +364,9 @@ export class DropZonePlugin extends Plugin {
             "oe_sanitized_drop_zone",
             "text-center"
         );
-        const messageEl = this.document.createElement("p");
-        messageEl.textContent = _t("For technical reasons, this block cannot be dropped here");
-        dropzoneEl.prepend(messageEl);
+        dropzoneEl.dataset.editorMessage = _t(
+            "For technical reasons, this block cannot be dropped here"
+        );
         return dropzoneEl;
     }
 
@@ -516,7 +516,6 @@ export class DropZonePlugin extends Plugin {
 
         // Inserting a sanitized dropzone for each sanitized area.
         for (const sanitizedZoneEl of selectorSanitized) {
-            sanitizedZoneEl.style.position = "relative";
             sanitizedZoneEl.prepend(this.createSanitizedDropzone());
         }
         this.sanitizedZoneEls = selectorSanitized;
