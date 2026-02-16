@@ -63,6 +63,7 @@ export class PosStore extends WithLazyGetterTrap {
         "alert",
         "pos_router",
         "mail.sound_effects",
+        "account_move",
     ];
     constructor({ traps, env, deps }) {
         super({ traps });
@@ -85,6 +86,7 @@ export class PosStore extends WithLazyGetterTrap {
             action,
             pos_router,
             alert,
+            account_move,
         }
     ) {
         this.env = env;
@@ -100,6 +102,7 @@ export class PosStore extends WithLazyGetterTrap {
         this.router = pos_router;
         this.sound = env.services["mail.sound_effects"];
         this.notification = notification;
+        this.invoiceService = account_move;
         this.pushOrderMutex = new Mutex();
         this.router.popStateCallback = this.handleUrlParams.bind(this);
         this.searchProductDBState = null;
@@ -162,6 +165,42 @@ export class PosStore extends WithLazyGetterTrap {
         });
 
         this.handleQRPaymentLines();
+        this.data.connectWebSocket("ORDER_INVOICE_NOTIFICATION", async ({ order_id, error }) => {
+            const order = (await this.data.loadServerOrders([["id", "=", order_id]]))[0];
+            if (!order) {
+                return;
+            }
+            this._handleInvoiceNotification(order, error);
+        });
+    }
+
+    _handleInvoiceNotification(order, error) {
+        if (order.uiState.pos_device_identifier != this.device.identifier) {
+            // Process the order invoice only on the device that handled the order
+            // to prevent duplicate processing across multiple devices
+            return;
+        }
+        if (error || !order.account_move?.id) {
+            this.notification.add(
+                error ||
+                    _t(
+                        "Failed to generate the invoice for order %s. Please try again.",
+                        order.pos_reference
+                    ),
+                { type: "warning" }
+            );
+            return;
+        }
+        if (this.shouldDownloadInvoice(order)) {
+            this.downloadInvoicePdf(order);
+        }
+    }
+
+    async downloadInvoicePdf(order) {
+        if (!order?.account_move) {
+            return;
+        }
+        await this.invoiceService.downloadPdf(order.account_move.id);
     }
 
     handleQRPaymentLines() {
@@ -426,6 +465,13 @@ export class PosStore extends WithLazyGetterTrap {
 
     get company() {
         return this.config.company_id;
+    }
+
+    /**
+     * This method can be overridden to perform checks before starting the invoice download process.
+     */
+    shouldDownloadInvoice(order) {
+        return this.config.canInvoice && this.config.use_download_invoice;
     }
 
     async processServerData() {
@@ -1319,6 +1365,7 @@ export class PosStore extends WithLazyGetterTrap {
         if (this.config.use_presets && !data["preset_id"]) {
             this.selectPreset(this.config.default_preset_id, order);
         }
+        order.uiState.pos_device_identifier = this.device.identifier;
 
         return order;
     }
