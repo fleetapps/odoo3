@@ -86,14 +86,14 @@ export class DeviceSelect extends Component {
             if (this.store.rtc.cameraPermission === "denied") {
                 this.store.rtc.showMediaUnavailableWarning({ camera: true });
             } else {
-                this.store.rtc.showMediaPermissionDialog("camera");
+                this.store.rtc.askForBrowserPermission({ video: true });
                 return;
             }
         } else {
             if (this.store.rtc.microphonePermission === "denied") {
                 this.store.rtc.showMediaUnavailableWarning({ microphone: true });
             } else {
-                this.store.rtc.showMediaPermissionDialog("microphone");
+                this.store.rtc.askForBrowserPermission({ audio: true });
                 return;
             }
         }
