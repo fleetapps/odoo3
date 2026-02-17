@@ -51,7 +51,7 @@
             t-attf-style="display: inline-block; margin-left: 6px; padding: 7px 14px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
             Decline</a>
         <a t-attf-href="/calendar/meeting/view?token={{object.sudo().access_token}}&amp;id={{object.event_id.id}}"
-            t-attf-style="display: inline-block; margin-left: 12px; padding: 7px 14px; color: #111827; text-decoration: none; background-color: #E7E9ED; border-radius: 3px;">
+            style="display: inline-block; margin-left: 12px; padding: 7px 14px; color: #111827; text-decoration: none; background-color: #E7E9ED; border-radius: 3px;">
             View</a>
     </div>
     <div style="margin: 16px 0 0;">
@@ -75,11 +75,11 @@
             </tr>
             <tr t-if="recurrent">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">When</td>
-                <td style="padding-top: 6px;"><t t-out="object.recurrence_id.get_recurrence_name() or ''">Every 1 Weeks, for 3 events</t></td>
+                <td style="padding-top: 6px;" t-out="object.recurrence_id.get_recurrence_name() or ''">Every 1 Weeks, for 3 events</td>
             </tr>
             <tr t-if="not object.event_id.allday and object.event_id.duration">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">Duration</td>
-                <td style="padding-top: 6px;"><t t-out="('%dH%02d' % (object.event_id.duration,round(object.event_id.duration*60)%60)) or ''">0H30</t></td>
+                <td style="padding-top: 6px;" t-out="('%dH%02d' % (object.event_id.duration,round(object.event_id.duration*60)%60)) or ''">0H30</td>
             </tr>
             <tr t-if="object.event_id.location">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B; vertical-align: top;">Location</td>
@@ -125,7 +125,7 @@
     <p style="margin: 32px 0 0;">
         Thank you!
         <t t-if="object.event_id.user_id.signature">
-            <span style="display: block; margin-top: 8px;"><t t-out="object.event_id.user_id.signature or ''">Mitchell Admin</t></span>
+            <span style="display: block; margin-top: 8px;" t-out="object.event_id.user_id.signature or ''">Mitchell Admin</span>
         </t>
     </p>
             </td></tr>
@@ -198,7 +198,7 @@
             t-attf-style="display: inline-block; margin-left: 6px; padding: 7px 14px; color: {{organizer.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{organizer.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
             Decline</a>
         <a t-attf-href="/calendar/meeting/view?token={{ object.sudo().access_token }}&amp;id={{ object.event_id.id }}"
-            t-attf-style="display: inline-block; margin-left: 12px; padding: 7px 14px; color: #111827; text-decoration: none; background-color: #E7E9ED; border-radius: 3px;">
+            style="display: inline-block; margin-left: 12px; padding: 7px 14px; color: #111827; text-decoration: none; background-color: #E7E9ED; border-radius: 3px;">
             View</a>
     </div>
     <div style="margin: 16px 0 0;">
@@ -222,11 +222,11 @@
             </tr>
             <tr t-if="recurrent">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">When</td>
-                <td style="padding-top: 6px;"><t t-out="object.recurrence_id.get_recurrence_name() or ''">Every 1 Weeks, for 3 events</t></td>
+                <td style="padding-top: 6px;" t-out="object.recurrence_id.get_recurrence_name() or ''">Every 1 Weeks, for 3 events</td>
             </tr>
             <tr t-if="not object.event_id.allday and object.event_id.duration">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">Duration</td>
-                <td style="padding-top: 6px;"><t t-out="('%dH%02d' % (object.event_id.duration,round(object.event_id.duration*60)%60)) or ''">0H30</t></td>
+                <td style="padding-top: 6px;" t-out="('%dH%02d' % (object.event_id.duration,round(object.event_id.duration*60)%60)) or ''">0H30</td>
             </tr>
             <tr t-if="object.event_id.location">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B; vertical-align: top;">Location</td>
@@ -272,7 +272,7 @@
     <p style="margin: 32px 0 0;">
         Thank you!
         <t t-if="organizer.signature">
-            <span style="display: block; margin-top: 8px;"><t t-out="organizer.signature or ''">Mitchell Admin</t></span>
+            <span style="display: block; margin-top: 8px;" t-out="organizer.signature or ''">Mitchell Admin</span>
         </t>
     </p>
             </td></tr>
@@ -322,7 +322,7 @@
             t-attf-style="display: inline-block; margin-left: 6px; padding: 7px 14px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
             Decline</a>
         <a t-attf-href="/calendar/meeting/view?token={{ object.sudo().access_token }}&amp;id={{ object.event_id.id }}"
-            t-attf-style="display: inline-block; margin-left: 12px; padding: 7px 14px; color: #111827; text-decoration: none; background-color: #E7E9ED; border-radius: 3px;">
+            style="display: inline-block; margin-left: 12px; padding: 7px 14px; color: #111827; text-decoration: none; background-color: #E7E9ED; border-radius: 3px;">
             View</a>
     </div>
     <div style="margin: 16px 0 0;">
@@ -346,15 +346,11 @@
             </tr>
             <tr t-if="recurrent">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">When</td>
-                <td style="padding-top: 6px;">
-                    <t t-out="object.recurrence_id.get_recurrence_name() or ''">Every 1 Weeks, for 3 events</t>
-                </td>
+                <td style="padding-top: 6px;" t-out="object.recurrence_id.get_recurrence_name() or ''">Every 1 Weeks, for 3 events</td>
             </tr>
             <tr t-if="not object.event_id.allday and object.event_id.duration">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">Duration</td>
-                <td style="padding-top: 6px;">
-                    <t t-out="('%dH%02d' % (object.event_id.duration,round(object.event_id.duration*60)%60)) or ''">0H30</t>
-                </td>
+                <td style="padding-top: 6px;" t-out="('%dH%02d' % (object.event_id.duration,round(object.event_id.duration*60)%60)) or ''">0H30</td>
             </tr>
             <tr t-if="object.event_id.location">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B; vertical-align: top;">Location</td>
@@ -400,7 +396,7 @@
     <p style="margin: 32px 0 0;">
         Thank you!
         <t t-if="object.event_id.user_id.signature">
-            <span style="display: block; margin-top: 8px;"><t t-out="object.event_id.user_id.signature or ''">Mitchell Admin</t></span>
+            <span style="display: block; margin-top: 8px;" t-out="object.event_id.user_id.signature or ''">Mitchell Admin</span>
         </t>
     </p>
             </td></tr>
@@ -463,11 +459,11 @@
             </tr>
             <tr t-if="recurrent">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">When</td>
-                <td style="padding-top: 6px;"><t t-out="object.recurrence_id.get_recurrence_name() or ''">Every 1 Weeks, for 3 events</t></td>
+                <td style="padding-top: 6px;" t-out="object.recurrence_id.get_recurrence_name() or ''">Every 1 Weeks, for 3 events</td>
             </tr>
             <tr t-if="not object.allday and object.duration">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">Duration</td>
-                <td style="padding-top: 6px;"><t t-out="('%dH%02d' % (object.duration,round(object.duration*60)%60))">0H30</t></td>
+                <td style="padding-top: 6px;" t-out="('%dH%02d' % (object.duration,round(object.duration*60)%60))">0H30</td>
             </tr>
             <tr t-if="object.location">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">Location</td>
@@ -513,7 +509,7 @@
     <p style="margin: 32px 0 0;">
         Thank you!
         <t t-if="object.user_id.signature">
-            <span style="display: block; margin-top: 8px;"><t t-out="object.user_id.signature or ''">Mitchell Admin</t></span>
+            <span style="display: block; margin-top: 8px;" t-out="object.user_id.signature or ''">Mitchell Admin</span>
         </t>
     </p>
             </td></tr>
@@ -577,11 +573,11 @@
             </tr>
             <tr t-if="not object.allday and object.duration">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">Duration</td>
-                <td style="padding-top: 6px;"><t t-out="('%dH%02d' % (object.duration,round(object.duration*60)%60))">0H30</t></td>
+                <td style="padding-top: 6px;" t-out="('%dH%02d' % (object.duration,round(object.duration*60)%60))">0H30</td>
             </tr>
             <tr t-if="object.location">
                 <td style="width: 100px; padding-top: 6px; color: #676F7B;">Location</td>
-                <td style="padding-top: 6px;"><t t-out="object.location or ''">Bruxelles</t></td>
+                <td style="padding-top: 6px;" t-out="object.location or ''">Bruxelles</td>
             </tr>
         </table>
     </div>
