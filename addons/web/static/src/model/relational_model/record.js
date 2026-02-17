@@ -14,6 +14,7 @@ import {
     getFieldsSpec,
     parseServerValue,
 } from "./utils";
+<<<<<<< 71d176d462b9db743788e4889974931ae9afc94d
 
 /**
  * Redefine default 'Record' type
@@ -33,6 +34,12 @@ import {
  *
  * @typedef {"edit" | "readonly"} Mode
  */
+||||||| b1a91bac849871ec37510fa97747285fe373bd22
+import { FetchRecordError } from "./errors";
+=======
+import { FetchRecordError } from "./errors";
+import { RequestEntityTooLargeError } from "@web/core/network/rpc";
+>>>>>>> 952b3cc5ea9cce93a02255e8fd3bd7edd74db396
 
 export class Record extends DataPoint {
     static type = "Record";
@@ -1176,11 +1183,19 @@ export class Record extends DataPoint {
                 kwargs
             );
         } catch (e) {
+<<<<<<< 71d176d462b9db743788e4889974931ae9afc94d
             if (onError) {
                 return onError(e, {
                     discard: () => this._discard(),
                     retry: () => this._save(...arguments),
                 });
+||||||| b1a91bac849871ec37510fa97747285fe373bd22
+            if (onError) {
+                return onError(e, { discard: () => this._discard() });
+=======
+            if (onError && !(e instanceof RequestEntityTooLargeError)) {
+                return onError(e, { discard: () => this._discard() });
+>>>>>>> 952b3cc5ea9cce93a02255e8fd3bd7edd74db396
             }
             if (!this.isInEdition) {
                 await this._load({});
