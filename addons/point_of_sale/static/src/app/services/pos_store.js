@@ -53,8 +53,24 @@ export const CONSOLE_COLOR = "#F5B427";
 export class PosStore extends WithLazyGetterTrap {
     loadingSkipButtonIsShown = false;
     mainScreen = { name: null, component: null };
+<<<<<<< 1eb2578bea64387c70200dd34f748a3c033c10eb
     orderReceiptComponent = OrderReceipt;
     feedbackScreenAutoSkipDelay = 5000;
+||||||| a220fb71c036c93fa1e75d4d37127e5eda0118f9
+=======
+    static excludedLazyGetters = [
+        "defaultPage",
+        "firstPage",
+        "idleTimeout",
+        "session",
+        "company",
+        "showCashMoveButton",
+        "selectedOrder",
+        "linesToRefund",
+        "printOptions",
+        "showSaveOrderButton",
+    ];
+>>>>>>> a996366805e4ce15bde43c3ea83c14618f518a2a
 
     static serviceDependencies = [
         "bus_service",
@@ -70,11 +86,10 @@ export class PosStore extends WithLazyGetterTrap {
         "pos_router",
         "mail.sound_effects",
     ];
-    constructor({ traps, env, deps }) {
-        super({ traps });
-        const reactiveSelf = reactive(this);
-        reactiveSelf.ready = reactiveSelf.setup(env, deps).then(() => reactiveSelf);
-        return reactiveSelf;
+
+    constructor() {
+        super({});
+        return reactive(this);
     }
     // use setup instead of constructor because setup can be patched.
     async setup(
@@ -139,9 +154,18 @@ export class PosStore extends WithLazyGetterTrap {
         this.selectedPartner = null;
         this.selectedCategory = null;
         this.searchProductWord = "";
+<<<<<<< 1eb2578bea64387c70200dd34f748a3c033c10eb
         this.ready = new Promise((resolve) => {
             this.markReady = resolve;
         });
+||||||| a220fb71c036c93fa1e75d4d37127e5eda0118f9
+        this.ready = new Promise((resolve) => {
+            this.markReady = resolve;
+        });
+        this.scale = pos_scale;
+=======
+        this.scale = pos_scale;
+>>>>>>> a996366805e4ce15bde43c3ea83c14618f518a2a
 
         this.orderCounter = new Counter(0);
         this.lnaState = {
@@ -490,24 +514,31 @@ export class PosStore extends WithLazyGetterTrap {
     async processProductAttributes() {
         const productIds = new Set();
         const productTmplIds = new Set();
+<<<<<<< 1eb2578bea64387c70200dd34f748a3c033c10eb
         const productByTmplId = {};
         const productCombos = [];
+||||||| a220fb71c036c93fa1e75d4d37127e5eda0118f9
+        const productByTmplId = {};
+=======
+        const productModel = this.models["product.product"].toRaw();
+>>>>>>> a996366805e4ce15bde43c3ea83c14618f518a2a
 
-        for (const product of this.models["product.product"].getAll()) {
+        productModel.forEach((product) => {
             if (product.product_template_variant_value_ids.length > 0) {
-                productTmplIds.add(product.raw.product_tmpl_id);
+                const product_tmpl_id = product.raw.product_tmpl_id;
+                productTmplIds.add(product_tmpl_id);
                 productIds.add(product.id);
-
-                if (!productByTmplId[product.raw.product_tmpl_id]) {
-                    productByTmplId[product.raw.product_tmpl_id] = [];
-                }
-
-                productByTmplId[product.raw.product_tmpl_id].push(product);
             }
+<<<<<<< 1eb2578bea64387c70200dd34f748a3c033c10eb
             if (product.product_tmpl_id?.type === "combo") {
                 productCombos.push(product);
             }
         }
+||||||| a220fb71c036c93fa1e75d4d37127e5eda0118f9
+        }
+=======
+        });
+>>>>>>> a996366805e4ce15bde43c3ea83c14618f518a2a
 
         this.productCombos = productCombos;
 
@@ -529,19 +560,17 @@ export class PosStore extends WithLazyGetterTrap {
             }
         }
 
-        for (const product of this.models["product.product"].filter(
-            (p) => !productIds.has(p.id) && p.product_template_variant_value_ids.length > 0
-        )) {
-            productByTmplId[product.raw.product_tmpl_id].push(product);
-        }
-
-        for (const products of Object.values(productByTmplId)) {
-            const nbrProduct = products.length;
-
-            for (let i = 0; i < nbrProduct - 1; i++) {
-                products[i].available_in_pos = false;
+        productModel.forEach((product) => {
+            if (
+                !productIds.has(product.id) &&
+                product.product_template_variant_value_ids.length > 0
+            ) {
+                const tmpl = product.product_tmpl_id;
+                if (tmpl) {
+                    tmpl.available_in_pos = false;
+                }
             }
-        }
+        });
 
         this.productAttributesExclusion = this.computeProductAttributesExclusion();
     }
@@ -744,7 +773,6 @@ export class PosStore extends WithLazyGetterTrap {
             }
         }
 
-        this.markReady();
         await this.deviceSync.readDataFromServer();
     }
 
@@ -2644,30 +2672,28 @@ export class PosStore extends WithLazyGetterTrap {
 
     get productsToDisplay() {
         const searchWord = this.searchProductWord.trim();
-        const allProducts = this.models["product.template"].getAll();
-        let list = [];
+        let recordIterator;
         const isSearchByWord = searchWord !== "";
 
+        const productTemplateModel = this.models["product.template"].toRaw();
         if (isSearchByWord) {
             if (!this._searchTriggered) {
                 this.setSelectedCategory(0);
                 this._searchTriggered = true;
             }
-            list = this.getProductsBySearchWord(
+            recordIterator = this.getProductsBySearchWord(
                 searchWord,
-                this.selectedCategory?.id ? this.selectedCategory.associatedProducts : allProducts
+                this.selectedCategory?.id
+                    ? this.selectedCategory.associatedProducts.values()
+                    : productTemplateModel.getIterator()
             );
         } else {
             this._searchTriggered = false;
             if (this.selectedCategory?.id) {
-                list = this.selectedCategory.associatedProducts;
+                recordIterator = this.selectedCategory.associatedProducts;
             } else {
-                list = allProducts;
+                recordIterator = productTemplateModel.getIterator();
             }
-        }
-
-        if (!list || list.length === 0) {
-            return [];
         }
 
         const filteredList = [];
@@ -2676,7 +2702,7 @@ export class PosStore extends WithLazyGetterTrap {
             (this.config.iface_available_categ_ids || []).map((c) => c.id)
         );
 
-        for (const p of list) {
+        for (const p of recordIterator) {
             if (filteredList.length >= 100) {
                 break;
             }
@@ -2715,7 +2741,7 @@ export class PosStore extends WithLazyGetterTrap {
 
         const results = [];
         const searchWord = this.searchProductWord.trim();
-        const byCateg = this.models["product.template"].getAllBy("pos_categ_ids");
+        const byCateg = this.models["product.template"].toRaw().getAllBy("pos_categ_ids");
         const selectedCategoryIds = !this.selectedCategory
             ? this.models["pos.category"].map((c) => c.id)
             : this.selectedCategory.getAllChildren().map((c) => c.id);
@@ -3221,7 +3247,9 @@ export class PosStore extends WithLazyGetterTrap {
 export const posService = {
     dependencies: PosStore.serviceDependencies,
     async start(env, deps) {
-        return new PosStore({ traps: {}, env, deps }).ready;
+        const store = new PosStore();
+        await store.setup(env, deps);
+        return reactive(store);
     },
 };
 
