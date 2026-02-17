@@ -12,7 +12,13 @@
             <field name="description">Invitation email to new attendees</field>
             <field name="email_layout_xmlid">mail.mail_notification_light</field>
             <field name="body_html" type="html">
-<div style="font-size: 13px; color: #374151;">
+<table border="0" cellpadding="0" cellspacing="0" style="background-color: #F1F1F1; width: 100%;">
+    <tr><td>
+<table style="background-color: white; width: 100%;">
+<tbody>
+    <tr><td>
+        <table border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; color: #374151;">
+            <tr><td>
     <t t-set="customer" t-value=" object.event_id.find_partner_customer()"/>
     <t t-set="target_responsible" t-value="object.partner_id == object.event_id.partner_id"/>
     <t t-set="recurrent" t-value="object.recurrence_id and not ctx.get('calendar_template_ignore_recurrence')"/>
@@ -122,7 +128,13 @@
             <span style="display: block; margin-top: 8px;"><t t-out="object.event_id.user_id.signature or ''">Mitchell Admin</t></span>
         </t>
     </p>
-</div>
+            </td></tr>
+        </table>
+    </td></tr>
+</tbody>
+</table>
+    </td></tr>
+</table>
             </field>
             <field name="auto_delete" eval="True"/>
         </record>
@@ -138,7 +150,13 @@
             <field name="description">Sent to all attendees if the schedule change</field>
             <field name="email_layout_xmlid">mail.mail_notification_light</field>
             <field name="body_html" type="html">
-<div style="font-size: 13px; color: #374151;">
+<table border="0" cellpadding="0" cellspacing="0" style="background-color: #F1F1F1; width: 100%;">
+    <tr><td>
+<table style="background-color: white; width: 100%;">
+<tbody>
+    <tr><td>
+        <table border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; color: #374151;">
+            <tr><td>
 
     <t t-set="is_online" t-value="'appointment_type_id' in object.event_id and object.event_id.appointment_type_id"/>
     <t t-set="customer" t-value="object.event_id.find_partner_customer()"/>
@@ -257,7 +275,13 @@
             <span style="display: block; margin-top: 8px;"><t t-out="organizer.signature or ''">Mitchell Admin</t></span>
         </t>
     </p>
-</div>
+            </td></tr>
+        </table>
+    </td></tr>
+</tbody>
+</table>
+    </td></tr>
+</table>
             </field>
             <field name="auto_delete" eval="True"/>
         </record>
@@ -273,7 +297,13 @@
             <field name="description">Sent to all attendees if a reminder is set</field>
             <field name="email_layout_xmlid">mail.mail_notification_layout</field>
             <field name="body_html" type="html">
-<div style="font-size: 13px; color: #374151;">
+<table border="0" cellpadding="0" cellspacing="0" style="background-color: #F1F1F1; width: 100%;">
+    <tr><td>
+<table style="background-color: white; width: 100%;">
+<tbody>
+    <tr><td>
+        <table border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; color: #374151;">
+            <tr><td>
     <t t-set="is_online" t-value="'appointment_type_id' in object.event_id and object.event_id.appointment_type_id" />
     <t t-set="recurrent" t-value="object.recurrence_id and not ctx.get('calendar_template_ignore_recurrence')" />
     <h1 style="font-size: 18px; font-weight: bold; color: #374151; margin-bottom: 28px;">
@@ -373,7 +403,13 @@
             <span style="display: block; margin-top: 8px;"><t t-out="object.event_id.user_id.signature or ''">Mitchell Admin</t></span>
         </t>
     </p>
-</div>
+            </td></tr>
+        </table>
+    </td></tr>
+</tbody>
+</table>
+    </td></tr>
+</table>
             </field>
             <field name="auto_delete" eval="True"/>
         </record>
@@ -388,7 +424,13 @@
             <field name="description">Used to manually notify attendees</field>
             <field name="email_layout_xmlid">mail.mail_notification_layout</field>
             <field name="body_html" type="html">
-<div style="font-size: 13px; color: #374151;">
+<table border="0" cellpadding="0" cellspacing="0" style="background-color: #F1F1F1; width: 100%;">
+    <tr><td>
+<table style="background-color: white; width: 100%;">
+<tbody>
+    <tr><td>
+        <table border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; color: #374151;">
+            <tr><td>
     <t t-set="is_online" t-value="'appointment_type_id' in object and object.appointment_type_id" />
     <t t-set="recurrent" t-value="object.recurrence_id and not ctx.get('calendar_template_ignore_recurrence')" />
     <t t-set="mail_tz" t-value="object._get_mail_tz() or ctx.get('mail_tz')" />
@@ -474,7 +516,13 @@
             <span style="display: block; margin-top: 8px;"><t t-out="object.user_id.signature or ''">Mitchell Admin</t></span>
         </t>
     </p>
-</div>
+            </td></tr>
+        </table>
+    </td></tr>
+</tbody>
+</table>
+    </td></tr>
+</table>
             </field>
         </record>
 
@@ -488,7 +536,13 @@
             <field name="description">Used to manually notify attendees</field>
             <field name="email_layout_xmlid">mail.mail_notification_light</field>
             <field name="body_html" type="html">
-<div style="font-size: 13px; color: #374151;">
+<table border="0" cellpadding="0" cellspacing="0" style="background-color: #F1F1F1; width: 100%;">
+    <tr><td>
+<table style="background-color: white; width: 100%;">
+<tbody>
+    <tr><td>
+        <table border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; color: #374151;">
+            <tr><td>
     <t t-set="mail_tz" t-value="object._get_mail_tz() or ctx.get('mail_tz')" />
     <t t-set="event_name" t-value="object.name or ''"/>
     <t t-set="event_organizer" t-value="object.user_id.name or ''"/>
@@ -536,7 +590,13 @@
         Best regards,
         <span style="display: block; margin-top: 8px;">The Calendar Team</span>
     </p>
-</div>
+            </td></tr>
+        </table>
+    </td></tr>
+</tbody>
+</table>
+    </td></tr>
+</table>
             </field>
         </record>
     </data>
