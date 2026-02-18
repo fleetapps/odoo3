@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import ast
 import re
 from collections import defaultdict
 from datetime import timedelta, datetime, time, UTC
@@ -367,7 +368,10 @@ class ProjectTask(models.Model):
         self.env.remove_to_compute(self._fields['display_in_project'], self)
         for task in self:
             if not task.display_in_project and task.parent_id and task.parent_id.project_id != task.project_id:
-                task.project_id = task.parent_id.project_id
+                if not task.parent_id.project_id and not task.is_template:
+                    continue
+                else:
+                    task.project_id = task.parent_id.project_id
 
     @api.depends('project_id', 'parent_id')
     def _compute_display_in_project(self):
@@ -1874,6 +1878,28 @@ class ProjectTask(models.Model):
             'type': 'ir.actions.act_window',
             'context': self.env.context
         }
+
+    def action_open_subtasks(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('project.project_task_action_sub_task')
+        context = action.get('context', '{}').replace('active_id', str(self.id))
+        context = ast.literal_eval(context)
+        context.update({
+            'default_project_id': self.project_id.id,
+            'default_user_ids': self.user_ids.ids,
+            'default_milestone_id': self.milestone_id.id,
+            'subtask_action': True,
+            'default_is_template': self.is_template,
+        })
+        action['context'] = context
+        if not self.project_id:
+            action['views'] = [
+                (self.env.ref('project.project_task_view_tree_base').id, 'list') if view_type == 'list' else
+                (self.env.ref('project.view_task_kanban_no_default_grouping').id, 'kanban') if view_type == 'kanban' else
+                (view_id, view_type)
+                for view_id, view_type in action['views']
+            ]
+        return action
 
     def action_project_sharing_open_task(self):
         action = self.action_open_task()

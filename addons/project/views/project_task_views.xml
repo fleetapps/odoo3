@@ -401,15 +401,8 @@
                         <button name="action_recurring_tasks" type="object" invisible="not active or not recurrence_id or not allow_recurring_tasks" class="oe_stat_button" icon="fa-repeat" groups="project.group_project_recurring_tasks">
                             <field name="recurring_count" widget="statinfo" string="Recurring Tasks"/>
                         </button>
-                        <button name="%(project_task_action_sub_task)d" type="action" class="oe_stat_button" icon="fa-check"
+                        <button name="action_open_subtasks" type="object" class="oe_stat_button" icon="fa-check"
                             invisible="not id or subtask_count == 0"
-                            context="{
-                                'default_project_id': project_id,
-                                'default_user_ids': user_ids,
-                                'default_milestone_id': milestone_id,
-                                'subtask_action': True,
-                                'default_is_template': is_template,
-                            }"
                         >
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text">Sub-tasks</span>
@@ -962,6 +955,18 @@
             </field>
         </record>
 
+        <record id="view_task_kanban_no_default_grouping" model="ir.ui.view">
+            <field name="name">project.task.kanban.no.default.grouping</field>
+            <field name="model">project.task</field>
+            <field name="inherit_id" ref="view_task_kanban"/>
+            <field name="mode">primary</field>
+            <field name="arch" type="xml">
+                <xpath expr="//kanban" position="attributes">
+                    <attribute name="default_group_by"></attribute>
+                </xpath>
+            </field>
+        </record>
+
         <record id="open_view_my_tasks_list_view" model="ir.ui.view">
             <field name="name">open.view.my.tasks.list.view</field>
             <field name="model">project.task</field>
@@ -1255,49 +1260,6 @@
             <field name="context">{'default_res_model': 'project.task', 'default_res_ids': active_ids}</field>
             <field name="binding_model_id" ref="project.model_project_task"/>
             <field name="binding_view_types">list,kanban</field>
-        </record>
-
-        <record id="project_milestone_action_view_tasks" model="ir.actions.act_window">
-            <field name="name">Tasks.test</field>
-            <field name="res_model">project.task</field>
-            <field name="view_mode">kanban,list,form,calendar,pivot,graph,activity</field>
-            <field name="domain">[('has_template_ancestor', '=', False)]</field>
-            <field name="context">{'default_project_id': active_id}</field>
-        </record>
-
-        <record id="project_milestone_action_view_tasks_kanban" model="ir.actions.act_window.view">
-            <field name="act_window_id" ref="project_milestone_action_view_tasks"/>
-            <field name="sequence" eval="10"/>
-            <field name="view_mode">kanban</field>
-            <field name="view_id" ref="project.project_task_kanban_view_project_milestone"/>
-        </record>
-
-        <record id="project_milestone_action_view_tasks_list" model="ir.actions.act_window.view">
-            <field name="act_window_id" ref="project_milestone_action_view_tasks"/>
-            <field name="sequence" eval="20"/>
-            <field name="view_mode">list</field>
-            <field name="view_id" ref="project_task_tree_view_project_milestone"/>
-        </record>
-
-        <record id="project_milestone_action_view_tasks_calendar" model="ir.actions.act_window.view">
-            <field name="act_window_id" ref="project_milestone_action_view_tasks"/>
-            <field name="sequence" eval="30"/>
-            <field name="view_mode">calendar</field>
-            <field name="view_id" ref="project.view_task_calendar"/>
-        </record>
-
-        <record id="project_milestone_action_view_pivot" model="ir.actions.act_window.view">
-            <field name="act_window_id" ref="project_milestone_action_view_tasks"/>
-            <field name="sequence" eval="60"/>
-            <field name="view_mode">pivot</field>
-            <field name="view_id" ref="project_task_pivot_view_project_milestone"/>
-        </record>
-
-        <record id="project_milestone_action_view_graph" model="ir.actions.act_window.view">
-            <field name="act_window_id" ref="project_milestone_action_view_tasks"/>
-            <field name="sequence" eval="70"/>
-            <field name="view_mode">graph</field>
-            <field name="view_id" ref="project_task_graph_view_project_milestone"/>
         </record>
 
 </odoo>
