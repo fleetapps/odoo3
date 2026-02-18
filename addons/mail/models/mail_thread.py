@@ -583,6 +583,15 @@ class MailThread(models.AbstractModel):
     # track posting
     # ------------------------------------------------------
 
+    def _track_add(self, initial_values, end_values=None, fields_info=None, author=None, body=None):
+        # override to add log info
+        super()._track_add(initial_values, end_values=end_values, fields_info=fields_info, author=author, body=body)
+        # set log author and message if given
+        if author:
+            self._track_set_log_author(author)
+        if body:
+            self._track_set_log_message(body)
+
     def _track_log(
             self, track_init_values: dict[int, ValuesType],
             trackings: dict[int, tuple[set[str], list[CommandValue]]]
