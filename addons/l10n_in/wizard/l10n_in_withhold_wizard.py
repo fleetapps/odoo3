@@ -93,6 +93,10 @@ class L10n_InWithholdWizard(models.TransientModel):
         string="TDS Amount",
         compute='_compute_amount',
     )
+    l10n_in_applicable_tds_tcs_sections = fields.Json(
+        string="Applicable TDS/TCS Sections",
+        compute='_compute_l10n_in_applicable_tds_tcs_sections',
+    )
 
     #  ===== Constraints =====
     @api.constrains('base')
@@ -208,6 +212,10 @@ class L10n_InWithholdWizard(models.TransientModel):
                 )
                 tax_amount = taxes_res['total_included'] - taxes_res['total_excluded']
             wizard.amount = abs(tax_amount)
+
+    def _compute_l10n_in_applicable_tds_tcs_sections(self):
+        for wizard in self:
+            wizard.l10n_in_applicable_tds_tcs_sections = wizard.related_move_id.invoice_line_ids.l10n_in_tds_tcs_section_id.ids
 
     def _get_withhold_type(self):
         if self.related_move_id:
