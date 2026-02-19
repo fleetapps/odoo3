@@ -295,6 +295,48 @@ class TestTransferWizard(AccountTestInvoicingCommon):
         self.assertAlmostEqual(payable_transfer.debit, 400, self.company.currency_id.decimal_places, "400 should have been debited from payable account to apply the transfer")
         self.assertAlmostEqual(receivable_transfer.credit, 400, self.company.currency_id.decimal_places, "400 should have been credited to receivable account to apply the transfer")
 
+    def test_transfer_wizard_unset_reconcile(self):
+        account1 = self.env['account.account'].create({'code': '999887', 'name': 'Account 1 no reconcile', 'account_type': 'income', 'reconcile': True})
+        account2 = self.env['account.account'].create({'code': '999888', 'name': 'Account 2 no reconcile', 'account_type': 'income', 'reconcile': True})
+        entry = self.env['account.move'].create({
+            'move_type': 'entry',
+            'line_ids': [
+                Command.create({
+                    'debit': 0.0,
+                    'credit': 1000.0,
+                    'account_id': account1.id,
+                }),
+                Command.create({
+                    'debit': 1000.0,
+                    'credit': 0.0,
+                    'account_id': account2.id,
+                }),
+            ]
+        })
+        entry.action_post()
+
+        accounts = account1 + account2
+        accounts.reconcile = False
+        accounts.reconcile = True
+        accounts.reconcile = False
+
+        context = {'active_model': 'account.move.line', 'active_ids': entry.line_ids.ids, 'default_action': 'change_account'}
+        with Form(self.env['account.automatic.entry.wizard'].with_context(context)) as wizard_form:
+            wizard_form.destination_account_id = account2
+            wizard_form.journal_id = self.journal
+        wizard = wizard_form.save()
+
+        transfer_move_id = wizard.do_action()['res_id']
+        transfer_move = self.env['account.move'].browse(transfer_move_id)
+
+        payable_transfer = transfer_move.line_ids.filtered(lambda x: x.account_id == account1)
+        account_move_line = entry.line_ids.filtered(lambda x: x.account_id == account1)
+        self.assertEqual(payable_transfer.reconciled_lines_ids, account_move_line, "Payable line of the transfer move should be reconciled with the original payable line")
+
+        receivable_transfer = transfer_move.line_ids.filtered(lambda x: x.account_id == account2)
+        receivable_move_line = entry.line_ids.filtered(lambda x: x.account_id == account2)
+        self.assertEqual(receivable_transfer.reconciled_lines_ids, receivable_move_line, "Receivable line of the transfer move should be reconciled with the original receivable line")
+
     def test_transfer_wizard_grouping(self):
         """ Tests grouping (by account and partner) when doing a transfer with the wizard
         """
