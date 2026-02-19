@@ -19,7 +19,7 @@ class ProductTemplate(models.Model):
             and product_or_template.is_product_variant
             and product_or_template.is_storable
         ):
-            res['show_click_and_collect_availability'] = True
+            res['show_click_and_collect_availability'] = product_or_template.get_show_click_and_collect_availability()
             order_sudo = website.sale_get_order()
             if (
                 order_sudo
