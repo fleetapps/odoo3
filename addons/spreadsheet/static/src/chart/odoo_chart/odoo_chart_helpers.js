@@ -174,12 +174,7 @@ export async function navigateToOdooMenu(env, odooMenuId, newWindow) {
     await actionService.doAction(menu.actionID, { newWindow });
 }
 
-export async function navigateToOdooDatasourceFromChart(
-    env,
-    dataSourceType,
-    dataSourceCoreId,
-    newWindow
-) {
+export async function navigateToOdooDatasource(env, dataSourceType, dataSourceCoreId, newWindow) {
     const getters = env.model.getters;
     const dataSourceFieldMatching = globalFieldMatchingRegistry.get(dataSourceType);
     const domain = dataSourceFieldMatching.getDomain(getters, dataSourceCoreId);
@@ -208,7 +203,7 @@ export async function navigateToOdoolinkFromChart(env, chartId, newWindow) {
     if (!odooLink) {
         return;
     } else if (odooLink.type === "dataSource") {
-        return navigateToOdooDatasourceFromChart(
+        return navigateToOdooDatasource(
             env,
             odooLink.dataSourceType,
             odooLink.dataSourceCoreId,
