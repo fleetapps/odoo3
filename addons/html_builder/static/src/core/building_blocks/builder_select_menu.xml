@@ -1,0 +1,13 @@
+<template xml:space="preserve">
+
+<t t-name="html_builder.BuilderSelectMenu">
+    <BuilderComponent>
+        <SelectMenu
+            choices="props.choices"
+            value="uiState.value"
+            multiSelect="props.multiSelect"
+            onSelect.bind="onSelect"/>
+    </BuilderComponent>
+</t>
+
+</template>
