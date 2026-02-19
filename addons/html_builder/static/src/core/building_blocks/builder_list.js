@@ -38,6 +38,7 @@ export class BuilderList extends Component {
         defaultNewValue: { type: Object, optional: true },
         columnWidth: { optional: true },
         forbidLastItemRemoval: { type: Boolean, optional: true },
+        allowEmptyText: { type: Boolean, optional: true },
     };
     static defaultProps = {
         addItemTitle: _t("Add"),
@@ -49,6 +50,7 @@ export class BuilderList extends Component {
         defaultNewValue: {},
         columnWidth: {},
         forbidLastItemRemoval: false,
+        allowEmptyText: false,
     };
     static components = { BuilderComponent, SelectMenu };
 
@@ -200,23 +202,44 @@ export class BuilderList extends Component {
         const id = targetInputEl.dataset.id;
         const propertyName = targetInputEl.name;
         const isCheckbox = targetInputEl.type === "checkbox";
+        const isText = targetInputEl.type === "text";
         const value = isCheckbox ? targetInputEl.checked : targetInputEl.value;
 
-        const items = this.formatRawValue(this.state.value);
-        if (value === true && this.props.itemShape[propertyName] === "exclusive_boolean") {
-            for (const item of items) {
-                item[propertyName] = false;
-            }
-        }
-        const item = items.find((item) => item._id === id);
-        item[propertyName] = value;
-        if (!isCheckbox) {
-            item.id = isSmallInteger(value) ? parseInt(value) : value;
-        }
+        let items = this.formatRawValue(this.state.value);
 
+        const applyChange = () => {
+            if (value === true && this.props.itemShape[propertyName] === "exclusive_boolean") {
+                for (const item of items) {
+                    item[propertyName] = false;
+                }
+            }
+            const item = items.find((item) => item._id === id);
+            item[propertyName] = value;
+            if (!isCheckbox) {
+                item.id = isSmallInteger(value) ? parseInt(value) : value;
+            }
+        };
+
+        // On commit, empty text inputs should be removed unless the prop
+        // `allowEmptyText` is true. If removing the item would leave the list
+        // empty and the prop `forbidLastItemRemoval` is true, instead of
+        // removing we revert the change (skip applyChange).
         if (commitToHistory) {
+            const inputIsEmptyText = isText && value === "";
+            const shouldDeleteEmptyItem = inputIsEmptyText && !this.props.allowEmptyText;
+            const canDeleteItem = items.length > 1 || !this.props.forbidLastItemRemoval;
+            const shouldDropChange = shouldDeleteEmptyItem && !canDeleteItem;
+            // Apply change unless we're trying to delete the only item when that's forbidden
+            if (!shouldDropChange) {
+                applyChange();
+            }
+            // Remove the item if it was empty and deletion is permitted
+            if (shouldDeleteEmptyItem && canDeleteItem) {
+                items = items.filter((item) => item._id !== id);
+            }
             this.commit(items);
         } else {
+            applyChange();
             this.preview(items);
         }
     }
