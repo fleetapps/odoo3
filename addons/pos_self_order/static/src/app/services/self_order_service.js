@@ -538,13 +538,61 @@ export class SelfOrder extends Reactive {
         return this.snoozedProductTracker.isProductSnoozed(product);
     }
 
+<<<<<<< 7ff164aa604f692e0334bb62071b04409c26f8db
     createPrinter(printer) {
         if (printer.printer_type === "epson_epos") {
             return new EpsonPrinter({ printer: printer });
         }
+||||||| a220fb71c036c93fa1e75d4d37127e5eda0118f9
+    _getKioskPrintingCategoriesChanges(order, categories) {
+        return order.lines.filter((orderline) => {
+            const baseProductId = orderline.combo_parent_id
+                ? orderline.combo_parent_id.product_id.id
+                : orderline.product_id.id;
+            return categories.some((category) =>
+                this.models["product.product"]
+                    .get(baseProductId)
+                    .pos_categ_ids.map((categ) => categ.id)
+                    .includes(category.id)
+            );
+        });
+=======
+    _getKioskPrintingCategoriesChanges(order, categories) {
+        const prepCategoryIds = new Set(categories.map((c) => c.id));
+        const hasPreparationCategory = (product) => {
+            if (!product) {
+                return false;
+            }
+            return product.parentPosCategIds.some((id) => prepCategoryIds.has(id));
+        };
+        return order.lines.filter((line) => {
+            if (line.combo_line_ids?.length) {
+                return line.combo_line_ids.some((line) => hasPreparationCategory(line.product_id));
+            }
+            return hasPreparationCategory(line.product_id);
+        });
+>>>>>>> 184af142092952c61fd3384d3abb62df95baffd1
     }
 
     async printKioskChanges(access_token = "") {
+<<<<<<< 7ff164aa604f692e0334bb62071b04409c26f8db
+||||||| a220fb71c036c93fa1e75d4d37127e5eda0118f9
+        const d = new Date();
+        let hours = "" + d.getHours();
+        hours = hours.length < 2 ? "0" + hours : hours;
+        let minutes = "" + d.getMinutes();
+        minutes = minutes.length < 2 ? "0" + minutes : minutes;
+=======
+        if (!this.kioskMode) {
+            return;
+        }
+
+        const d = new Date();
+        let hours = "" + d.getHours();
+        hours = hours.length < 2 ? "0" + hours : hours;
+        let minutes = "" + d.getMinutes();
+        minutes = minutes.length < 2 ? "0" + minutes : minutes;
+>>>>>>> 184af142092952c61fd3384d3abb62df95baffd1
         const order = access_token
             ? this.models["pos.order"].find((o) => o.access_token === access_token)
             : this.currentOrder;
