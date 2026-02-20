@@ -667,18 +667,21 @@ test("properties: text", async () => {
         },
     ];
 
-    ResCompany._records.push({
-        id: 42,
-        name: "Company 2",
-        definitions: [
-            {
-                name: "property_1",
-                string: "My Text",
-                type: "text",
-                view_in_kanban: true,
-            },
-        ],
-    });
+    ResCompany._records = [
+        ...ResCompany._records,
+        {
+            id: 42,
+            name: "Company 2",
+            definitions: [
+                {
+                    name: "property_1",
+                    string: "My Text",
+                    type: "text",
+                    view_in_kanban: true,
+                },
+            ],
+        },
+    ];
 
     await mountView({
         type: "form",
@@ -1165,15 +1168,18 @@ test("properties: many2one 'Search more...' +  internal link save keeps data", a
 });
 
 test("properties: date(time) property manipulations", async () => {
-    Partner._records.push({
-        id: 5000,
-        display_name: "third partner",
-        properties: {
-            property_1: "2019-01-01",
-            property_2: "2019-01-01 10:00:00",
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 5000,
+            display_name: "third partner",
+            properties: {
+                property_1: "2019-01-01",
+                property_2: "2019-01-01 10:00:00",
+            },
+            company_id: 37,
         },
-        company_id: 37,
-    });
+    ];
     ResCompany._records[0].definitions = [
         {
             name: "property_1",
@@ -1400,15 +1406,18 @@ test("properties: kanban view", async () => {
 });
 
 test("properties: kanban view with date and datetime property fields", async () => {
-    Partner._records.push({
-        id: 40,
-        display_name: "fifth partner",
-        properties: {
-            property_1: "2019-01-01",
-            property_2: "2019-01-01 10:00:00",
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 40,
+            display_name: "fifth partner",
+            properties: {
+                property_1: "2019-01-01",
+                property_2: "2019-01-01 10:00:00",
+            },
+            company_id: 37,
         },
-        company_id: 37,
-    });
+    ];
     ResCompany._records[0].definitions = [
         {
             name: "property_1",
@@ -1451,26 +1460,32 @@ test("properties: kanban view with date and datetime property fields", async () 
 });
 
 test("properties: kanban view with multiple sources of properties definitions", async () => {
-    ResCompany._records.push({
-        id: 38,
-        name: "Company 2",
-        definitions: [
-            {
-                name: "property_integer",
-                string: "My Integer",
-                type: "integer",
-                view_in_cards: true,
-            },
-        ],
-    });
-    Partner._records.push({
-        id: 10,
-        display_name: "other partner",
-        properties: {
-            property_integer: 1,
+    ResCompany._records = [
+        ...ResCompany._records,
+        {
+            id: 38,
+            name: "Company 2",
+            definitions: [
+                {
+                    name: "property_integer",
+                    string: "My Integer",
+                    type: "integer",
+                    view_in_cards: true,
+                },
+            ],
         },
-        company_id: 38,
-    });
+    ];
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 10,
+            display_name: "other partner",
+            properties: {
+                property_integer: 1,
+            },
+            company_id: 38,
+        },
+    ];
 
     await mountView({
         type: "kanban",
@@ -1502,18 +1517,21 @@ test("properties: kanban view with multiple sources of properties definitions", 
  *  Also check if border class is applied to boolean field or not.
  */
 test("properties: kanban view with label and border", async () => {
-    Partner._records.push({
-        id: 12,
-        display_name: "fifth partner",
-        properties: {
-            property_integer: 12,
-            property_float: 12.2,
-            property_date: "2023-06-05",
-            property_datetime: "2023-06-05 11:05:00",
-            property_checkbox: true,
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 12,
+            display_name: "fifth partner",
+            properties: {
+                property_integer: 12,
+                property_float: 12.2,
+                property_date: "2023-06-05",
+                property_datetime: "2023-06-05 11:05:00",
+                property_checkbox: true,
+            },
+            company_id: 37,
         },
-        company_id: 37,
-    });
+    ];
     ResCompany._records[0].definitions.push(
         {
             name: "property_integer",
@@ -2380,18 +2398,21 @@ test("properties: no add properties action in cogmenu if no properties field", a
 
 test.tags("desktop");
 test("properties: onChange return new properties", async () => {
-    ResCompany._records.push({
-        id: 38,
-        name: "Company 2",
-        definitions: [
-            {
-                name: "property_2_1",
-                string: "My Char",
-                type: "char",
-                view_in_kanban: true,
-            },
-        ],
-    });
+    ResCompany._records = [
+        ...ResCompany._records,
+        {
+            id: 38,
+            name: "Company 2",
+            definitions: [
+                {
+                    name: "property_2_1",
+                    string: "My Char",
+                    type: "char",
+                    view_in_kanban: true,
+                },
+            ],
+        },
+    ];
     Partner._onChanges.company_id = (changes) => {
         if (changes.company_id === 38) {
             changes.properties = [
@@ -2609,15 +2630,18 @@ test("properties: split, moving property from 1st group to 2nd", async () => {
 });
 
 test("properties: do not write undefined value", async () => {
-    Partner._records.push({
-        id: 5000,
-        display_name: "third partner",
-        properties: {
-            property_1: "test",
-            property_2: undefined,
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 5000,
+            display_name: "third partner",
+            properties: {
+                property_1: "test",
+                property_2: undefined,
+            },
+            company_id: 37,
         },
-        company_id: 37,
-    });
+    ];
     ResCompany._records[0].definitions = [
         {
             name: "property_1",
@@ -2890,7 +2914,7 @@ test("properties definition: test display and edit", async () => {
     await animationFrame();
     expect(".o_field_property_selection_option").toHaveCount(3, {
         message: "Only the 3 options from the demo data should be displayed.",
-    })
+    });
     await click(".o_field_property_selection .fa-plus");
     await animationFrame();
     await edit("New option");
@@ -2899,7 +2923,7 @@ test("properties definition: test display and edit", async () => {
     await animationFrame();
     expect(".o_field_property_selection_option").toHaveCount(4, {
         message: "The added option should now be displayed.",
-    })
+    });
     await closePopover();
 
     // Add a new definition

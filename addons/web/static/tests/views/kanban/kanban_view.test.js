@@ -1135,7 +1135,7 @@ test("pager, ungrouped, with count limit reached, click next on desktop", async 
 test("pager, ungrouped, with count limit reached, click next (2)", async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
 
-    Partner._records.push({ id: 5, foo: "xxx" });
+    Partner._records = [...Partner._records, { id: 5, foo: "xxx" }];
 
     stepAllNetworkCalls();
 
@@ -1176,7 +1176,7 @@ test.tags("desktop");
 test("pager, ungrouped, with count limit reached, click next (2) on desktop", async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
 
-    Partner._records.push({ id: 5, foo: "xxx" });
+    Partner._records = [...Partner._records, { id: 5, foo: "xxx" }];
 
     await mountView({
         type: "kanban",
@@ -1208,7 +1208,7 @@ test("pager, ungrouped, with count limit reached, click next (2) on desktop", as
 test("pager, ungrouped, with count limit reached, click previous", async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
 
-    Partner._records.push({ id: 5, foo: "xxx" });
+    Partner._records = [...Partner._records, { id: 5, foo: "xxx" }];
 
     stepAllNetworkCalls();
 
@@ -1244,7 +1244,7 @@ test.tags("desktop");
 test("pager, ungrouped, with count limit reached, click previous on desktop", async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
 
-    Partner._records.push({ id: 5, foo: "xxx" });
+    Partner._records = [...Partner._records, { id: 5, foo: "xxx" }];
 
     await mountView({
         type: "kanban",
@@ -1272,7 +1272,7 @@ test.tags("desktop");
 test("pager, ungrouped, with count limit reached, edit pager", async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
 
-    Partner._records.push({ id: 5, foo: "xxx" });
+    Partner._records = [...Partner._records, { id: 5, foo: "xxx" }];
     stepAllNetworkCalls();
 
     await mountView({
@@ -1761,11 +1761,14 @@ test("kanban grouped by stage_id: move record from to the None column", async ()
 test("many2many_tags in kanban views", async () => {
     Partner._records[0].category_ids = [6, 7];
     Partner._records[1].category_ids = [7, 8];
-    Category._records.push({
-        id: 8,
-        name: "hello",
-        color: 0,
-    });
+    Category._records = [
+        ...Category._records,
+        {
+            id: 8,
+            name: "hello",
+            color: 0,
+        },
+    ];
 
     stepAllNetworkCalls();
 
@@ -2638,7 +2641,7 @@ test("kanban view with default_group_by", async () => {
     expect.assertions(11);
 
     Partner._records[0].product_id = 1;
-    Product._records.push({ id: 1, display_name: "third product" });
+    Product._records = [...Product._records, { id: 1, display_name: "third product" }];
 
     let readGroupCount = 0;
     onRpc("web_read_group", ({ kwargs }) => {
@@ -3158,7 +3161,7 @@ test("delete a column in grouped on m2o", async () => {
     await validateKanbanColumn();
 
     expect.verifySteps(["name_create", "web_resequence"]);
-    expect(resequencedIDs).toEqual([3, 4], {
+    expect(resequencedIDs).toEqual([3, 6], {
         message: "creating a column should trigger a resequence",
     });
 
@@ -3166,7 +3169,7 @@ test("delete a column in grouped on m2o", async () => {
         queryAll(".o_kanban_group")[2]
     );
 
-    expect(resequencedIDs).toEqual([3, 4], {
+    expect(resequencedIDs).toEqual([3, 6], {
         message: "moving the Undefined column should not affect order of other columns",
     });
 
@@ -3175,7 +3178,7 @@ test("delete a column in grouped on m2o", async () => {
         queryAll(".o_kanban_group")[2]
     );
     expect.verifySteps(["web_resequence"]);
-    expect(resequencedIDs).toEqual([4, 3], {
+    expect(resequencedIDs).toEqual([6, 3], {
         message: "moved column should be resequenced accordingly",
     });
 });
@@ -6015,7 +6018,7 @@ test.tags("desktop");
 test(`kanban should ask to scroll to top on page changes`, async () => {
     // add records to be able to scroll
     for (let i = 5; i < 200; i++) {
-        Partner._records.push({ id: i, foo: "foo" });
+        Partner._records = [...Partner._records, { id: i, foo: "foo" }];
     }
     patchWithCleanup(KanbanController.prototype, {
         onPageChangeScroll() {
@@ -6064,9 +6067,11 @@ test(`kanban should ask to scroll to top on page changes`, async () => {
 test.tags("mobile");
 test(`kanban should ask to scroll to top on page changes (mobile)`, async () => {
     // add records to be able to scroll
+    const newPartners = [];
     for (let i = 5; i < 200; i++) {
-        Partner._records.push({ id: i, foo: "foo" });
+        newPartners.push({ id: i, foo: "foo" });
     }
+    Partner._records = [...Partner._records, ...newPartners];
     patchWithCleanup(KanbanController.prototype, {
         onPageChangeScroll() {
             super.onPageChangeScroll(...arguments);
@@ -8609,10 +8614,16 @@ test("drag and drop records and quickly open a record", async () => {
 
 test.tags("desktop");
 test("groups will be scrolled to on unfold if outside of viewport", async () => {
+    const newProducts = [];
+    const newPartners = [];
     for (let i = 0; i < 12; i++) {
-        Product._records.push({ id: 8 + i, name: `column ${i}` });
-        Partner._records.push({ id: 20 + i, foo: "dumb entry", product_id: 8 + i });
+        newProducts.push({ id: 8 + i, name: `column ${i}` });
+        newPartners.push({ id: 20 + i, foo: "dumb entry", product_id: 8 + i });
     }
+
+    Product._records = [...Product._records, ...newProducts];
+    Partner._records = [...Partner._records, ...newPartners];
+
     Product._records[2].fold = true;
     Product._records[8].fold = true;
     Product._records[9].fold = true;
@@ -9510,16 +9521,20 @@ test("scroll position is restored when coming back to kanban view", async () => 
         search: `<search />`,
     };
 
+    const newProducts = [];
+    const newPartners = [];
     for (let i = 1; i < 10; i++) {
-        Product._records.push({ id: 100 + i, name: `Product ${i}` });
+        newProducts.push({ id: 100 + i, name: `Product ${i}` });
         for (let j = 1; j < 20; j++) {
-            Partner._records.push({
+            newPartners.push({
                 id: 100 * i + j,
                 product_id: 100 + i,
                 foo: `Record ${i}/${j}`,
             });
         }
     }
+    Product._records = [...Product._records, ...newProducts];
+    Partner._records = [...Partner._records, ...newPartners];
 
     let def;
     onRpc("web_read_group", () => def);
@@ -9573,12 +9588,14 @@ test("scroll position is restored when coming back to kanban view (mobile)", asy
         search: `<search />`,
     };
 
+    const newPartners = [];
     for (let i = 1; i < 20; i++) {
-        Partner._records.push({
+        newPartners.push({
             id: 100 + i,
             foo: `Record ${i}`,
         });
     }
+    Partner._records = [...Partner._records, ...newPartners];
 
     let def;
     onRpc("web_search_read", () => def);
@@ -9626,17 +9643,20 @@ test("scroll position is restored when coming back to kanban view (grouped, mobi
         search: `<search />`,
     };
 
-    Partner._records = [];
+    const newProducts = [];
+    const newPartners = [];
     for (let i = 1; i < 5; i++) {
-        Product._records.push({ id: 100 + i, name: `Product ${i}` });
+        newProducts.push({ id: 100 + i, name: `Product ${i}` });
         for (let j = 1; j < 20; j++) {
-            Partner._records.push({
+            newPartners.push({
                 id: 100 * i + j,
                 product_id: 100 + i,
                 foo: `Record ${i}/${j}`,
             });
         }
     }
+    Product._records = [...Product._records, ...newProducts];
+    Partner._records = newPartners;
 
     let def;
     onRpc("web_read_group", () => def);
@@ -9930,7 +9950,7 @@ test(`[Offline] use offline searchbar`, async () => {
 test.tags("desktop");
 test(`[Offline] keep facets name when coming back online`, async () => {
     expect.errors(2);
-    Partner._records.push({ foo: "boo" });
+    Partner._records = [...Partner._records, { foo: "boo" }];
     const setOffline = mockOffline();
     await mountView({
         resModel: "partner",

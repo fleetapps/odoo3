@@ -305,7 +305,7 @@ test("date field with label opens datepicker on click", async () => {
 });
 
 test("date field with warn_future option ", async () => {
-    Partner._records[0] = { id: 1 };
+    Partner._records = [{ id: 1 }, ...Partner._records.slice(1)];
     await mountView({
         type: "form",
         resModel: "res.partner",

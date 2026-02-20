@@ -232,7 +232,10 @@ test("Click out after edition", async () => {
 
 test.tags("desktop");
 test("Can unset the partner many2one field", async () => {
-    ResPartner._records[0] = { id: 1, name: "Some partner", parent_id: 1 };
+    ResPartner._records = [
+        { id: 1, name: "Some partner", parent_id: 1 },
+        ...ResPartner._records.slice(1),
+    ];
     onRpc("web_save", ({ args }) => {
         expect.step("web_save");
         expect(args[1].parent_id).toBe(false);

@@ -408,7 +408,7 @@ test("performRPC: search_count", async () => {
 });
 
 test("performRPC: search_count with domain", async () => {
-    Partner._records.push({ id: 4, name: "José" });
+    Partner._records = [...Partner._records, { id: 4, name: "José" }];
     Bar._records[2].partner_ids.push(4);
 
     await makeMockServer();
@@ -421,7 +421,7 @@ test("performRPC: search_count with domain", async () => {
 });
 
 test("performRPC: search_count using x2Many nested fields", async () => {
-    Partner._records.push({ id: 4, name: "José" });
+    Partner._records = [...Partner._records, { id: 4, name: "José" }];
     Bar._records[2].partner_ids.push(4);
 
     await makeMockServer();

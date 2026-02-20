@@ -217,11 +217,12 @@ test("many2many kanban: edition", async () => {
     });
 
     Partner._records[0].timmy = [1, 2];
-    PartnerType._records.push(
+    PartnerType._records = [
+        ...PartnerType._records,
         { id: 3, name: "red", color: 6 },
         { id: 4, name: "yellow", color: 4 },
-        { id: 5, name: "blue", color: 1 }
-    );
+        { id: 5, name: "blue", color: 1 },
+    ];
 
     PartnerType._views = {
         form: /* xml */ `
@@ -694,7 +695,7 @@ test("add record in a many2many non editable list with context", async () => {
 
 test("many2many list (editable): edition", async () => {
     Partner._records[0].timmy = [1, 2];
-    PartnerType._records.push({ id: 15, name: "bronze", color: 6 });
+    PartnerType._records = [...PartnerType._records, { id: 15, name: "bronze", color: 6 }];
     PartnerType._fields.float_field = fields.Float({ string: "Float" });
 
     PartnerType._views = {
@@ -1277,7 +1278,7 @@ test("many2many with a domain", async () => {
 
 test("many2many list (editable): edition concurrence", async () => {
     Partner._records[0].timmy = [1, 2];
-    PartnerType._records.push({ id: 15, name: "bronze", color: 6 });
+    PartnerType._records = [...PartnerType._records, { id: 15, name: "bronze", color: 6 }];
     PartnerType._fields.float_field = fields.Float({ string: "Float" });
     PartnerType._views = {
         list: '<list><field name="name"/></list>',
@@ -1421,13 +1422,16 @@ test("many2many concurrency edition", async () => {
         relation_field: "turtle_trululu",
         onChange: function () {},
     });
-    Turtle._records.push({
-        id: 4,
-        name: "Bloop",
-        turtle_bar: true,
-        turtle_foo: "Bloop",
-        partner_ids: [],
-    });
+    Turtle._records = [
+        ...Turtle._records,
+        {
+            id: 4,
+            name: "Bloop",
+            turtle_bar: true,
+            turtle_foo: "Bloop",
+            partner_ids: [],
+        },
+    ];
     Partner._records[0].turtles = [1, 2, 3, 4];
     Turtle._views = {
         list: '<list><field name="name"/></list>',
@@ -1523,7 +1527,7 @@ test("onchange with 40+ commands for a many2many", async () => {
     // create a lot of partner_types that will be linked by the onchange
     const commands = [];
     for (let id = 100; id < 145; id++) {
-        PartnerType._records.push({ id, name: "type " + id });
+        PartnerType._records = [...PartnerType._records, { id, name: "type " + id }];
         commands.push(Command.link(id));
     }
     Partner._fields.foo = fields.Char({
@@ -1588,7 +1592,7 @@ test("onchange with 40+ commands for a many2many on desktop", async () => {
     // create a lot of partner_types that will be linked by the onchange
     const commands = [];
     for (let id = 100; id < 145; id++) {
-        PartnerType._records.push({ id, name: "type " + id });
+        PartnerType._records = [...PartnerType._records, { id, name: "type " + id }];
         commands.push(Command.link(id));
     }
     Partner._fields.foo = fields.Char({
@@ -1688,7 +1692,7 @@ test("many2many list add *many* records, remove, re-add", async () => {
 
     for (let i = 0; i < 50; i++) {
         const new_record_partner_type = { id: 100 + i, name: "batch" + i, color: 2 };
-        PartnerType._records.push(new_record_partner_type);
+        PartnerType._records = [...PartnerType._records, new_record_partner_type];
     }
 
     PartnerType._views = {
@@ -1831,7 +1835,7 @@ test("many2many basic keys in field evalcontext -- in list", async () => {
         string: "Partners",
         relation: "partner",
     });
-    Partner._records.push({ id: 7, name: "default partner" });
+    Partner._records = [...Partner._records, { id: 7, name: "default partner" }];
     PartnerType._views = {
         form: `<form><field name="partner_id" /></form>`,
     };
@@ -1871,7 +1875,7 @@ test("many2many basic keys in field evalcontext -- in form", async () => {
         string: "Partners",
         relation: "partner",
     });
-    Partner._records.push({ id: 7, name: "default partner" });
+    Partner._records = [...Partner._records, { id: 7, name: "default partner" }];
     PartnerType._views = {
         form: `<form><field name="partner_id" /></form>`,
     };
@@ -1911,7 +1915,7 @@ test("many2many basic keys in field evalcontext -- in a x2many in form", async (
         string: "Partners",
         relation: "partner",
     });
-    Partner._records.push({ id: 7, name: "default partner" });
+    Partner._records = [...Partner._records, { id: 7, name: "default partner" }];
     PartnerType._views = {
         form: `<form><field name="partner_id" /></form>`,
     };

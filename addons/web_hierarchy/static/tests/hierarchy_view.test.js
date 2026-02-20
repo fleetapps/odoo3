@@ -224,11 +224,14 @@ test("collapse child nodes", async () => {
 });
 
 test("display the parent above the line when many records on the parent row", async () => {
-    Employee._records.push({
-        name: "Alfred",
-        parent_id: false,
-        child_ids: [],
-    });
+    Employee._records = [
+        ...Employee._records,
+        {
+            name: "Alfred",
+            parent_id: false,
+            child_ids: [],
+        },
+    ];
     await mountView({
         type: "hierarchy",
         resModel: "hr.employee",
@@ -385,12 +388,15 @@ test("fetch parent record", async () => {
 });
 
 test("fetch parent when there are many records without the same parent in the same row", async () => {
-    Employee._records.push({
-        id: 5,
-        name: "Lisa",
-        parent_id: 2,
-        child_ids: [],
-    });
+    Employee._records = [
+        ...Employee._records,
+        {
+            id: 5,
+            name: "Lisa",
+            parent_id: 2,
+            child_ids: [],
+        },
+    ];
     await mountView({
         type: "hierarchy",
         resModel: "hr.employee",
@@ -425,12 +431,15 @@ test("fetch parent when there are many records without the same parent in the sa
 });
 
 test("fetch parent when parent record is in the same row", async () => {
-    Employee._records.push({
-        id: 5,
-        name: "Lisa",
-        parent_id: 2,
-        child_ids: [],
-    });
+    Employee._records = [
+        ...Employee._records,
+        {
+            id: 5,
+            name: "Lisa",
+            parent_id: 2,
+            child_ids: [],
+        },
+    ];
     await mountView({
         type: "hierarchy",
         resModel: "hr.employee",
@@ -457,12 +466,15 @@ test("fetch parent when parent record is in the same row", async () => {
 });
 
 test("fetch parent of node with children displayed", async () => {
-    Employee._records.push({
-        id: 5,
-        name: "Lisa",
-        parent_id: 2,
-        child_ids: [],
-    });
+    Employee._records = [
+        ...Employee._records,
+        {
+            id: 5,
+            name: "Lisa",
+            parent_id: 2,
+            child_ids: [],
+        },
+    ];
     Employee._records.find((rec) => rec.id === 2).child_ids.push(5);
     await mountView({
         type: "hierarchy",
@@ -1165,12 +1177,15 @@ test("use other icon used next to Unfold string displayed inside the button", as
 });
 
 test("use `hierarchy_res_id` context to load the view at that specific node with its siblings and parent node", async () => {
-    Employee._records.push({
-        id: 5,
-        name: "Lisa",
-        parent_id: 3,
-        child_ids: [],
-    });
+    Employee._records = [
+        ...Employee._records,
+        {
+            id: 5,
+            name: "Lisa",
+            parent_id: 3,
+            child_ids: [],
+        },
+    ];
     Employee._records.find((rec) => rec.id === 3).child_ids.push(5);
     await mountView({
         type: "hierarchy",
@@ -1431,10 +1446,11 @@ test("Keep the same hierarchy state when we go back to the view with the breadcr
 });
 
 test("Keep the state of the branch when we open another branch in the same level", async () => {
-    Employee._records.push(
+    Employee._records = [
+        ...Employee._records,
         { id: 5, name: "Jean", parent_id: 2, child_ids: [6] },
-        { id: 6, name: "Claude", parent_id: 5, child_ids: [] }
-    );
+        { id: 6, name: "Claude", parent_id: 5, child_ids: [] },
+    ];
     // check we keep in cache the previous branch to avoid fetching again the same data
     await mountView({
         resModel: "hr.employee",
@@ -1482,7 +1498,10 @@ test("Keep the state of the branch when we open another branch in the same level
 });
 
 test("Avoid fetching subnodes if those subnodes are already in the view", async () => {
-    Employee._records.push({ id: 5, name: "Jean", parent_id: 2, child_ids: [] });
+    Employee._records = [
+        ...Employee._records,
+        { id: 5, name: "Jean", parent_id: 2, child_ids: [] },
+    ];
 
     onRpc("web_search_read", () => {
         expect.step("get child data");
@@ -1573,4 +1592,3 @@ test("Open record on new window", async () => {
         'set current_state-{"actionStack":[{"displayName":"","model":"hr.employee","view_type":"hierarchy"}],"model":"hr.employee"}',
     ]);
 });
-

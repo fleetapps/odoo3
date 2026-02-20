@@ -231,13 +231,16 @@ describe("DebugMenu", () => {
         webModels.IrUiView._views.list = `<list><field name="name"/><field name="type"/></list>`;
         webModels.ResPartner._views["form,1"] = `<form><div class="some_view"/></form>`;
 
-        webModels.IrUiView._records.push({
-            id: 1,
-            name: "formView",
-            model: "res.partner",
-            type: "form",
-            active: true,
-        });
+        webModels.IrUiView._records = [
+            ...webModels.IrUiView._records,
+            {
+                id: 1,
+                name: "formView",
+                model: "res.partner",
+                type: "form",
+                active: true,
+            },
+        ];
 
         defineWebModels();
         registry.category("debug").category("default").add("openViewItem", openViewItem);
@@ -276,7 +279,10 @@ describe("DebugMenu", () => {
         serverState.debug = "1";
 
         webModels.ResPartner._views["pivot,18"] = "<pivot></pivot>";
-        webModels.IrUiView._records.push({ id: 18, name: "Edit View" });
+        webModels.IrUiView._records = [
+            ...webModels.IrUiView._records,
+            { id: 18, name: "Edit View" },
+        ];
         webModels.IrUiView._views.form = `<form><field name="id"/></form>`;
 
         defineWebModels();
@@ -305,7 +311,10 @@ describe("DebugMenu", () => {
 
         webModels.ResPartner._views.list = `<list><field name="id"/></list>`;
         webModels.ResPartner._views["search,293"] = "<search></search>";
-        webModels.IrUiView._records.push({ id: 293, name: "Edit View" });
+        webModels.IrUiView._records = [
+            ...webModels.IrUiView._records,
+            { id: 293, name: "Edit View" },
+        ];
         webModels.IrUiView._views.form = `<form><field name="id"/></form>`;
 
         defineWebModels();
@@ -330,7 +339,10 @@ describe("DebugMenu", () => {
 
         webModels.ResPartner._views.list = `<list><field name="id"/></list>`;
         webModels.ResPartner._views["search,293"] = "<search></search>";
-        webModels.IrUiView._records.push({ id: 293, name: "Edit View" });
+        webModels.IrUiView._records = [
+            ...webModels.IrUiView._records,
+            { id: 293, name: "Edit View" },
+        ];
         webModels.IrUiView._views.form = `<form><field name="id"/></form>`;
 
         defineWebModels();
@@ -376,8 +388,11 @@ describe("DebugMenu", () => {
             <form>
                 <field name="name"/>
             </form>`;
-        webModels.ResPartner._records.push({ id: 1000, name: "p1" });
-        webModels.IrUiView._records.push({ id: 24 });
+        webModels.ResPartner._records = [
+            ...webModels.ResPartner._records,
+            { id: 1000, name: "p1" },
+        ];
+        webModels.IrUiView._records = [...webModels.IrUiView._records, { id: 24 }];
 
         defineWebModels();
         await mountWithCleanup(WebClient);
@@ -409,8 +424,11 @@ describe("DebugMenu", () => {
             <form>
                 <field name="name"/>
             </form>`;
-        webModels.ResPartner._records.push({ id: 1001, name: "p1" });
-        webModels.IrUiView._records.push({ id: 25 });
+        webModels.ResPartner._records = [
+            ...webModels.ResPartner._records,
+            { id: 1001, name: "p1" },
+        ];
+        webModels.IrUiView._records = [...webModels.IrUiView._records, { id: 25 }];
 
         defineWebModels();
         await mountWithCleanup(WebClient);
@@ -441,8 +459,11 @@ describe("DebugMenu", () => {
             <form>
                 <field name="name"/>
             </form>`;
-        webModels.ResPartner._records.push({ id: 1002, name: "p1" });
-        webModels.IrUiView._records.push({ id: 26 });
+        webModels.ResPartner._records = [
+            ...webModels.ResPartner._records,
+            { id: 1002, name: "p1" },
+        ];
+        webModels.IrUiView._records = [...webModels.IrUiView._records, { id: 26 }];
 
         defineWebModels();
         await mountWithCleanup(WebClient);
@@ -542,7 +563,10 @@ describe("DebugMenu", () => {
             },
         ]);
 
-        webModels.ResPartner._records.push({ id: 1003, name: "p1" });
+        webModels.ResPartner._records = [
+            ...webModels.ResPartner._records,
+            { id: 1003, name: "p1" },
+        ];
 
         defineWebModels();
         await mountWithCleanup(WebClient);
@@ -663,7 +687,7 @@ describe("DebugMenu", () => {
     test("display model view in developer tools", async () => {
         serverState.debug = "1";
         webModels.ResPartner._views.form = `<form><field name="name"/></form>`;
-        webModels.ResPartner._records.push({ id: 88, name: "p1" });
+        webModels.ResPartner._records = [...webModels.ResPartner._records, { id: 88, name: "p1" }];
         webModels.IrModel._views.form = `
             <form>
                 <field name="name"/>

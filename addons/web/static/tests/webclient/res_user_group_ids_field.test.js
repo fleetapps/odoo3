@@ -755,8 +755,11 @@ test("privileges without category", async () => {
             privilege_id: 600,
         },
     });
-    ResGroups._records.push({ id: 693, name: "Group 1 in Other Privilege" });
-    ResGroups._records.push({ id: 694, name: "Group 2 in Other Privilege" });
+    ResGroups._records = [
+        ...ResGroups._records,
+        { id: 693, name: "Group 1 in Other Privilege" },
+        { id: 694, name: "Group 2 in Other Privilege" },
+    ];
 
     onRpc("web_save", ({ args }) => {
         expect(args[1].group_ids).toEqual([[6, false, [1, 11, 694, 91]]]);

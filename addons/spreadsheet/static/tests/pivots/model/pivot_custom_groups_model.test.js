@@ -13,14 +13,16 @@ describe.current.tags("headless");
 defineSpreadsheetModels();
 
 beforeEach(() => {
-    Product._records.push(
+    Product._records = [
+        ...Product._records,
         { id: 200, display_name: "chair", name: "chair" },
-        { id: 201, display_name: "table", name: "table" }
-    );
-    Partner._records.push(
+        { id: 201, display_name: "table", name: "table" },
+    ];
+    Partner._records = [
+        ...Partner._records,
         { id: 200, foo: 12, bar: true, product_id: 200, probability: 100, currency_id: 1 },
-        { id: 201, foo: 13, bar: false, product_id: 201, probability: 50, currency_id: 1 }
-    );
+        { id: 201, foo: 13, bar: false, product_id: 201, probability: 50, currency_id: 1 },
+    ];
 });
 
 describe("Pivot custom groups", () => {
@@ -147,7 +149,10 @@ describe("Pivot custom groups", () => {
     });
 
     test("Custom groups handle None values", async function () {
-        Partner._records.push({ id: 202, foo: 12, bar: true, product_id: false, probability: 10 });
+        Partner._records = [
+            ...Partner._records,
+            { id: 202, foo: 12, bar: true, product_id: false, probability: 10 },
+        ];
 
         const { model, pivotId } = await createSpreadsheetWithPivot();
         updatePivot(model, pivotId, {
@@ -192,7 +197,10 @@ describe("Pivot custom groups", () => {
     });
 
     test("Can sort custom groups alphabetically", async function () {
-        Partner._records.push({ id: 202, foo: 12, bar: true, product_id: false, probability: 10 });
+        Partner._records = [
+            ...Partner._records,
+            { id: 202, foo: 12, bar: true, product_id: false, probability: 10 },
+        ];
 
         const { model, pivotId } = await createSpreadsheetWithPivot();
         updatePivot(model, pivotId, {
@@ -259,7 +267,10 @@ describe("Pivot custom groups", () => {
     });
 
     test("Others group is always sorted at the end", async function () {
-        Partner._records.push({ id: 202, foo: 12, bar: true, product_id: false, probability: 10 });
+        Partner._records = [
+            ...Partner._records,
+            { id: 202, foo: 12, bar: true, product_id: false, probability: 10 },
+        ];
 
         const { model, pivotId } = await createSpreadsheetWithPivot();
         updatePivot(model, pivotId, {

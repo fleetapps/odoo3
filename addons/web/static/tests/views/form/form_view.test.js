@@ -596,7 +596,7 @@ test(`duplicate fields rendered properly`, async () => {
 });
 
 test(`duplicate fields rendered properly (one2many)`, async () => {
-    Partner._records.push({ id: 6, child_ids: [1] });
+    Partner._records = [...Partner._records, { id: 6, child_ids: [1] }];
     await mountView({
         resModel: "partner",
         type: "form",

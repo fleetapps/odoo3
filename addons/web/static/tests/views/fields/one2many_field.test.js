@@ -278,12 +278,13 @@ test("resequence with NULL value", async () => {
             params.onClose();
         },
     });
-    Partner._records.push(
+    Partner._records = [
+        ...Partner._records,
         { id: 10, int_field: 1 },
         { id: 11, int_field: 2 },
         { id: 12, int_field: 3 },
-        { id: 13 }
-    );
+        { id: 13 },
+    ];
     Partner._records[0].p = [10, 11, 12, 13];
 
     const serverValues = {
@@ -1436,15 +1437,17 @@ test("onchange for embedded one2many with handle widget using same sequence", as
 
 test("onchange for embedded one2many with handle widget (more records)", async () => {
     const ids = [];
+    const newRecords = [];
     for (let i = 10; i < 50; i++) {
         const id = 10 + i;
         ids.push(id);
-        Turtle._records.push({
+        newRecords.push({
             id: id,
             turtle_int: 0,
             turtle_foo: "#" + id,
         });
     }
+    Turtle._records = [...Turtle._records, ...newRecords];
     ids.push(1, 2, 3);
     Partner._records[0].turtles = ids;
     Partner._onChanges = {
@@ -1490,15 +1493,17 @@ test("onchange for embedded one2many with handle widget (more records)", async (
 
 test("onchange with modifiers for embedded one2many on the second page", async () => {
     const ids = [];
+    const newRecords = [];
     for (let i = 10; i < 60; i++) {
         const id = 10 + i;
         ids.push(id);
-        Turtle._records.push({
+        newRecords.push({
             id: id,
             turtle_int: 0,
             turtle_foo: "#" + id,
         });
     }
+    Turtle._records = [...Turtle._records, ...newRecords];
     ids.push(1, 2, 3);
     Partner._records[0].turtles = ids;
     Partner._onChanges = {
@@ -1554,15 +1559,17 @@ test("onchange with modifiers for embedded one2many on the second page", async (
 
 test("onchange followed by edition on the second page", async () => {
     const ids = [];
+    const newRecords = [];
     for (let i = 1; i < 85; i++) {
         const id = 10 + i;
         ids.push(id);
-        Turtle._records.push({
+        newRecords.push({
             id: id,
             turtle_int: (id / 3) | 0,
             turtle_foo: "#" + i,
         });
     }
+    Turtle._records = [...Turtle._records, ...newRecords];
     ids.splice(41, 0, 1, 2, 3);
     Partner._records[0].turtles = ids;
     Partner._onChanges = {
@@ -1636,15 +1643,17 @@ test("onchange followed by edition on the second page", async () => {
 
 test("onchange followed by edition on the second page (part 2)", async () => {
     const ids = [];
+    const newRecords = [];
     for (let i = 1; i < 85; i++) {
         const id = 10 + i;
         ids.push(id);
-        Turtle._records.push({
+        newRecords.push({
             id: id,
             turtle_int: (id / 3) | 0,
             turtle_foo: "#" + i,
         });
     }
+    Turtle._records = [...Turtle._records, ...newRecords];
     ids.splice(41, 0, 1, 2, 3);
     Partner._records[0].turtles = ids;
     Partner._onChanges = {
@@ -2234,7 +2243,8 @@ test("onchange on one2many with x2many in list (many2many_tags) and form view (l
 
 test("embedded one2many with handle widget with minimum setValue calls", async () => {
     Turtle._records[0].turtle_int = 6;
-    Turtle._records.push(
+    Turtle._records = [
+        ...Turtle._records,
         {
             id: 4,
             turtle_int: 20,
@@ -2254,8 +2264,8 @@ test("embedded one2many with handle widget with minimum setValue calls", async (
             id: 7,
             turtle_int: 11,
             turtle_foo: "a4",
-        }
-    );
+        },
+    ];
     Partner._records[0].turtles = [1, 2, 3, 4, 5, 6, 7];
 
     patchWithCleanup(Record.prototype, {
@@ -2449,14 +2459,16 @@ test("press Enter in a form with a one2many kanban", async () => {
 
 test("one2many field when using the pager", async () => {
     const ids = [];
+    const newPartners = [];
     for (let i = 0; i < 45; i++) {
         const id = 10 + i;
         ids.push(id);
-        Partner._records.push({
+        newPartners.push({
             id,
             name: `relational record ${id}`,
         });
     }
+    Partner._records = [...Partner._records, ...newPartners];
     Partner._records[0].p = ids.slice(0, 42);
     Partner._records[1].p = ids.slice(42);
 
@@ -2520,14 +2532,16 @@ test("one2many field when using the pager", async () => {
 
 test("edition of one2many field with pager", async () => {
     const ids = [];
+    const newPartners = [];
     for (let i = 0; i < 45; i++) {
         const id = 10 + i;
         ids.push(id);
-        Partner._records.push({
+        newPartners.push({
             id: id,
             name: "relational record " + id,
         });
     }
+    Partner._records = [...Partner._records, ...newPartners];
     Partner._records[0].p = ids;
     Partner._views = { form: '<form><field name="name"/></form>' };
 
@@ -2672,14 +2686,16 @@ test("edition of one2many field with pager", async () => {
 test.tags("desktop");
 test("edition of one2many field with pager on desktop", async () => {
     const ids = [];
+    const newPartners = [];
     for (let i = 0; i < 45; i++) {
         const id = 10 + i;
         ids.push(id);
-        Partner._records.push({
+        newPartners.push({
             id: id,
             name: "relational record " + id,
         });
     }
+    Partner._records = [...Partner._records, ...newPartners];
     Partner._records[0].p = ids;
     Partner._views = { form: '<form><field name="name"/></form>' };
 
@@ -3219,9 +3235,12 @@ test("onchange specification complete after open sub form view not inline", asyn
 
 test("sorting one2many fields", async () => {
     Partner._fields.foo.sortable = true;
-    Partner._records.push({ id: 23, foo: "abc", int_field: 1 });
-    Partner._records.push({ id: 24, foo: "xyz", int_field: 1 });
-    Partner._records.push({ id: 25, foo: "def", int_field: 2 });
+    Partner._records = [
+        ...Partner._records,
+        { id: 23, foo: "abc", int_field: 1 },
+        { id: 24, foo: "xyz", int_field: 1 },
+        { id: 25, foo: "def", int_field: 2 },
+    ];
     Partner._records[0].p = [23, 24, 25];
 
     let rpcCount = 0;
@@ -3261,10 +3280,13 @@ test("sorting one2many fields", async () => {
 });
 
 test("sorting one2many fields with multi page", async () => {
-    Partner._records.push({ id: 23, foo: "abc", int_field: 1 });
-    Partner._records.push({ id: 24, foo: "xyz", int_field: 1 });
-    Partner._records.push({ id: 25, foo: "def", int_field: 2 });
-    Partner._records.push({ id: 26, foo: "otc", int_field: 2 });
+    Partner._records = [
+        ...Partner._records,
+        { id: 23, foo: "abc", int_field: 1 },
+        { id: 24, foo: "xyz", int_field: 1 },
+        { id: 25, foo: "def", int_field: 2 },
+        { id: 26, foo: "otc", int_field: 2 },
+    ];
     Partner._records[0].p = [23, 24, 25, 26];
 
     await mountView({
@@ -3295,10 +3317,13 @@ test("sorting one2many fields with multi page", async () => {
 });
 
 test("one2many list field edition", async () => {
-    Partner._records.push({
-        id: 3,
-        name: "relational record 1",
-    });
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 3,
+            name: "relational record 1",
+        },
+    ];
     Partner._records[1].p = [3];
 
     await mountView({
@@ -3776,7 +3801,7 @@ test("one2many kanban: conditional write action", async () => {
 
 test.tags("desktop");
 test("editable one2many list, pager is updated on desktop", async () => {
-    Turtle._records.push({ id: 4, turtle_foo: "stephen hawking" });
+    Turtle._records = [...Turtle._records, { id: 4, turtle_foo: "stephen hawking" }];
     Partner._records[0].turtles = [1, 2, 3, 4];
 
     await mountView({
@@ -4136,7 +4161,7 @@ test("editable one2many list, adding line when only one page on desktop", async 
 });
 
 test("editable one2many list, adding line, then discarding", async () => {
-    Turtle._records.push({ id: 4, turtle_foo: "stephen hawking" });
+    Turtle._records = [...Turtle._records, { id: 4, turtle_foo: "stephen hawking" }];
     Partner._records[0].turtles = [1, 2, 3, 4];
 
     await mountView({
@@ -4164,7 +4189,7 @@ test("editable one2many list, adding line, then discarding", async () => {
 
 test.tags("desktop");
 test("editable one2many list, adding line, then discarding on desktop", async () => {
-    Turtle._records.push({ id: 4, turtle_foo: "stephen hawking" });
+    Turtle._records = [...Turtle._records, { id: 4, turtle_foo: "stephen hawking" }];
     Partner._records[0].turtles = [1, 2, 3, 4];
 
     await mountView({
@@ -4188,7 +4213,7 @@ test("editable one2many list, adding line, then discarding on desktop", async ()
 });
 
 test("editable one2many list, required field and pager", async () => {
-    Turtle._records.push({ id: 4, turtle_foo: "stephen hawking" });
+    Turtle._records = [...Turtle._records, { id: 4, turtle_foo: "stephen hawking" }];
     Turtle._fields.turtle_foo = fields.Char({ required: true });
     Partner._records[0].turtles = [1, 2, 3, 4];
 
@@ -4216,7 +4241,7 @@ test("editable one2many list, required field and pager", async () => {
 
 test.tags("desktop");
 test("editable one2many list, required field, pager and confirm discard on desktop", async () => {
-    Turtle._records.push({ id: 4, turtle_foo: "stephen hawking" });
+    Turtle._records = [...Turtle._records, { id: 4, turtle_foo: "stephen hawking" }];
     Turtle._fields.turtle_foo = fields.Char({ required: true });
     Partner._records[0].turtles = [1, 2, 3, 4];
 
@@ -4649,10 +4674,13 @@ test("editable o2m with onchange and required field: delete an invalid line", as
 });
 
 test("onchange in a one2many", async () => {
-    Partner._records.push({
-        id: 3,
-        foo: "relational record 1",
-    });
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 3,
+            foo: "relational record 1",
+        },
+    ];
     Partner._records[1].p = [3];
     Partner._onChanges = { p: () => {} };
     onRpc("onchange", (args) => ({
@@ -6163,10 +6191,13 @@ test("many2manytag in one2many, onchange, some modifiers, and more than one page
 
 test.tags("desktop");
 test("onchange many2many in one2many list editable", async () => {
-    Product._records.push({
-        id: 1,
-        name: "xenomorphe",
-    });
+    Product._records = [
+        ...Product._records,
+        {
+            id: 1,
+            name: "xenomorphe",
+        },
+    ];
 
     Turtle._onChanges = {
         product_id: function (rec) {
@@ -7837,7 +7868,7 @@ test("editing tabbed one2many (editable=bottom)", async () => {
     Partner._records[0].turtles = [];
     for (let i = 0; i < 42; i++) {
         const id = 100 + i;
-        Turtle._records.push({ id: id, turtle_foo: "turtle" + (id - 99) });
+        Turtle._records = [...Turtle._records, { id: id, turtle_foo: "turtle" + (id - 99) }];
         Partner._records[0].turtles.push(id);
     }
     onRpc((args) => {
@@ -7881,7 +7912,7 @@ test("editing tabbed one2many (editable=bottom), again...", async () => {
     Partner._records[0].turtles = [];
     for (let i = 0; i < 9; i++) {
         const id = 100 + i;
-        Turtle._records.push({ id: id, turtle_foo: "turtle" + (id - 99) });
+        Turtle._records = [...Turtle._records, { id: id, turtle_foo: "turtle" + (id - 99) }];
         Partner._records[0].turtles.push(id);
     }
 
@@ -7915,7 +7946,7 @@ test("editing tabbed one2many (editable=top)", async () => {
     Turtle._fields.turtle_foo = fields.Char({ default: "default foo" });
     for (let i = 0; i < 42; i++) {
         const id = 100 + i;
-        Turtle._records.push({ id: id, turtle_foo: "turtle" + (id - 99) });
+        Turtle._records = [...Turtle._records, { id: id, turtle_foo: "turtle" + (id - 99) }];
         Partner._records[0].turtles.push(id);
     }
     onRpc((args) => {

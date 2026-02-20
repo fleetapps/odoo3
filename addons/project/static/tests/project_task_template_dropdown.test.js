@@ -7,7 +7,8 @@ import { defineProjectModels, ProjectTask } from "./project_models";
 defineProjectModels();
 
 function addTemplateTasks() {
-    ProjectTask._records.push(
+    ProjectTask._records = [
+        ...ProjectTask._records,
         {
             id: 4,
             name: "Template Task 1",
@@ -23,8 +24,8 @@ function addTemplateTasks() {
             stage_id: 1,
             state: "01_in_progress",
             is_template: true,
-        }
-    );
+        },
+    ];
 }
 
 beforeEach(() => {

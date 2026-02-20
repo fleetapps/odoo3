@@ -1748,7 +1748,9 @@ test("facets display with any / not any operator (check brackets)", async functi
 
     await contains(".modal footer button").click();
     expect(getFacetTexts()).toEqual([
-        `Company : ( Bar : ( Bool ${label("not set")} and Bool ${label("not set")} ) and Bar : ( Bool ${label("set")} ) ) or Bar ${label("not set")}`,
+        `Company : ( Bar : ( Bool ${label("not set")} and Bool ${label(
+            "not set"
+        )} ) and Bar : ( Bool ${label("set")} ) ) or Bar ${label("not set")}`,
     ]);
     expect.verifySteps([`/web/domain/validate`]);
 });
@@ -1912,10 +1914,13 @@ test("order by count resets when there is no group left", async () => {
 
 test("subitems have a load more item if there is more records available", async () => {
     for (let i = 0; i < 20; i++) {
-        Partner._records.push({
-            id: 100 + i,
-            name: `Home Depot ${i}`,
-        });
+        Partner._records = [
+            ...Partner._records,
+            {
+                id: 100 + i,
+                name: `Home Depot ${i}`,
+            },
+        ];
     }
     await mountWithSearch(SearchBar, {
         resModel: "partner",

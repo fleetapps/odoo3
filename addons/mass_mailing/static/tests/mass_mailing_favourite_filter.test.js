@@ -221,16 +221,18 @@ test("changing filter correctly applies the domain", async () => {
         },
     ];
 
-    Mailing._records.push({
-        id: 3,
-        display_name: "Partner Event promotion",
-        subject: "Early bird discount for Partners!",
-        mailing_model_id: 2,
-        mailing_model_name: "partner",
-        mailing_filter_count: 1,
-        mailing_domain: "[['name','!=', 'Azure Interior']]",
-    });
-
+    Mailing._records = [
+        ...Mailing._records,
+        {
+            id: 3,
+            display_name: "Partner Event promotion",
+            subject: "Early bird discount for Partners!",
+            mailing_model_id: 2,
+            mailing_model_name: "partner",
+            mailing_filter_count: 1,
+            mailing_domain: "[['name','!=', 'Azure Interior']]",
+        },
+    ];
     Mailing._onChanges = {
         mailing_filter_id(record) {
             record.mailing_domain = MockServer.env["mailing.filter"].filter(
@@ -400,18 +402,21 @@ test("filter widget works in edit and readonly", async () => {
         ],
     });
 
-    Mailing._records.push({
-        id: 3,
-        display_name: "Partner Event promotion",
-        subject: "Early bird discount for Partners!",
-        mailing_model_id: 2,
-        mailing_model_name: "partner",
-        mailing_filter_count: 1,
-        mailing_filter_domain: "[['name','=', 'Azure Interior']]",
-        mailing_filter_id: 1,
-        mailing_domain: "[['name','=', 'Azure Interior']]",
-        state: "draft",
-    });
+    Mailing._records = [
+        ...Mailing._records,
+        {
+            id: 3,
+            display_name: "Partner Event promotion",
+            subject: "Early bird discount for Partners!",
+            mailing_model_id: 2,
+            mailing_model_name: "partner",
+            mailing_filter_count: 1,
+            mailing_filter_domain: "[['name','=', 'Azure Interior']]",
+            mailing_filter_id: 1,
+            mailing_domain: "[['name','=', 'Azure Interior']]",
+            state: "draft",
+        },
+    ];
 
     Mailing._onChanges = {
         mailing_filter_id(record) {

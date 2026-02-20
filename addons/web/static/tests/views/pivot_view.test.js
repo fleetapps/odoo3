@@ -3998,9 +3998,11 @@ test("scroll position is restored when coming back to pivot view", async () => {
         search: `<search />`,
     };
 
+    const newPartners = [];
     for (let i = 1; i < 20; i++) {
-        Partner._records.push({ id: 100 + i, foo: 100 + i });
+        newPartners.push({ id: 100 + i, foo: 100 + i });
     }
+    Partner._records = [...Partner._records, ...newPartners];
 
     let def;
     onRpc("formatted_read_grouping_sets", () => def);
@@ -4048,9 +4050,11 @@ test("scroll position is restored when coming back to pivot view (mobile)", asyn
         search: `<search />`,
     };
 
+    const newPartners = [];
     for (let i = 1; i < 20; i++) {
-        Partner._records.push({ id: 100 + i, foo: 100 + i });
+        newPartners.push({ id: 100 + i, foo: 100 + i });
     }
+    Partner._records = [...Partner._records, ...newPartners];
 
     let def;
     onRpc("formatted_read_grouping_sets", () => def);

@@ -170,10 +170,11 @@ test("Location change", async () => {
 test("Manager: user change", async () => {
     expect.assertions(8);
 
-    mailModels.ResUsers._records.push(
+    mailModels.ResUsers._records = [
+        ...mailModels.ResUsers._records,
         { id: 1, name: "Johnny Hache" },
-        { id: 2, name: "David Elora" }
-    );
+        { id: 2, name: "David Elora" },
+    ];
     let userInfos = { ...lunchInfos, is_manager: true };
     let expectedUserId = false; // false as we are requesting for the current user
     onRpc("/lunch/user_location_get", () => userInfos.user_location[0]);

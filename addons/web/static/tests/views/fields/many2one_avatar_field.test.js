@@ -367,11 +367,14 @@ test("widget many2one_avatar in kanban view (load more dialog)", async () => {
     expect.assertions(1);
 
     for (let id = 3; id <= 12; id++) {
-        Users._records.push({
-            id,
-            display_name: `record ${id}`,
-            write_date: "2023-02-13 10:00:00",
-        });
+        Users._records = [
+            ...Users._records,
+            {
+                id,
+                display_name: `record ${id}`,
+                write_date: "2023-02-13 10:00:00",
+            },
+        ];
     }
 
     Users._views = {

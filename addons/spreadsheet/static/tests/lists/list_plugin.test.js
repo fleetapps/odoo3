@@ -98,13 +98,16 @@ test("Boolean fields are correctly formatted", async () => {
 });
 
 test("Numeric/monetary fields are correctly loaded and displayed", async () => {
-    Partner._records.push({
-        id: 5,
-        probability: 0,
-        field_with_array_agg: 0,
-        currency_id: 2,
-        pognon: 0,
-    });
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 5,
+            probability: 0,
+            field_with_array_agg: 0,
+            currency_id: 2,
+            pognon: 0,
+        },
+    ];
     const { model } = await createSpreadsheetWithList({
         columns: ["pognon", "probability", "field_with_array_agg"],
     });
