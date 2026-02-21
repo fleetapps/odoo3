@@ -4,6 +4,7 @@ import { EMAIL_DESKTOP_DIMENSIONS, EMAIL_MOBILE_DIMENSIONS } from "../hooks";
 import { containsAnyNonPhrasingContent } from "@html_editor/utils/dom_info";
 import { childNodes } from "@html_editor/utils/dom_traversal";
 import { memoize } from "@web/core/utils/functions";
+import { useShorthands } from "./hooks";
 
 const DIMENSIONS = {
     desktop: EMAIL_DESKTOP_DIMENSIONS,
@@ -11,12 +12,14 @@ const DIMENSIONS = {
 };
 export class ResponsivePlugin extends BasePlugin {
     static id = "ResponsivePlugin";
+    static dependencies = ["layoutSnapshotCache"];
     resources = {
         reference_content_loaded_handlers: this.computeEmailHtmlStructure.bind(this),
         update_layout_dimensions_handlers: this.onUpdateLayoutDimensions.bind(this),
     };
 
     setup() {
+        useShorthands(this, "layoutSnapshotCache", ["getBoundingClientRect"]);
         this.layoutDimensions = { width: 0, height: 0 };
         this.htmlStructures = new Map();
         this.phrasingContent = new Set();
@@ -41,6 +44,7 @@ export class ResponsivePlugin extends BasePlugin {
     computeEmailHtmlStructure() {
         this.parseWithLayout("desktop");
         this.parseWithLayout("mobile");
+        // conclusion
 
         // simpler algo:
         // identify "horizontal clusters of blocks (flow elements)"
@@ -56,24 +60,31 @@ export class ResponsivePlugin extends BasePlugin {
         if (this.layoutDimensions.width !== dimensions.width) {
             this.config.updateLayoutDimensions(dimensions);
         }
-        this.identifyHorizontalClusters(layoutType);
+        this.analyzePositioningLayout(layoutType);
         if (this.layoutDimensions.width !== originalDimensions.width) {
             this.config.updateLayoutDimensions(originalDimensions);
         }
     }
 
-    identifyHorizontalClusters(layoutType) {
-        const referenceToInfo = new WeakMap();
-        const clientRectCache = new WeakMap();
-        const getClientRect = (el) => {
-            if (!el) {
-                return;
-            }
-            if (!clientRectCache.has(el)) {
-                clientRectCache.set(el, el.getBoundingClientRect());
-            }
-            return clientRectCache.get(el);
+    getElementPositioningInfo(element) {
+        return {
+            element,
+            parent: element.parentElement,
+            previousElementSibling: element.previousElementSibling,
+            nextElementSibling: element.nextElementSibling,
+            elementRect: this.getBoundingClientRect(element),
+            parentRect: this.getBoundingClientRect(element.parentElement),
+            previousElementSiblingRect: element.previousElementSibling
+                ? this.getBoundingClientRect(element.previousElementSibling)
+                : undefined,
+            nextElementSiblingRect: element.nextElementSibling
+                ? this.getBoundingClientRect(element.nextElementSibling)
+                : undefined,
         };
+    }
+
+    analyzePositioningLayout(layoutType) {
+        const referenceToInfo = new WeakMap();
         const treeWalker = this.config.referenceDocument.createTreeWalker(
             this.config.reference,
             NodeFilter.SHOW_ELEMENT,
@@ -85,6 +96,14 @@ export class ResponsivePlugin extends BasePlugin {
                 // TODO EGGMAIL: filterPhrasingContentNodes is too restrictive, some phrasing content
                 // could have been "dressed" as a block, do we want to support that?
                 // if so, filterPhrasingContentNodes should be reworked in consequence.
+                // -> Thinking about `img` blocks with `d-block` + some margin
+                // -> maybe we should identify blocks with the display: block first ? Not sure what's the best approach here
+                // what if there is a block element inside an inline element next to other inline elements? We have to dig deeper
+                // to identify that situation
+                // maybe elements which need to be flagged are those with a margin/padding value?
+                // What we could do is apply the horizontal scan technique inside these block to identify if
+                // a particular element has block-like behavior (img with margin, with d-block, etc) compared
+                // to its peers
                 this.filterPhrasingContentNodes(node);
                 return NodeFilter.FILTER_ACCEPT;
             }
@@ -92,15 +111,33 @@ export class ResponsivePlugin extends BasePlugin {
         let el;
         while ((el = treeWalker.nextNode())) {
             // TODO EGGMAIL: ensure compatibility of this algo with RTL
-            const rect = getClientRect(el);
-            const prev = getClientRect(el.previousElementSibling);
-            const next = getClientRect(el.nextElementSibling);
-            const parent = getClientRect(el.parentElement);
+            const {
+                parent,
+                previousElementSibling: prev,
+                nextElementSibling: next,
+                elementRect: elR,
+                parentRect: parentR,
+                previousElementSiblingRect: prevR,
+                nextElementSiblingRect: nextR,
+            } = this.getElementPositioningInfo(el);
+
+            // method
+            // compute overlapX and overlapY (min_right - max_left) > 0 | (min_bottom - max_top) > 0
+            // normalize by min_width and min_height (xFrac and yFrac)
+            // compute center distance (tie breaker)
+            // decision
+            // yFrac >= 0.5 and xFrac <= 0.3 (horizontal) => should almost never happen
+            // yFrac <= 0.3 and xFrac >= 0.3 (vertical) => should almost never happen
+            // tie breaker -> dx > dy (horizontal) | dy > dx (vertical)
+            // -> normalize tie breaker? => most frequent
+            // identify nesting (contains) => should never happen
+            // identify high overlap (vertically + horizontally) => should never happen
             if (prev) {
                 // compare alignment (vertical/horizontal)
                 // mark parent as horizontal cluster if horizontal
+                // margin between elements? (not sure it exists)
             } else {
-                // check for left offset with parent
+                // check for left offset with parent (margin, padding, etc)
                 // mark parent left padding value, check if already set
                 // if parent right padding change in mobile mode, mark as horizontal cluster (potential offset-x)
                 // take care of padding in relative units? Ignore?
@@ -137,13 +174,12 @@ export class ResponsivePlugin extends BasePlugin {
             // add some missing clusters without any conclusion, and we can easily check
             // if an element is a cluster in both, only in desktop, or only in mobile
 
-            //
             // TODO: verify that cluster identification works in following cases:
             // alert block (float),
             // container/row/col combo with offsets and unfinished rows
             // normal table
             // d-flex block without container/row/col?
-            //
+
             // if heuristics are correct -> start implementing "table" conversion
             // This should resolve almost all layout concerns (need to identify attributes/relevant css properties)
             // decide which properties we copy from class_to_style, more difficult when applying on tables

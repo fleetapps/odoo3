@@ -6,18 +6,13 @@ import { useShorthands } from "@mail/convert_inline/plugins/hooks";
 
 export class EmailImagePlugin extends BasePlugin {
     static id = "image";
-    static dependencies = ["computeStyle"];
+    static dependencies = ["layoutSnapshotCache"];
     resources = {
         load_reference_content_handlers: () => this.loadImages(this.config.reference),
     };
 
     setup() {
-        useShorthands(this, "computeStyle", [
-            "getComputedStyle",
-            "getHeight",
-            "getStylePropertyValue",
-            "getWidth",
-        ]);
+        useShorthands(this, "layoutSnapshotCache", ["getComputedStyle", "getStylePropertyValue"]);
     }
 
     /**

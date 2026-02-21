@@ -6,14 +6,16 @@ const BACKGROUND_VARIANTS = ["color", "image", "repeat", "size"];
 const CONTOUR_VARIANTS = ["width", "style", "color"];
 const DIRECTION_VARIANTS = ["top", "right", "bottom", "left"];
 const FONT_VARIANTS = ["family", "size", "style", "weight"];
+const DOM_RECT_PROPERTIES = ["x", "y", "width", "height", "top", "right", "bottom", "left"];
 
-export class EmailComputeStylePlugin extends BasePlugin {
-    static id = "computeStyle";
+export class LayoutSnapshotCachePlugin extends BasePlugin {
+    static id = "layoutSnapshotCache";
     static shared = [
+        "getBoundingClientRect",
         "getComputedStyle",
         "getStylePropertyValue",
-        "getHeight",
-        "getWidth",
+        "getStyleHeight",
+        "getStyleWidth",
         "registerStyleProperty",
     ];
 
@@ -48,11 +50,13 @@ export class EmailComputeStylePlugin extends BasePlugin {
     };
 
     setup() {
-        this.properties = new Set(); // properties to register in a snapshot
+        this.styleProperties = new Set(); // properties to register in a snapshot
         this.computedStylesMap = new Map(); // dimensions to WeakMap of element to computed snapshot proxy
+        this.domRectProperties = new Set(DOM_RECT_PROPERTIES); // properties of a DOMRect
+        this.boundingClientRectsMap = new Map(); // dimensions to WeakMap of element to bounding client rect snapshot proxy
         this.dimensionsKey = "undefined";
         this.computedStylesMap.set(this.dimensionsKey, new WeakMap());
-        this.setupShorthandToLonghand();
+        this.boundingClientRectsMap.set(this.dimensionsKey, new WeakMap());
         this.setupProperties();
     }
 
@@ -71,6 +75,7 @@ export class EmailComputeStylePlugin extends BasePlugin {
     }
 
     setupProperties() {
+        this.setupShorthandToLonghand();
         for (const propertyName in this.shorthandToLonghand) {
             this.registerStyleProperty(propertyName);
         }
@@ -85,6 +90,9 @@ export class EmailComputeStylePlugin extends BasePlugin {
         if (!this.computedStylesMap.has(this.dimensionsKey)) {
             this.computedStylesMap.set(this.dimensionsKey, new WeakMap());
         }
+        if (!this.boundingClientRectsMap.has(this.dimensionsKey)) {
+            this.boundingClientRectsMap.set(this.dimensionsKey, new WeakMap());
+        }
     }
 
     cachedComputedStyleProxyHandler(element) {
@@ -94,7 +102,24 @@ export class EmailComputeStylePlugin extends BasePlugin {
             get: (target, key, receiver) => {
                 if (typeof key === "string" && !(key in target)) {
                     this.registerStyleProperty(key);
-                    this.getStaticStyle(element, target);
+                    this.getStyleSnapshot(element, target);
+                }
+                return Reflect.get(target, key, receiver);
+            },
+        };
+    }
+
+    cachedBoundingClientRectProxyHandler(element) {
+        return {
+            set: () => false,
+            deleteProperty: () => false,
+            get: (target, key, receiver) => {
+                if (
+                    typeof key === "string" &&
+                    !(key in target) &&
+                    this.domRectProperties.has(key)
+                ) {
+                    this.getBoundingClientRectSnapshot(element, target);
                 }
                 return Reflect.get(target, key, receiver);
             },
@@ -108,19 +133,29 @@ export class EmailComputeStylePlugin extends BasePlugin {
                 this.registerStyleProperty(longHandProperty);
             }
         }
-        if (!this.properties.has(propertyName)) {
-            this.properties.add(propertyName);
+        if (!this.styleProperties.has(propertyName)) {
+            this.styleProperties.add(propertyName);
         }
     }
 
-    getStaticStyle(element, staticStyle = {}) {
+    getStyleSnapshot(element, styleSnapshot = {}) {
         const computedStyle = element.ownerDocument.defaultView.getComputedStyle(element);
-        for (const propertyName of this.properties) {
-            if (!(propertyName in staticStyle)) {
-                staticStyle[propertyName] = computedStyle.getPropertyValue(propertyName);
+        for (const propertyName of this.styleProperties) {
+            if (!(propertyName in styleSnapshot)) {
+                styleSnapshot[propertyName] = computedStyle.getPropertyValue(propertyName);
             }
         }
-        return staticStyle;
+        return styleSnapshot;
+    }
+
+    getBoundingClientRectSnapshot(element, rectSnapshot = {}) {
+        const boundingClientRect = element.getBoundingClientRect();
+        for (const propertyName of this.domRectProperties) {
+            if (!(propertyName in rectSnapshot)) {
+                rectSnapshot[propertyName] = boundingClientRect[propertyName];
+            }
+        }
+        return rectSnapshot;
     }
 
     /**
@@ -148,6 +183,29 @@ export class EmailComputeStylePlugin extends BasePlugin {
     }
 
     /**
+     * Returns a cached view of `getBoundingClientRect`. The cache is long-lived if the element is in
+     * the reference HTML (associated with a given dimensionsKey), because the reference dimensions
+     * are fixed relative to that dimensionsKey, and the cache can be reused if
+     * this function is called on the same element.
+     * The cache is short-lived otherwise (it has its own scope), and a new call to this function
+     * will essentially generate a call to `getBoundingClientRect`.
+     *
+     * @param {HTMLElement} element
+     * @returns {Object} cached bounding client rect
+     */
+    getBoundingClientRect(element) {
+        if (this.config.referenceDocument.contains(element)) {
+            // Only the rect of an element inside the referenceDocument can be cached, as
+            // the HTML and CSS content inside that document are fixed during conversion.
+            const cachedRect =
+                this.boundingClientRectsMap.get(this.dimensionsKey).get(element) ??
+                new Proxy({}, this.cachedBoundingClientRectProxyHandler(element));
+            this.boundingClientRectsMap.get(this.dimensionsKey).set(element, cachedRect);
+        }
+        return new Proxy({}, this.cachedBoundingClientRectProxyHandler(element));
+    }
+
+    /**
      * Convenience function to get a single property value using the cache.
      * Prefer usage of `this.getComputedStyle` for elements outside of the
      * `reference` if multiple measures have to be made on the same element.
@@ -160,7 +218,7 @@ export class EmailComputeStylePlugin extends BasePlugin {
      * @param {HtmlElement} element
      * @returns {Number} width
      */
-    getWidth(element) {
+    getStyleWidth(element) {
         return parseFloat(this.getStylePropertyValue(element, "width")) || 0;
     }
 
@@ -168,11 +226,20 @@ export class EmailComputeStylePlugin extends BasePlugin {
      * @param {HtmlElement} element
      * @returns {Number} height
      */
-    getHeight(element) {
+    getStyleHeight(element) {
         return parseFloat(this.getStylePropertyValue(element, "height")) || 0;
+    }
+
+    /**
+     * Convenience function to get a single DOMRect value using the cache.
+     * Prefer usage of `this.getBoundingClientRect` for elements outside of the
+     * `reference` if multiple measures have to be made on the same element.
+     */
+    getRectValue(element, propertyName) {
+        return this.getBoundingClientRect(element)[propertyName];
     }
 }
 
 registry
     .category("mail-html-conversion-plugins")
-    .add(EmailComputeStylePlugin.id, EmailComputeStylePlugin);
+    .add(LayoutSnapshotCachePlugin.id, LayoutSnapshotCachePlugin);

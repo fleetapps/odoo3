@@ -22,7 +22,7 @@ export class StyleInfo extends Map {
 
 export class EmailClassToStylePlugin extends BasePlugin {
     static id = "classToStyle";
-    static dependencies = ["computeStyle"];
+    static dependencies = ["layoutSnapshotCache"];
     static shared = ["getStyleInfo"];
     resources = {
         ignored_style_predicates: (propertyName, value) =>
@@ -39,7 +39,7 @@ export class EmailClassToStylePlugin extends BasePlugin {
     };
 
     setup() {
-        useShorthands(this, "computeStyle", ["getComputedStyle"]);
+        useShorthands(this, "layoutSnapshotCache", ["getComputedStyle"]);
         this.nodeToRules = new WeakMap();
     }
 
