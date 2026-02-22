@@ -201,6 +201,7 @@ export class LayoutSnapshotCachePlugin extends BasePlugin {
                 this.boundingClientRectsMap.get(this.dimensionsKey).get(element) ??
                 new Proxy({}, this.cachedBoundingClientRectProxyHandler(element));
             this.boundingClientRectsMap.get(this.dimensionsKey).set(element, cachedRect);
+            return cachedRect;
         }
         return new Proxy({}, this.cachedBoundingClientRectProxyHandler(element));
     }

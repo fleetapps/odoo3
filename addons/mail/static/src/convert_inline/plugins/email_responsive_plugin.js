@@ -68,18 +68,55 @@ export class ResponsivePlugin extends BasePlugin {
 
     getElementPositioningInfo(element) {
         return {
-            element,
-            parent: element.parentElement,
-            previousElementSibling: element.previousElementSibling,
-            nextElementSibling: element.nextElementSibling,
-            elementRect: this.getBoundingClientRect(element),
-            parentRect: this.getBoundingClientRect(element.parentElement),
-            previousElementSiblingRect: element.previousElementSibling
-                ? this.getBoundingClientRect(element.previousElementSibling)
+            target: { el: element, rect: this.getBoundingClientRect(element) },
+            parent: {
+                el: element.parentElement,
+                rect: this.getBoundingClientRect(element.parentElement),
+            },
+            next: element.nextElementSibling
+                ? {
+                      el: element.nextElementSibling,
+                      rect: this.getBoundingClientRect(element.nextElementSibling),
+                  }
                 : undefined,
-            nextElementSiblingRect: element.nextElementSibling
-                ? this.getBoundingClientRect(element.nextElementSibling)
+            prev: element.previousElementSibling
+                ? {
+                      el: element.previousElementSibling,
+                      rect: this.getBoundingClientRect(element.previousElementSibling),
+                  }
                 : undefined,
+        };
+    }
+
+    analyzeSiblingSpacing(siblingRect1, siblingRect2) {
+        const { left: l1, right: r1, top: t1, bottom: b1 } = siblingRect1;
+        const { left: l2, right: r2, top: t2, bottom: b2 } = siblingRect2;
+        const dx = Math.max(l1, l2) - Math.min(r1, r2);
+        const overlapX = Math.max(0, -dx);
+        const dy = Math.max(t1, t2) - Math.min(b1, b2);
+        const overlapY = Math.max(0, -dy);
+        // TODO EGGMAIL: reconsider the 4x4 quadrant with 2 empty space cells,
+        // sometimes it may be better to approximate to a row/column if the
+        // spaces are not meaningful. And the reverse is also true, sometimes
+        // it may be useful to handle a double overlap as rows/columns.
+        return {
+            row: !overlapX,
+            column: !overlapY,
+            spacingX: Math.max(0, dx),
+            spacingY: Math.max(0, dy),
+        };
+    }
+
+    // Idea here is to compare the spacing desktop vs mobile, to split into
+    // fixed value, variable value, and define the best fitted layout strategy
+    analyzeContainerSpacing(targetRect, containerRect) {
+        const { left: l1, right: r1, top: t1, bottom: b1 } = targetRect;
+        const { left: l2, right: r2, top: t2, bottom: b2 } = containerRect;
+        return {
+            spacingTop: Math.abs(t1 - t2),
+            spacingLeft: Math.abs(l1 - l2),
+            spacingBottom: Math.abs(b2 - b1),
+            spacingRight: Math.abs(r2 - r1),
         };
     }
 
@@ -111,32 +148,23 @@ export class ResponsivePlugin extends BasePlugin {
         let el;
         while ((el = treeWalker.nextNode())) {
             // TODO EGGMAIL: ensure compatibility of this algo with RTL
-            const {
-                parent,
-                previousElementSibling: prev,
-                nextElementSibling: next,
-                elementRect: elR,
-                parentRect: parentR,
-                previousElementSiblingRect: prevR,
-                nextElementSiblingRect: nextR,
-            } = this.getElementPositioningInfo(el);
+            const { target, parent, prev, next } = this.getElementPositioningInfo(el);
+            // What are we searching for:
+            // the parent is a row candidate if at least 2 of its children are "row" aligned, but they
+            // are not necessarily DOM direct siblings
+            // We are not considering position-absolute elements or other positioned elements that break the
+            // DOM flow (only exception = simple float)
 
-            // method
-            // compute overlapX and overlapY (min_right - max_left) > 0 | (min_bottom - max_top) > 0
-            // normalize by min_width and min_height (xFrac and yFrac)
-            // compute center distance (tie breaker)
-            // decision
-            // yFrac >= 0.5 and xFrac <= 0.3 (horizontal) => should almost never happen
-            // yFrac <= 0.3 and xFrac >= 0.3 (vertical) => should almost never happen
-            // tie breaker -> dx > dy (horizontal) | dy > dx (vertical)
-            // -> normalize tie breaker? => most frequent
-            // identify nesting (contains) => should never happen
-            // identify high overlap (vertically + horizontally) => should never happen
+            // 
             if (prev) {
+                // the parent is a row candidate if at least 2 of its children are "row" aligned
+
                 // compare alignment (vertical/horizontal)
                 // mark parent as horizontal cluster if horizontal
-                // margin between elements? (not sure it exists)
+                // gaps between elements
             } else {
+                // there is no guarantee that the first DOM child is the leftmost one
+
                 // check for left offset with parent (margin, padding, etc)
                 // mark parent left padding value, check if already set
                 // if parent right padding change in mobile mode, mark as horizontal cluster (potential offset-x)
@@ -146,6 +174,9 @@ export class ResponsivePlugin extends BasePlugin {
                 // compare alignment (vertical/horizontal)
                 // mark parent as horizontal cluster if horizontal
             } else {
+                // there is no guarantee that the last DOM child is the rightmost one, especially
+                // if it is a single row partially wrapped
+
                 // check for right offset with parent
                 // mark parent right padding value, check if already set
                 // if parent right padding change in mobile mode, mark as horizontal cluster (potential unfinished row)
