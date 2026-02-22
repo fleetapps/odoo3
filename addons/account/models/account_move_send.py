@@ -69,15 +69,17 @@ class AccountMoveSend(models.AbstractModel):
         """ Returns a dict with all the necessary data to generate and send invoices.
         Either takes the provided custom_settings, or the default value.
         """
-        def get_setting(key, from_cron=False, default_value=None):
-            return custom_settings.get(key) if key in custom_settings else move.sending_data.get(key) if from_cron else default_value
+        move_sending_data = self.env['account.move.event.process'].get_move_active_event_data(move, 'account_move_send') or {} if from_cron else {}
+
+        def get_setting(key, default_value=None):
+            return custom_settings.get(key) if key in custom_settings else move_sending_data.get(key, default_value)
 
         vals = {
             'sending_methods': get_setting('sending_methods', default_value=self._get_default_sending_methods(move)) or {},
             'extra_edis': get_setting('extra_edis', default_value=self._get_default_extra_edis(move)) or {},
             'pdf_report': get_setting('pdf_report') or self._get_default_pdf_report_id(move),
-            'author_user_id': get_setting('author_user_id', from_cron=from_cron) or self.env.user.id,
-            'author_partner_id': get_setting('author_partner_id', from_cron=from_cron) or self.env.user.partner_id.id,
+            'author_user_id': get_setting('author_user_id') or self.env.user.id,
+            'author_partner_id': get_setting('author_partner_id') or self.env.user.partner_id.id,
         }
         vals['invoice_edi_format'] = get_setting('invoice_edi_format', default_value=self._get_default_invoice_edi_format(move, sending_methods=vals['sending_methods']))
         mail_template = get_setting('mail_template') or self._get_default_mail_template_id(move)
@@ -839,12 +841,15 @@ class AccountMoveSend(models.AbstractModel):
         if success:
             self._hook_if_success(success, from_cron=from_cron)
 
-        # Update sending data of moves
-        for move, move_data in moves_data.items():
-            # We keep the sending_data, so it will be retried
-            if from_cron and move_data.get('error', {}).get('retry'):
-                continue
-            move.sending_data = False
+        if from_cron:
+            # Reschedule failed cron events to be retried later
+            to_reschedule = [
+                {'move': move, 'event_code': 'account_move_send'}
+                for move, move_data in moves_data.items()
+                if move_data.get('error', {}).get('retry')
+            ]
+            if to_reschedule:
+                self.env['account.move.event.process'].reschedule_events(to_reschedule)
 
         # Return generated attachments.
         attachments = self.env['ir.attachment']

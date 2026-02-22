@@ -47,7 +47,10 @@ class TestItAccountMoveSend(TestItEdi, TestAccountMoveSendCommon):
             self.env['account.move.send']._generate_and_send_invoices(invoice1 + invoice2)
 
         # Asserts
-        self.assertEqual((invoice1 + invoice2).mapped('sending_data'), [False, False])
+        self.assertTrue(all(not self.env['account.move.event.process'].get_move_active_event_data(
+            inv,
+            'account_move_send',
+        ) for inv in (invoice1 + invoice2)))
         self.assertEqual(1, len(self.get_attachments(invoice1.id)))
         self.assertTrue(invoice1.invoice_pdf_report_id)
         self.assertFalse(invoice1.l10n_it_edi_attachment_file)
@@ -73,7 +76,10 @@ class TestItAccountMoveSend(TestItEdi, TestAccountMoveSendCommon):
             self.env['account.move.send']._generate_and_send_invoices(invoice1 + invoice2, sending_methods=['email'])
 
         # Asserts
-        self.assertEqual((invoice1 + invoice2).mapped('sending_data'), [False, False])
+        self.assertTrue(all(not self.env['account.move.event.process'].get_move_active_event_data(
+            inv,
+            'account_move_send',
+        ) for inv in (invoice1 + invoice2)))
         self.assertEqual(2, len(self.get_attachments(invoice1.id)))
         self.assertTrue(invoice1.invoice_pdf_report_id)
         self.assertTrue(invoice1.l10n_it_edi_attachment_file)
@@ -204,7 +210,15 @@ class TestItAccountMoveSend(TestItEdi, TestAccountMoveSendCommon):
 
     def test_l10n_it_edi_send_from_cron(self):
         invoices = self._create_invoice_it() + self._create_invoice_it()
-        invoices.sending_data = {'author_user_id': self.env.user.id, 'author_partner_id': self.env.user.partner_id.id}
+        self.env['account.move.event.process'].schedule_events(
+            [
+                {
+                    'move': i,
+                    'event_code': 'account_move_send',
+                    'data': {'author_user_id': self.env.user.id, 'author_partner_id': self.env.user.partner_id.id},
+                } for i in invoices
+            ],
+        )
         self.generate_l10n_it_edi_send_attachments(invoices, from_cron=True)
 
         success = {'id_transaction': "SDI ID 1", 'signed': False, 'signed_data': False}

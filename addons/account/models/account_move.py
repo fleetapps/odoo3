@@ -707,7 +707,6 @@ class AccountMove(models.Model):
         string='Cash Rounding Method',
         help='Defines the smallest coinage of the currency that can be used to pay by cash.',
     )
-    sending_data = fields.Json(copy=False)
     invoice_pdf_report_id = fields.Many2one(
         comodel_name='ir.attachment',
         string="PDF Attachment",
@@ -808,10 +807,9 @@ class AccountMove(models.Model):
             else:
                 move.invoice_user_id = False
 
-    @api.depends('sending_data')
     def _compute_is_being_sent(self):
         for move in self:
-            move.is_being_sent = bool(move.sending_data)
+            move.is_being_sent = bool(self.env['account.move.event.process'].get_move_active_event_data(move, 'account_move_send'))
 
     @api.depends('is_move_sent')
     def _compute_move_sent_values(self):
@@ -6282,7 +6280,6 @@ class AccountMove(models.Model):
         # We remove all the analytics entries for this journal
         self.line_ids.analytic_line_ids.with_context(skip_analytic_sync=True).unlink()
         self.state = 'draft'
-        self.sending_data = False
 
         self._detach_attachments()
 
@@ -6465,20 +6462,26 @@ class AccountMove(models.Model):
                 move.message_post(body=msg, message_type='comment')
                 self.env['ir.cron']._commit_progress()
 
+    def _can_process_sending_event(self, event_code, sending_methods):
+        self.ensure_one()
+        if 'email' in sending_methods and event_code == 'account_move_send':
+            return self.state == 'posted'
+        return True
+
     @api.model
     def _cron_account_move_send(self, job_count=10):
         """ Process invoices generation and sending asynchronously.
         :param job_count: maximum number of jobs to process if specified.
         """
-        domain = [
-            ('sending_data', '!=', False),
-            ('state', '=', 'posted'),
-        ]
-        to_process = self.search(
-            domain,
-            order='date asc, invoice_date asc, sequence_number asc, id asc',
-            limit=job_count)
-        to_process.try_lock_for_update()
+        events = self.env['account.move.event.process'].get_batch_to_process('account_move_send', batch_size=job_count)
+
+        to_process = events.move_id.filtered(
+            lambda m: m._can_process_sending_event(
+                'account_move_send',
+                self.env['account.move.send']._get_default_sending_methods(m),
+            ),
+        ).lock_for_update()
+
         if not to_process:
             return
 
@@ -6486,7 +6489,8 @@ class AccountMove(models.Model):
             to_process,
             from_cron=True,
         )
-        self.env['ir.cron']._commit_progress(len(to_process), remaining=self.search_count(domain))
+
+        events.state = 'done'
 
     # -------------------------------------------------------------------------
     # HELPER METHODS
