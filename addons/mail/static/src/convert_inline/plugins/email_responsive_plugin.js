@@ -19,15 +19,18 @@ export class ResponsivePlugin extends BasePlugin {
     };
 
     setup() {
-        useShorthands(this, "layoutSnapshotCache", ["getBoundingClientRect"]);
+        useShorthands(this, "layoutSnapshotCache", [
+            "getBoundingClientRect",
+            "getNodeClusterRange",
+        ]);
         this.layoutDimensions = { width: 0, height: 0 };
         this.htmlStructures = new Map();
-        this.phrasingContent = new Set();
+        this.nonLayoutNodes = new Set();
         this.filterPhrasingContentNodes = memoize((node) => {
             const result = containsAnyNonPhrasingContent(node);
             if (!result) {
                 for (const child of childNodes(node)) {
-                    this.phrasingContent.add(child);
+                    this.nonLayoutNodes.add(child);
                 }
             }
         });
@@ -39,19 +42,9 @@ export class ResponsivePlugin extends BasePlugin {
     // block. It will consider overlapping blocks as a whole if they overlap in
     // mobile and in desktop modes
 
-    // does the algo need computed style or style? no, totally independent, it will
-    // only do measurements => perfect hook
     computeEmailHtmlStructure() {
         this.parseWithLayout("desktop");
         this.parseWithLayout("mobile");
-        // conclusion
-
-        // simpler algo:
-        // identify "horizontal clusters of blocks (flow elements)"
-        // go through every node in the tree
-        // mark its relation with previous and next element sibling -> problem
-        // when identifying spans that are siblings of text nodes (or sometimes not)
-        // and inside spans...
     }
 
     parseWithLayout(layoutType) {
@@ -126,7 +119,7 @@ export class ResponsivePlugin extends BasePlugin {
             this.config.reference,
             NodeFilter.SHOW_ELEMENT,
             (node) => {
-                if (this.phrasingContent.has(node)) {
+                if (this.nonLayoutNodes.has(node)) {
                     return NodeFilter.FILTER_REJECT;
                 }
                 // Disregard phasing content children
@@ -145,7 +138,26 @@ export class ResponsivePlugin extends BasePlugin {
                 return NodeFilter.FILTER_ACCEPT;
             }
         );
-        let el;
+        /**
+         *
+         */
+        // pass 1: treewalk, map sorted children matrices
+        // matrices contain every child participating in the layout, if their own children
+        // do not, they don't need matrices. Maybe images/fa-icons are an exception to that rule?
+        // result: matrix of matrices of positioned elements, there is one for desktop, and one for mobile.
+        // once a matrix is done for a parent, we know what the interesting nodes for measurements are,
+        // and we can adjust it to fill it with void cells if necessary (do we need to wait for the mobile pass for that?)
+        let el = treeWalker.root;
+        do {
+            
+        } while ((el = treeWalker.nextNode()));
+        /**
+         *
+         */
+
+        // -> evaluate children from their parent after having sorted them in a position matrix
+        // -> treewalk can be done to identify all parents, during the treewalk we can define the new
+        // traversal order (based on matric positions), and then do the real algo path
         while ((el = treeWalker.nextNode())) {
             // TODO EGGMAIL: ensure compatibility of this algo with RTL
             const { target, parent, prev, next } = this.getElementPositioningInfo(el);
@@ -155,7 +167,14 @@ export class ResponsivePlugin extends BasePlugin {
             // We are not considering position-absolute elements or other positioned elements that break the
             // DOM flow (only exception = simple float)
 
-            // 
+            // TODO EGGMAIL: VERY IMPORTANT PREMISES
+            // Simplification of this heuristic: layout is strongly based on DOM hierarchy, any style
+            // disregarding the DOM hierarchy (position absolute, some float elements, ...) will
+            // not be handled properly (they don't need to if editor content is sufficiently cared for)
+            // even then, it is still recommended to sort children in a position matrix to be able
+            // to make measurements on the correct elements.
+            // The only phrasing content evaluated as potential blocks are `<img>` and fa icons?
+
             if (prev) {
                 // the parent is a row candidate if at least 2 of its children are "row" aligned
 
