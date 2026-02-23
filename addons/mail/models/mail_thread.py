@@ -29,7 +29,7 @@ from markupsafe import Markup, escape
 from odoo import _, api, exceptions, fields, models, tools, registry, SUPERUSER_ID, Command
 from odoo.exceptions import MissingError, AccessError
 from odoo.osv import expression
-from odoo.tools import email_normalize, is_html_empty, html_escape, html2plaintext, parse_contact_from_email
+from odoo.tools import email_normalize, is_html_empty, html_escape, html2plaintext, parse_contact_from_email, SQL
 from odoo.tools.misc import clean_context, split_every
 
 from requests import Session
@@ -1400,10 +1400,20 @@ class MailThread(models.AbstractModel):
         if strip_attachments:
             msg_dict.pop('attachments', None)
 
-        existing_msg_ids = self.env['mail.message'].search([('message_id', '=', msg_dict['message_id'])], limit=1)
-        if existing_msg_ids:
+        msg_id = msg_dict.get('message_id')
+        is_duplicate = self.env['mail.message'].search([('message_id', '=', msg_id)], limit=1)
+        if not is_duplicate and msg_id:
+            # Synchronize concurrent transactions for the same message_id to make the duplicate check reliable.
+            lock_key = int.from_bytes(hashlib.sha256(msg_id.encode()).digest()[:8], 'little', signed=True)
+            self.env.cr.execute(SQL('SELECT pg_advisory_xact_lock(%s)', lock_key))
+            # Check with a fresh cursor to bypass potential stale snapshots in REPEATABLE READ isolation.
+            with self.pool.cursor() as fresh_cr:
+                fresh_cr.execute(SQL('SELECT id FROM mail_message WHERE message_id = %s LIMIT 1', msg_id))
+                is_duplicate = fresh_cr.fetchone()
+
+        if is_duplicate:
             _logger.info('Ignored mail from %s to %s with Message-Id %s: found duplicated Message-Id during processing',
-                         msg_dict.get('email_from'), msg_dict.get('to'), msg_dict.get('message_id'))
+                         msg_dict.get('email_from'), msg_dict.get('to'), msg_id)
             return False
 
         if self._detect_loop_headers(msg_dict):
