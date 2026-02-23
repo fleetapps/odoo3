@@ -238,23 +238,14 @@ class Cart(PaymentPortal):
         route='/shop/cart/quick_add', type='jsonrpc', auth='user', methods=['POST'], website=True
     )
     def quick_add(self, product_template_id, product_id, quantity=1.0, **kwargs):
+        order_sudo = request.cart
+        old_cart_quantity = order_sudo.cart_quantity
         values = self.add_to_cart(product_template_id, product_id, quantity=quantity, **kwargs)
 
         IrUiView = request.env['ir.ui.view']
-        order_sudo = request.cart
-        values['website_sale.cart_lines'] = IrUiView._render_template(
-            'website_sale.cart_lines', {
-                'website_sale_order': order_sudo,
-                'date': fields.Date.today(),
+        values['website_sale.suggested_products_list'] = IrUiView._render_template(
+            'website_sale.suggested_products_list', {
                 'suggested_products': order_sudo._cart_accessories(),
-            }
-        )
-        values['website_sale.shorter_cart_summary'] = IrUiView._render_template(
-            'website_sale.shorter_cart_summary', {
-                'website_sale_order': order_sudo,
-                'show_shorter_cart_summary': True,
-                **self._get_express_shop_payment_values(order_sudo),
-                **request.website._get_checkout_step_values(),
             }
         )
         values['website_sale.quick_reorder_history'] = IrUiView._render_template(
@@ -263,7 +254,19 @@ class Cart(PaymentPortal):
                 **self._prepare_order_history(),
             }
         )
+        if not old_cart_quantity:
+            # Only render the cart summary if the cart was empty
+            values['website_sale.shorter_cart_summary'] = IrUiView._render_template(
+                'website_sale.shorter_cart_summary', {
+                    'website_sale_order': order_sudo,
+                    'show_shorter_cart_summary': True,
+                    **self._get_express_shop_payment_values(order_sudo),
+                    **request.website._get_checkout_step_values(),
+                }
+            )
         values['cart_ready'] = order_sudo._is_cart_ready()
+        values['old_cart_quantity'] = old_cart_quantity
+
         return values
 
     def _get_express_shop_payment_values(self, order, **kwargs):
@@ -340,7 +343,11 @@ class Cart(PaymentPortal):
                 **self._prepare_order_history(),
             }
         )
-
+        values['website_sale.suggested_products_list'] = IrUiView._render_template(
+            'website_sale.suggested_products_list', {
+                'suggested_products': order_sudo._cart_accessories(),
+            }
+        )
         return values
 
     def _prepare_order_history(self):
@@ -535,7 +542,7 @@ class Cart(PaymentPortal):
             'currency_id': order_sudo.currency_id.id,
             'cart_lines': [],
             'is_quantity_view_active': request.env['website'].is_view_active('website_sale.product_quantity'),
-            'is_wishlist_view_active': request.env['website'].is_view_active('website_sale.product_cart_lines'),
+            'is_wishlist_view_active': request.env['website'].is_view_active('website_sale.wishlist_cart_lines'),
             'is_uom_feature_enabled': request.env['res.groups']._is_feature_enabled('website_sale.group_show_uom_price'),
             'shop_warning': order_sudo._get_shop_warning() if order_sudo else '',
         }

@@ -39,15 +39,15 @@ export class CartLines extends Component {
         this.state.currencyId = data['currency_id'];
     }
 
-    updateLine(lineId, productId, quantity) {
-        this.cartService.update(lineId, productId, quantity);
+    async updateLine(lineId, productId, quantity) {
+        await this.cartService.update(lineId, productId, quantity, true);
     }
 
     async addToWishlist(lineId, productId) {
         await rpc('/shop/wishlist/add', { product_id: productId });
         wishlistUtils.addWishlistProduct(productId);
         wishlistUtils.updateWishlistNavBar();
-        this.updateLine(lineId, productId, 0);
+        await this.updateLine(lineId, productId, 0);
     }
 
     getLineProps(line) {
