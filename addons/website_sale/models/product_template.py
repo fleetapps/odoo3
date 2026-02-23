@@ -309,6 +309,16 @@ class ProductTemplate(models.Model):
 
     #=== CRUD METHODS ===#
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        # Compute the suggest_x fields based on the m2m x now correctly saved
+        for record, vals in zip(records, vals_list):
+            record.suggest_optional_products = not vals.get('optional_product_ids')
+            record.suggest_accessory_products = not vals.get('accessory_product_ids')
+            record.suggest_alternative_products = not vals.get('alternative_product_ids')
+        return records
+
     def write(self, vals):
         # Clear empty ecommerce description content to avoid side-effects on product pages
         # when there is no content to display anyway.
@@ -337,7 +347,7 @@ class ProductTemplate(models.Model):
         domain = self.env['website'].sale_product_domain()
         return self.alternative_product_ids.filtered_domain(domain)
 
-    def _update_suggested_products(self, batch_size=None, force_update=True):
+    def _update_suggested_products(self, batch_size=None, force_update=False):
         """Update the current product templates' optional, accessory, and alternative products.
 
         Only salable and publish product templates are considered. The heuristics to find suggested
@@ -417,7 +427,7 @@ class ProductTemplate(models.Model):
                         product.alternative_product_ids = product._get_suggested_alternatives(
                             other_products_by_categories, max_products=4
                         )
-        self.suggested_products_last_update = now
+            products.suggested_products_last_update = now
         if in_cron:
             self.env['ir.cron']._commit_progress(len(self))
 
@@ -483,7 +493,7 @@ class ProductTemplate(models.Model):
         other_products_sharing_categories = self.env['product.template']
         for categ in self.public_categ_ids:
             other_products_sharing_categories |= other_templates_by_categories.get(categ)
-        other_products_sharing_categories = list(other_products_sharing_categories)
+        other_products_sharing_categories = list(other_products_sharing_categories - self)
         random.shuffle(other_products_sharing_categories)
 
         for product_b in other_products_sharing_categories[:1000]:
