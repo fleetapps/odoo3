@@ -207,24 +207,24 @@ export class CartService {
             '/website_sale/should_show_product_configurator',
             {
                 product_template_id: productTemplateId,
-                ptav_ids: ptavs,
+                ptav_ids: ptavs.concat(noVariantAttributeValues),
                 is_product_configured: isConfigured,
                 quantity: quantity,
             }
         );
         if (result) {
             return this._openProductConfigurator(
-                result.preloaded_config_data,
                 productTemplateId,
                 quantity,
                 uomId,
-                ptavs.concat(noVariantAttributeValues),
+                ptavs,
                 productCustomAttributeValues,
                 {
                     isBuyNow: isBuyNow,
                     isMainProductConfigurable: !isConfigured,
                     showQuantity: showQuantity,
                 },
+                result.preloaded_config_data,
                 rest
             );
         }
@@ -335,13 +335,13 @@ export class CartService {
      * @returns {Number} - The product's quantity added to the cart.
      */
     async _openProductConfigurator(
-        preloadedData,
         productTemplateId,
         quantity,
         uomId,
         combination,
         productCustomAttributeValues,
         options,
+        preloadedData,
         additionalData
     ) {
         return await new Promise((resolve) => {

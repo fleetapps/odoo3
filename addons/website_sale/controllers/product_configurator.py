@@ -16,7 +16,7 @@ class WebsiteSaleProductConfiguratorController(SaleProductConfiguratorController
         readonly=True,
     )
     def website_sale_should_show_product_configurator(
-        self, product_template_id, ptav_ids, is_product_configured, quantity
+        self, product_template_id, ptav_ids, is_product_configured, quantity=1, **kwargs
     ):
         """ Return whether the product configurator dialog should be shown.
 
@@ -27,8 +27,9 @@ class WebsiteSaleProductConfiguratorController(SaleProductConfiguratorController
         :rtype: bool
         :return: Whether the product configurator dialog should be shown.
         """
+        self._populate_currency_and_pricelist(kwargs)
         product_template = request.env['product.template'].browse(product_template_id)
-        result = product_template.get_single_product_variant(quantity)
+        result = product_template.get_single_product_variant(quantity, ptav_ids, **kwargs)
         has_optional_products = bool(
             product_template.optional_product_ids.filtered(self._should_show_product)
         )
@@ -66,7 +67,7 @@ class WebsiteSaleProductConfiguratorController(SaleProductConfiguratorController
         )
 
         return product_template.sale_product_configurator_get_values(
-            **kwargs
+            *args, **kwargs
         )
 
     @route(

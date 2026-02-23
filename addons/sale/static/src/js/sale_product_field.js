@@ -187,15 +187,21 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
     }
 
     async _getPreloadedConfigData() {
+        const saleOrderRecord = this.props.record.model.root;
+        const saleOrderLine = this.props.record.data;
+        const ptavIds = this._getVariantPtavIds(saleOrderLine);
         const result = await this.orm.call(
             'product.template',
-            'get_configurator_init_data',
+            'get_single_product_variant',
             [this.props.record.data.product_template_id.id],
             {
-                quantity: this.props.record.data.product_uom_qty,
-                context: this.props.context,
-                ptav_ids: this._getVariantPtavIds(this.props.record.data),
-                product_uom_id: this.props.record.data.product_uom_id.id,
+                quantity: saleOrderLine.product_uom_qty,
+                currency_id: saleOrderLine.currency_id.id,
+                so_date: serializeDateTime(saleOrderRecord.data.date_order),
+                product_uom_id: saleOrderLine.product_uom_id.id,
+                company_id: saleOrderRecord.data.company_id.id,
+                pricelist_id: saleOrderRecord.data.pricelist_id.id,
+                ptav_ids: ptavIds,
                 ...this._getAdditionalRpcParams(),
             }
         );

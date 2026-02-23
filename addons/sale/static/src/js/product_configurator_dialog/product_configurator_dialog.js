@@ -96,28 +96,11 @@ export class ProductConfiguratorDialog extends Component {
 
         onWillStart(async () => {
             let data;
-
             if(this.props.preloadedData) {
                 data = this.props.preloadedData;
             }
             else {
-                data = await this.orm.call(
-                    'product.template',
-                    'sale_product_configurator_get_values',
-                    [this.props.productTemplateId],
-                    {
-                        product_template_id: this.props.productTemplateId,
-                        quantity: this.props.quantity || 1,
-                        currency_id: this.currency.id || false,
-                        so_date: this.props.soDate,
-                        product_uom_id: this.props.productUOMId,
-                        company_id: this.props.companyId,
-                        pricelist_id: this.props.pricelistId,
-                        ptav_ids: this.props.ptavIds,
-                        only_main_product: this.props.edit,
-                        ...this._getAdditionalRpcParams(),
-                    }
-                );
+                data = await this._loadData(this.props.edit);
             }
             const {
                 products,
@@ -148,6 +131,26 @@ export class ProductConfiguratorDialog extends Component {
 
     get totalMessage() {
         return _t("Total: %s", this.getFormattedTotal());
+    }
+
+    async _loadData(onlyMainProduct) {
+        return this.orm.call(
+            'product.template',
+            'sale_product_configurator_get_values',
+            [this.props.productTemplateId],
+            {
+                product_template_id: this.props.productTemplateId,
+                quantity: this.props.quantity,
+                currency_id: this.currency.id,
+                so_date: this.props.soDate,
+                product_uom_id: this.props.productUOMId,
+                company_id: this.props.companyId,
+                pricelist_id: this.props.pricelistId,
+                ptav_ids: this.props.ptavIds,
+                only_main_product: onlyMainProduct,
+                show_packaging: this.env.showPackaging,
+                ...this._getAdditionalRpcParams(),
+            });
     }
 
     /**
