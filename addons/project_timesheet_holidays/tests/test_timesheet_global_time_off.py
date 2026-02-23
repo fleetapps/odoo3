@@ -22,7 +22,7 @@ class TestTimesheetGlobalTimeOff(common.TransactionCase):
             'name': 'My Test Company',
         })
 
-        attendance_ids = [
+        self.attendance_ids = [
             (0, 0, {'dayofweek': '0', 'hour_from': 9, 'hour_to': 12}),
             (0, 0, {'dayofweek': '0', 'hour_from': 13, 'hour_to': 16}),
             (0, 0, {'dayofweek': '1', 'hour_from': 9, 'hour_to': 12}),
@@ -38,12 +38,12 @@ class TestTimesheetGlobalTimeOff(common.TransactionCase):
                 'name': 'Part Time Calendar',
                 'company_id': self.test_company.id,
                 'hours_per_day': 6,
-                'attendance_ids': attendance_ids,
+                'attendance_ids': self.attendance_ids,
             }, {
                 'name': 'Night Watch',
                 'company_id': self.test_company.id,
                 'hours_per_day': 6,
-                'attendance_ids': attendance_ids,
+                'attendance_ids': self.attendance_ids,
             }
         ])
         self.full_time_employee, self.full_time_employee_2,\
@@ -554,7 +554,13 @@ class TestTimesheetGlobalTimeOff(common.TransactionCase):
         """ Test that public holidays are included in the global working schedule (company should be False)
             when a global time off is created.
         """
-        self.part_time_calendar.company_id = False
+        part_time_calendar_no_company = self.env['resource.calendar'].create({
+            'name': 'Part Time Calendar No Company',
+            'company_id': False,
+            'hours_per_day': 6,
+            'attendance_ids': self.attendance_ids,
+        })
+        self.part_time_employee.resource_calendar_id = part_time_calendar_no_company
         self.env['resource.calendar.leaves'].create({
             'name': 'Public Holiday',
             'date_from': datetime(2021, 1, 4, 0, 0, 0),
