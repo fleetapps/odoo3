@@ -727,6 +727,7 @@ class PosOrder(models.Model):
         return currency.round(amount) if currency else amount
 
     def _get_partner_bank_id(self):
+<<<<<<< 411f4ae2c03968ed7219d9c425cd253867b531fd
         bank_partner_id = False
         amount_total = sum(order.amount_total for order in self)
         if amount_total <= 0 and self.partner_id.bank_ids:
@@ -736,6 +737,38 @@ class PosOrder(models.Model):
         elif amount_total >= 0 and self.company_id.partner_id.bank_ids:
             bank_partner_id = self.company_id.partner_id.bank_ids[0].id
         return bank_partner_id
+||||||| a922c31fa7ccd1107b31287ab1f75697fae874f8
+        bank_partner_id = False
+        if self.amount_total <= 0 and self.partner_id.bank_ids:
+            bank_partner_id = self.partner_id.bank_ids[0].id
+        elif self.amount_total >= 0 and self.payment_ids and self.payment_ids[0].payment_method_id.journal_id.bank_account_id:
+            bank_partner_id = self.payment_ids[0].payment_method_id.journal_id.bank_account_id.id
+        elif self.amount_total >= 0 and self.company_id.partner_id.bank_ids:
+            bank_partner_id = self.company_id.partner_id.bank_ids[0].id
+        return bank_partner_id
+=======
+        self.ensure_one()
+        partner_bank_id = False
+
+        def _first_allowed(bank_ids):
+            return bank_ids.filtered(lambda b: b.allow_out_payment)[:1]
+
+        # Case 1: refund / negative amount → customer bank
+        if self.amount_total <= 0 and self.partner_id.bank_ids:
+            partner_bank_id = _first_allowed(self.partner_id.bank_ids)
+
+        # Case 2: positive amount → payment journal bank
+        elif self.amount_total >= 0 and self.payment_ids:
+            journal_bank = self.payment_ids[0].payment_method_id.journal_id.bank_account_id
+            if journal_bank and journal_bank.allow_out_payment:
+                partner_bank_id = journal_bank
+
+        # Case 3: fallback → company bank
+        elif self.amount_total >= 0 and self.company_id.partner_id.bank_ids:
+            partner_bank_id = _first_allowed(self.company_id.partner_id.bank_ids)
+
+        return partner_bank_id.id if partner_bank_id else False
+>>>>>>> 73edaf0b4f115f2429d1be0dca3a6c0f0b19f68b
 
     def _create_invoice(self, move_vals):
         AccountMove = self.env['account.move']
