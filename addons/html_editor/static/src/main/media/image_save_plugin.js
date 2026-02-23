@@ -25,8 +25,6 @@ export class ImageSavePlugin extends Plugin {
 
     /** @type {import("plugins").EditorResources} */
     resources = {
-        on_will_save_handlers: this.savePendingImages.bind(this),
-
         ...(this.config.dropImageAsAttachment && {
             on_image_added_handlers: (img) => img.classList.add("o_b64_image_to_save"),
         }),
