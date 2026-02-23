@@ -22,7 +22,7 @@ class NewsletterSubscribeCommonOptionPlugin extends Plugin {
             withSequence(NEWSLETTER_SELECT, NewsletterSubscribeCommonPopupOption),
             withSequence(SNIPPET_SPECIFIC, MailingListSubscribeFormOption),
         ],
-        dropzone_selector: [
+        dropzone_selectors: [
             {
                 selector: ".js_subscribe",
                 dropNear: "p, h1, h2, h3, blockquote, .card",
@@ -30,7 +30,7 @@ class NewsletterSubscribeCommonOptionPlugin extends Plugin {
             },
         ],
         on_snippet_dropped_handlers: withSequence(-1, (args) => this.onSnippetDropped(args)),
-        is_unremovable_selector: ".js_subscribe_btn",
+        is_unremovable_selectors: ".js_subscribe_btn",
         immutable_link_selectors: [".js_subscribe_btn"],
     };
 

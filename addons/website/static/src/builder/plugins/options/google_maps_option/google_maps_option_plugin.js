@@ -53,7 +53,7 @@ export class GoogleMapsOptionPlugin extends Plugin {
     /** @type {import("plugins").WebsiteResources} */
     resources = {
         builder_options: [GoogleMapsOption],
-        so_content_addition_selector: [".s_google_map"],
+        so_content_addition_selectors: [".s_google_map"],
         on_snippet_dropped_handlers: this.onSnippetDropped.bind(this),
         builder_actions: {
             ResetMapColorAction,

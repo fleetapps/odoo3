@@ -15,7 +15,7 @@ class MapOptionPlugin extends Plugin {
     /** @type {import("plugins").WebsiteResources} */
     resources = {
         builder_options: [MapOption],
-        so_content_addition_selector: [".s_map"],
+        so_content_addition_selectors: [".s_map"],
         builder_actions: {
             MapUpdateSrcAction,
             MapDescriptionAction,
