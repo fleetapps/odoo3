@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="website.ShareMediaOption">
+    <BuilderList
+        action="'shareMediaLinks'"
+        itemShape="{ name : 'text', status: 'boolean' }"
+        isEditable="false"
+        disableLastActiveCheckbox="true"
+        shouldPreview="true" />
+</t>
+
+</templates>
