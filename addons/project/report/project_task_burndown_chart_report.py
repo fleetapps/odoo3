@@ -86,6 +86,9 @@ class ProjectTaskBurndownChartReport(models.AbstractModel):
                        )) AS step(stage_id, duration)
              LEFT JOIN project_task_type s ON s.id=step.stage_id::int
                  WHERE t.active=true AND t.id IN (SELECT id from task_ids)
+                  AND t.duration_tracking IS NOT NULL
+                  AND t.duration_tracking ? 's'
+                  AND t.duration_tracking ? 'd'
         ), project_task_tracking_by_end AS (
                 SELECT
                        id,

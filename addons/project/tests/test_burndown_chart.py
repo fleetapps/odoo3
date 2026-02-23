@@ -1,11 +1,15 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from freezegun import freeze_time
+from collections import defaultdict
 from datetime import datetime
-from unittest import skip
+from freezegun import freeze_time
 
+from unittest.mock import patch
+
+from odoo import fields
 from odoo.fields import Command, Domain
 from odoo.tests.common import tagged, HttpCase
+
 from .test_project_base import TestProjectCommon
 
 
@@ -14,14 +18,28 @@ class TestBurndownChartCommon(TestProjectCommon):
 
     @classmethod
     def set_create_date(cls, record, create_date):
-        cls.env.cr.execute(f"UPDATE {record._table} SET create_date=%s WHERE id=%s", (create_date, record.id))
+        record.invalidate_recordset()
+        if 'duration_tracking' in record:
+            cls.env.cr.execute(f"""
+                UPDATE {record._table}
+                   SET create_date=%s,
+                       duration_tracking=jsonb_set(duration_tracking, '{{d}}', to_jsonb(%s::text))
+                 WHERE id=%s
+            """, (create_date, fields.Datetime.to_string(create_date), record.id))
+            record.invalidate_recordset(fnames=['duration_tracking'])
+        else:
+            cls.env.cr.execute(f"""
+                UPDATE {record._table}
+                   SET create_date=%s
+                 WHERE id=%s
+            """, (create_date, record.id))
         record.invalidate_recordset(fnames=['create_date'], flush=False)
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.current_year = datetime.now().year
-        create_date = datetime(cls.current_year - 1, 1, 1)
+        create_date = datetime(cls.current_year - 1, 1, 5)
         Stage = cls.env['project.task.type']
         cls.todo_stage = Stage.create({
             'sequence': 1,
@@ -43,6 +61,7 @@ class TestBurndownChartCommon(TestProjectCommon):
             'name': 'Done',
         })
         cls.set_create_date(cls.done_stage, create_date)
+
         cls.stages = cls.todo_stage + cls.in_progress_stage + cls.testing_stage + cls.done_stage
         cls.project = cls.env['project.project'].create({
             'name': 'Burndown Chart Test',
@@ -128,7 +147,7 @@ class TestBurndownChartCommon(TestProjectCommon):
             'sequence': 20,
             'name': '3',
         }, {
-            'sequence': 20,
+            'sequence': 30,
             'name': '4',
         }])
         cls.stages_bis = cls.stage_1 | cls.stage_2 | cls.stage_3 | cls.stage_4
@@ -156,69 +175,69 @@ class TestBurndownChartCommon(TestProjectCommon):
         # Precommit to have the records in db and allow to rollback at the end of test
         cls.env.cr.flush()
 
-        with freeze_time('%s-02-10' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 2, 10)):
             (cls.task_a + cls.task_b).write({'stage_id': cls.in_progress_stage.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-02-20' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 2, 20)):
             cls.task_c.write({'stage_id': cls.in_progress_stage.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-03-15' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 3, 15)):
             (cls.task_d + cls.task_e).write({'stage_id': cls.in_progress_stage.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-04-10' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 4, 10)):
             (cls.task_a + cls.task_b).write({'stage_id': cls.testing_stage.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-05-12' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 5, 12)):
             cls.task_c.write({'stage_id': cls.testing_stage.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-06-25' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 6, 25)):
             cls.task_d.write({'stage_id': cls.testing_stage.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-07-25' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 7, 25)):
             cls.task_e.write({'stage_id': cls.testing_stage.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-08-01' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 8, 5)):
             cls.task_a.write({'stage_id': cls.done_stage.id, 'state': '1_done'})
             cls.env.cr.flush()
 
-        with freeze_time('%s-09-10' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 9, 10)):
             cls.task_b.write({'stage_id': cls.done_stage.id, 'state': '1_done'})
             cls.env.cr.flush()
 
-        with freeze_time('%s-10-05' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 10, 5)):
             cls.task_c.write({'stage_id': cls.done_stage.id, 'state': '1_done'})
             cls.task_a.write({'state': '1_canceled'})
             cls.env.cr.flush()
 
-        with freeze_time('%s-11-25' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 11, 25)):
             cls.task_d.write({'stage_id': cls.done_stage.id, 'state': '1_done'})
             cls.task_b.write({'state': '1_canceled'})
             cls.env.cr.flush()
 
-        with freeze_time('%s-12-12' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 12, 12)):
             cls.task_e.write({'stage_id': cls.done_stage.id, 'state': '1_done'})
             cls.env.cr.flush()
 
-        with freeze_time('%s-12-24' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 12, 24)):
             cls.task_f.write({'state': '1_canceled'})
             cls.env.cr.flush()
 
-        with freeze_time('%s-02-10' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 2, 10)):
             cls.task_bis.write({'stage_id': cls.stage_2.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-03-10' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 3, 10)):
             (cls.task_bis).write({'stage_id': cls.stage_3.id})
             cls.env.cr.flush()
 
-        with freeze_time('%s-04-10' % (cls.current_year - 1)):
+        with patch.object(cls.env.cr, "now", return_value=datetime(cls.current_year - 1, 4, 10)):
             (cls.task_bis).write({'stage_id': cls.stage_4.id})
             cls.env.cr.flush()
 
@@ -226,24 +245,24 @@ class TestBurndownChartCommon(TestProjectCommon):
 class TestBurndownChart(TestBurndownChartCommon):
 
     def map_read_group_result(self, read_group_result):
-        return {(res['date:month'][1], res['stage_id'][0]): int(res['__count']) for res in read_group_result if res['stage_id'][1]}
-
-    def map_read_group_is_closed_result(self, read_group_result):
-        return {(res['date:month'][1], res['is_closed']): int(res['__count']) for res in read_group_result}
+        return [(res['date:month'][1], res['stage_id'][0], int(res['__count'])) for res in read_group_result if res['stage_id'][1]]
 
     def check_read_group_results(self, domain, expected_results_dict):
         read_group_result = self.env['project.task.burndown.chart.report'].formatted_read_group(
             domain, ['date:month', 'stage_id'], ['__count'])
         read_group_result_dict = self.map_read_group_result(read_group_result)
-        self.assertDictEqual(read_group_result_dict, expected_results_dict)
+        parsed = []
+        for month_year, stage, value in read_group_result_dict:
+            parsed.append((month_year, stage, value))
+        result = defaultdict(dict)
+        stage_cumulative = defaultdict(int)
 
-    def check_read_group_is_closed_results(self, domain, expected_results_dict):
-        read_group_result = self.env['project.task.burndown.chart.report'].formatted_read_group(
-            domain, ['date:month', 'is_closed'], ['__count'])
-        read_group_result_dict = self.map_read_group_is_closed_result(read_group_result)
-        self.assertDictEqual(read_group_result_dict, expected_results_dict)
+        for year_month, stage, value in parsed:
+            stage_cumulative[stage] += value
+            result[year_month, stage] = stage_cumulative[stage]
+        result = {k: v for k, v in result.items() if v}
+        self.assertDictEqual(result, expected_results_dict)
 
-    @skip("TODO: Need to update according to the new flow")
     def test_burndown_chart(self):
         burndown_chart_domain = [('project_id', '!=', False)]
         project_domain = [('project_id', '=', self.project.id)]
@@ -272,53 +291,21 @@ class TestBurndownChart(TestBurndownChartCommon):
             ('December %s' % (self.current_year - 1), self.todo_stage.id): 1,
             ('December %s' % (self.current_year - 1), self.done_stage.id): 5,
         }
-        project_expected_is_closed_dict = {
-            ('January %s' % (self.current_year - 1), 'open'): 5,
-            ('February %s' % (self.current_year - 1), 'open'): 5,
-            ('March %s' % (self.current_year - 1), 'open'): 5,
-            ('April %s' % (self.current_year - 1), 'open'): 5,
-            ('May %s' % (self.current_year - 1), 'open'): 5,
-            ('June %s' % (self.current_year - 1), 'open'): 5,
-            ('July %s' % (self.current_year - 1), 'open'): 5,
-            ('August %s' % (self.current_year - 1), 'open'): 4,
-            ('August %s' % (self.current_year - 1), 'closed'): 1,
-            ('September %s' % (self.current_year - 1), 'open'): 3,
-            ('September %s' % (self.current_year - 1), 'closed'): 2,
-            ('October %s' % (self.current_year - 1), 'open'): 2,
-            ('October %s' % (self.current_year - 1), 'closed'): 3,
-            ('November %s' % (self.current_year - 1), 'open'): 1,
-            ('November %s' % (self.current_year - 1), 'closed'): 4,
-            ('December %s' % (self.current_year - 1), 'closed'): 6,
-        }
-        months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
-                  'November', 'December']
-        current_month = datetime.now().month
-        for i in range(current_month):
-            month_key = f"{months[i]} {self.current_year}"
-            project_expected_dict[(month_key, self.todo_stage.id)] = 1
-            project_expected_dict[(month_key, self.done_stage.id)] = 5
-            project_expected_is_closed_dict[(month_key, 'closed')] = 6
 
         # Check that we get the expected results for the complete data of `self.project`.
         self.check_read_group_results(Domain.AND([burndown_chart_domain, project_domain]), project_expected_dict)
-        self.check_read_group_is_closed_results(Domain.AND([burndown_chart_domain, project_domain]), project_expected_is_closed_dict)
-
         # Check that we get the expected results for the complete data of `self.project` & `self.project_2` using an
         # `ilike` in the domain.
         all_projects_domain_with_ilike = Domain.OR([project_domain, [('project_id', 'ilike', 'mySearchTag')]])
         project_expected_dict = {key: val if key[1] != self.todo_stage.id else val + 2 for key, val in project_expected_dict.items()}
-        project_expected_is_closed_dict = {key: val if key[1] == 'closed' else val + 2 for key, val in project_expected_is_closed_dict.items()}
-        for i in range(2, 11):
-            month_key = f"{months[i]} {self.current_year - 1}"
-            project_expected_dict[(month_key, self.todo_stage.id)] = 2
-        project_expected_is_closed_dict[(f"{months[11]} {self.current_year - 1}", 'open')] = 2
-        for i in range(current_month):
-            project_expected_is_closed_dict[(f"{months[i]} {self.current_year}", 'open')] = 2
+        project_expected_dict.setdefault(
+            ('March %s' % (self.current_year - 1), self.todo_stage.id),
+            2
+        )
+
         self.check_read_group_results(Domain.AND([burndown_chart_domain, all_projects_domain_with_ilike]), project_expected_dict)
-        self.check_read_group_is_closed_results(Domain.AND([burndown_chart_domain, all_projects_domain_with_ilike]), project_expected_is_closed_dict)
 
         date_from, date_to = ('%s-01-01' % (self.current_year - 1), '%s-03-01' % (self.current_year - 1))
-        date_from_is_closed, date_to_is_closed = ('%s-10-01' % (self.current_year - 1), '%s-12-01' % (self.current_year - 1))
 
         date_and_user_domain = [('date', '>=', date_from), ('date', '<', date_to), ('user_ids', 'ilike', 'ProjectUser')]
         complex_domain_expected_dict = {
@@ -329,33 +316,14 @@ class TestBurndownChart(TestBurndownChartCommon):
         complex_domain = Domain.AND([burndown_chart_domain, all_projects_domain_with_ilike, date_and_user_domain])
         self.check_read_group_results(complex_domain, complex_domain_expected_dict)
 
-        date_and_user_domain = [('date', '>=', date_from_is_closed), ('date', '<', date_to_is_closed), ('user_ids', 'ilike', 'ProjectUser')]
-        complex_domain = Domain.AND([burndown_chart_domain, all_projects_domain_with_ilike, date_and_user_domain])
-        complex_domain_expected_dict = {
-            ('October %s' % (self.current_year - 1), 'closed'): 2.0,
-            ('October %s' % (self.current_year - 1), 'open'): 1.0,
-            ('November %s' % (self.current_year - 1), 'closed'): 2.0,
-            ('November %s' % (self.current_year - 1), 'open'): 1.0
-        }
-        self.check_read_group_is_closed_results(complex_domain, complex_domain_expected_dict)
-
-        date_and_user_domain = [('date', '>=', date_from), ('date', '<', date_to), ('user_ids', 'ilike', 'ProjectManager')]
+        date_and_user_domain = [('date', '>=', date_from), ('date', '<', date_to)]
         milestone_domain = [('milestone_id', 'ilike', 'Test')]
         complex_domain = Domain.AND([burndown_chart_domain, all_projects_domain_with_ilike, date_and_user_domain, milestone_domain])
+        # There were no changes in February, and because the graph is cumulative, it only reflects the data from January.
         complex_domain_expected_dict = {
             ('January %s' % (self.current_year - 1), self.todo_stage.id): 1,
-            ('February %s' % (self.current_year - 1), self.todo_stage.id): 1,
         }
         self.check_read_group_results(complex_domain, complex_domain_expected_dict)
-
-        date_and_user_domain = [('date', '>=', date_from_is_closed), ('date', '<', date_to_is_closed), ('user_ids', 'ilike', 'ProjectManager')]
-        milestone_domain = [('milestone_id', 'ilike', 'Test')]
-        complex_domain = Domain.AND([burndown_chart_domain, all_projects_domain_with_ilike, date_and_user_domain, milestone_domain])
-        complex_domain_expected_dict = {
-            ('October %s' % (self.current_year - 1), 'open'): 1.0,
-            ('November %s' % (self.current_year - 1), 'closed'): 1.0
-        }
-        self.check_read_group_is_closed_results(complex_domain, complex_domain_expected_dict)
 
     def burndown_chart_stage_delete_stage_1(self):
         """
@@ -381,13 +349,19 @@ class TestBurndownChart(TestBurndownChartCommon):
         del expected_dict[('February %s' % (self.current_year - 1), self.stage_2.id)]
         self.check_read_group_results(self.deleted_domain, expected_dict)
 
-    @skip("TODO: Need to update according to the new flow")
-    def test_burndown_chart_stage_deleted_3(self):
-        with freeze_time('%s-08-10' % (self.current_year - 1)):
+    def test_burndown_chart_stage_delete_stage_3(self):
+        """
+        We assume that the timeline is based on the duration spent in each specific stage. Therefore, if a stage is deleted, the related
+        time spent in that stage will also be removed.
+        """
+        with patch.object(self.env.cr, "now", return_value=datetime(self.current_year - 1, 10, 15)):
             self.stage_3.unlink()
             self.env.cr.flush()
-        expected_dict = self.get_expected_dict()
-        del expected_dict[('March %s' % (self.current_year - 1), self.stage_3.id)]
+        expected_dict = {
+            ('January %s' % (self.current_year - 1), self.stage_1.id): 1,
+            ('February %s' % (self.current_year - 1), self.stage_2.id): 1,
+            ('March %s' % (self.current_year - 1), self.stage_4.id): 1,
+        }
         self.check_read_group_results(self.deleted_domain, expected_dict)
 
     def burndown_chart_all_stage_deleted(self):
@@ -436,7 +410,6 @@ class TestBurndownChart(TestBurndownChartCommon):
 @tagged('-at_install', 'post_install')
 class TestBurndownChartTour(HttpCase, TestBurndownChartCommon):
 
-    @skip("TODO: Need to update according to the new flow")
     def test_burndown_chart_tour(self):
         # Test customizing personal stages as a project user
         self.start_tour('/odoo', 'burndown_chart_tour', login="admin")
