@@ -206,3 +206,120 @@ class TestMultistepManufacturing(TestMrpCommon):
         self.assertFalse(self.sale_order.picking_ids.move_ids.move_orig_ids)
         self.sale_order.picking_ids.action_assign()
         self.assertEqual(self.sale_order.picking_ids.move_ids.quantity, 1.0)
+
+    def test_picking_production_ids_shared_picking(self):
+        """Test that picking.production_ids returns all linked MOs when a
+        picking has moves from multiple production groups.
+
+        In a 2-step manufacturing warehouse (PBM), confirming a sale order
+        with two manufactured products creates two MOs — each with its own
+        production group. Their PBM moves get separate pickings because
+        _search_picking_for_assignation_domain filters by production_group_id.
+
+        When those pickings are later consolidated (e.g. via batch transfer
+        or operational merge), the resulting picking has moves from two
+        different production groups. The production_ids field must return
+        ALL MOs linked through those groups — not just the first one.
+
+        Previously, production_ids used a ``related`` field traversal
+        (move_ids.production_group_id.production_ids) which truncated
+        intermediate x2many steps via next(iter(...)) in _compute_related,
+        silently dropping all production groups after the first.
+        """
+        self.warehouse.manufacture_steps = 'pbm'
+        manufacture_route = self.warehouse.manufacture_pull_id.route_id
+        mto_route = self.warehouse.mto_pull_id.route_id
+
+        # Create two manufactured products with their own unique BOMs
+        product_a, product_b = self.env['product.product'].create([{
+            'name': 'Product A',
+            'uom_id': self.uom_unit.id,
+            'is_storable': True,
+            'route_ids': [(6, 0, [manufacture_route.id, mto_route.id])],
+        }, {
+            'name': 'Product B',
+            'uom_id': self.uom_unit.id,
+            'is_storable': True,
+            'route_ids': [(6, 0, [manufacture_route.id, mto_route.id])],
+        }])
+        raw_a, raw_b = self.env['product.product'].create([
+            {'name': 'Raw A', 'uom_id': self.uom_unit.id, 'is_storable': True},
+            {'name': 'Raw B', 'uom_id': self.uom_unit.id, 'is_storable': True},
+        ])
+        self.env['mrp.bom'].create([{
+            'product_id': product_a.id,
+            'product_tmpl_id': product_a.product_tmpl_id.id,
+            'product_qty': 1.0,
+            'type': 'normal',
+            'bom_line_ids': [(0, 0, {'product_id': raw_a.id, 'product_qty': 1.0})],
+        }, {
+            'product_id': product_b.id,
+            'product_tmpl_id': product_b.product_tmpl_id.id,
+            'product_qty': 1.0,
+            'type': 'normal',
+            'bom_line_ids': [(0, 0, {'product_id': raw_b.id, 'product_qty': 1.0})],
+        }])
+
+        # Confirm a sale order with both manufactured products.
+        # This organically creates two MOs (each with its own production
+        # group) and two PBM pickings — one per production group.
+        partner = self.env['res.partner'].create({'name': 'Test Customer'})
+        so = self.env['sale.order'].create({
+            'partner_id': partner.id,
+            'warehouse_id': self.warehouse.id,
+            'order_line': [
+                (0, 0, {
+                    'name': product_a.name,
+                    'product_id': product_a.id,
+                    'product_uom_qty': 1.0,
+                    'price_unit': 10.0,
+                }),
+                (0, 0, {
+                    'name': product_b.name,
+                    'product_id': product_b.id,
+                    'product_uom_qty': 1.0,
+                    'price_unit': 10.0,
+                }),
+            ],
+        })
+        so.action_confirm()
+
+        # Two MOs should be created, each with its own production group
+        mos = self.env['mrp.production'].search([('origin', '=', so.name)])
+        self.assertEqual(len(mos), 2, "Two MOs should be created for the SO")
+
+        mo_a = mos.filtered(lambda m: m.product_id == product_a)
+        mo_b = mos.filtered(lambda m: m.product_id == product_b)
+        self.assertEqual(len(mo_a), 1)
+        self.assertEqual(len(mo_b), 1)
+        self.assertNotEqual(mo_a.production_group_id, mo_b.production_group_id,
+            "Each MO must have its own production group")
+
+        # _run_manufacture confirms MOs one-by-one, and
+        # _search_picking_for_assignation_domain filters by
+        # production_group_id, so each MO gets its own PBM picking.
+        pbm_picking_a = mo_a.picking_ids.filtered(
+            lambda p: p.picking_type_id == self.warehouse.pbm_type_id)
+        pbm_picking_b = mo_b.picking_ids.filtered(
+            lambda p: p.picking_type_id == self.warehouse.pbm_type_id)
+        self.assertEqual(len(pbm_picking_a), 1)
+        self.assertEqual(len(pbm_picking_b), 1)
+        self.assertNotEqual(pbm_picking_a, pbm_picking_b)
+
+        # Consolidate both PBM pickings into one — this simulates a batch
+        # transfer or operational merge where moves from different production
+        # groups end up on the same picking.
+        pbm_picking_b.move_ids.picking_id = pbm_picking_a
+        pbm_picking_b.unlink()
+        picking = pbm_picking_a
+
+        # The picking now has moves from two different production groups
+        self.assertEqual(len(picking.move_ids.production_group_id), 2,
+            "Picking should have moves from two different production groups")
+
+        # production_ids must return BOTH MOs
+        self.assertEqual(len(picking.production_ids), 2,
+            "production_ids must return both MOs, not just the first group's")
+        self.assertIn(mo_a, picking.production_ids)
+        self.assertIn(mo_b, picking.production_ids)
+        self.assertEqual(picking.production_count, 2)
