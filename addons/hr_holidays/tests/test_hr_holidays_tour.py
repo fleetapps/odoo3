@@ -50,4 +50,19 @@ class TestHrHolidaysTour(HttpCase):
             'date_to': '2022-12-31',
         })
 
-        self.start_tour('/odoo', 'hr_holidays_tour', login="admin")
+        timeoff_admin = self.env['res.users'].create({
+            'name': 'Timeoff Admin',
+            'login': 'timeoff_admin',
+            'password': 'timeoff_admin',
+            'group_ids': [
+                (4, self.env.ref('base.group_user').id),
+                (4, self.env.ref('hr_holidays.group_hr_holidays_manager').id),
+            ],
+        })
+
+        self.env['hr.employee'].create({
+            'name': 'Timeoff Admin Employee',
+            'user_id': timeoff_admin.id,
+        })
+
+        self.start_tour('/odoo', 'hr_holidays_tour', login=timeoff_admin.login)

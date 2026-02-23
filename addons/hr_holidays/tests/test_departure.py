@@ -4,6 +4,7 @@ from datetime import date
 
 from freezegun import freeze_time
 
+from odoo.tests import new_test_user
 from odoo.addons.hr_holidays.tests.common import TestHolidayContract
 
 
@@ -11,6 +12,8 @@ class TestDeparture(TestHolidayContract):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+
+        cls.leave_manager = new_test_user(cls.env, login="leave_manager", groups="hr_holidays.group_hr_holidays_manager")
 
         cls.work_entry_type = cls.env['hr.work.entry.type'].create({
             'name': 'Allocation based',
@@ -27,7 +30,7 @@ class TestDeparture(TestHolidayContract):
             'number_of_days': 1000,
         }])
 
-        cls.leave_before, cls.leave_during, cls.leave_after_1, cls.leave_after_2 = cls.env['hr.leave'].create([
+        cls.leave_before, cls.leave_during, cls.leave_after_1, cls.leave_after_2 = cls.env['hr.leave'].with_user(cls.leave_manager).create([
             {
                 'name': "Leave before the departure",
                 'employee_id': cls.jules_emp.id,
