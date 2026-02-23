@@ -46,6 +46,8 @@
         <separator_option template="html_builder.SeparatorOption" selector=".s_hr" applyTo="hr"/>
         <cta_badge_option template="html_builder.CTABadgeOption" selector=".s_cta_badge"/>
         <badge_option template="html_builder.BadgeOption" selector=".s_badge"/>
+        <t id="bottom_options_hook"/>
+        
     </div>
 </t>
 </templates>

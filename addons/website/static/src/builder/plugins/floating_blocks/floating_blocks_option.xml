@@ -72,4 +72,19 @@
     </section>
 </t>
 
+<t t-inherit="website.BuilderOptions" t-inherit-mode="extension">
+    <xpath expr="//t[@id='snippet_specific_options']" position="after">
+        <floating_blocks_cards_option
+            template="website.FloatingBlocksCardsOption"
+            selector=".s_floating_blocks"/>
+        <floating_blocks_block_mobile_option
+            selector=".s_floating_blocks .s_floating_blocks_block"
+            applyTo=".container-fluid"/>
+        <floating_blocks_block_option selector=".s_floating_blocks .s_floating_blocks_block"/>
+        <floating_blocks_design_option
+            template="website.FloatingBlocksDesignOption"
+            selector=".s_floating_blocks"/>
+    </xpath>
+</t>
+
 </templates>

@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
 <t t-inherit="website.BuilderOptions" t-inherit-mode="extension">
-    <xpath expr="//t[@id='module_specific_options']" position="after">
+    <xpath expr="//t[@id='snippet_specific_options']" position="after">
         <newsletter_layout_option
             template="website_mass_mailing.NewsletterLayoutOption"
             selector=".s_newsletter_block"
