@@ -40,6 +40,8 @@ export class BuilderList extends Component {
         columnWidth: { optional: true },
         forbidLastItemRemoval: { type: Boolean, optional: true },
         isEditable: { type: Boolean, optional: true },
+        disableLastActiveCheckbox: { type: Boolean, optional: true },
+        shouldPreview: { type: Boolean, optional: true },
     };
     static defaultProps = {
         addItemTitle: _t("Add"),
@@ -51,6 +53,8 @@ export class BuilderList extends Component {
         columnWidth: {},
         forbidLastItemRemoval: false,
         isEditable: true,
+        disableLastActiveCheckbox: false,
+        shouldPreview: false,
     };
     static components = { BuilderComponent, SelectMenu };
 
@@ -200,11 +204,17 @@ export class BuilderList extends Component {
         this.handleValueChange(e.target, true);
     }
 
-    handleValueChange(targetInputEl, commitToHistory) {
+    handleValueChange(targetInputEl, commitToHistory, isHovering = false) {
         const id = targetInputEl.dataset.id;
         const propertyName = targetInputEl.name;
         const isCheckbox = targetInputEl.type === "checkbox";
-        const value = isCheckbox ? targetInputEl.checked : targetInputEl.value;
+        // `isHovering` is used as workaround for preview. Since hovering
+        // does not change `targetInputEl.checked`, we manually invert value.
+        const value = isCheckbox
+            ? isHovering
+                ? !targetInputEl.checked
+                : targetInputEl.checked
+            : targetInputEl.value;
 
         const items = this.formatRawValue(this.state.value);
         if (value === true && this.props.itemShape[propertyName] === "exclusive_boolean") {
@@ -223,5 +233,13 @@ export class BuilderList extends Component {
         } else {
             this.preview(items);
         }
+    }
+
+    onPointerEnter(e) {
+        this.props.shouldPreview && this.handleValueChange(e.target, false, true);
+    }
+
+    onPointerLeave(e) {
+        this.props.shouldPreview && this.handleValueChange(e.target, false);
     }
 }
