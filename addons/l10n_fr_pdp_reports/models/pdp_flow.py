@@ -8,7 +8,7 @@ import uuid
 from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
-from odoo import Command, api, fields, models, tools, _
+from odoo import Command, _, api, fields, models, tools
 from odoo.exceptions import UserError
 
 from ..utils.vat import is_valid_vat
@@ -32,6 +32,17 @@ PDP_APP_CODE_FALLBACK_QUAL = 'PPF000'
 PDP_APP_CODE_FALLBACK_PROD = 'PDP000'
 PDP_FILENAME_ID_LENGTH = 19
 
+FLOW_OPEN_STATES = {
+    'pending': "Pending",
+    'building': "Building",
+    'ready': "Ready",
+    'error': "Error",
+}
+FLOW_SENT_STATES = {
+    'sent': 'Sent',
+    'completed': 'Completed'
+}
+
 
 class PdpFlow(models.Model):
     _name = 'l10n.fr.pdp.flow'
@@ -39,71 +50,53 @@ class PdpFlow(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'create_date desc'
 
-    # -------------------------------------------------------------------------
-    # Default Methods (before fields per Odoo guidelines)
-    # -------------------------------------------------------------------------
-
     def _default_name(self):
         return _("Flow %(date)s", date=fields.Date.context_today(self))
 
-    # -------------------------------------------------------------------------
-    # Fields
-    # -------------------------------------------------------------------------
-
     name = fields.Char(string="Reference", required=True, copy=False, default=_default_name)
     reporting_date = fields.Date(
-        string="Reporting Date",
         required=True,
         help="Date associated with the aggregated reporting period.",
         index=True,
     )
     flow_type = fields.Char(
-        string="Flux Type",
         default='transaction_report',
         readonly=True,
     )
     state = fields.Selection(
         selection=[
-            ('pending', "Pending"),
-            ('building', "Building"),
-            ('ready', "Ready"),
-            ('error', "Error"),
+            *list(FLOW_OPEN_STATES.items()),
             ('cancelled', "Cancelled"),
-            ('sent', "Sent"),
-            ('completed', "Completed"),
+            *list(FLOW_SENT_STATES.items()),
         ],
         string="Status",
         required=True,
         default='pending',
         index=True,
     )
-    payload = fields.Binary(string="Payload", attachment=True, help="XML payload sent to the PDP API.")
-    payload_filename = fields.Char(string="Payload Filename")
-    transport_identifier = fields.Char(string="Transport Identifier", help="Identifier returned by the PDP transport API.")
-    transport_status = fields.Char(string="Transport Status", help="Raw status returned by the PDP transport API.")
-    transport_message = fields.Text(string="Transport Message", help="Additional message or error returned by the PDP transport API.")
+    payload = fields.Binary(attachment=True, help="XML payload sent to the PDP API.")
+    payload_filename = fields.Char()
+    transport_identifier = fields.Char(help="Identifier returned by the PDP transport API.")
+    transport_status = fields.Char(help="Raw status returned by the PDP transport API.")
+    transport_message = fields.Text(help="Additional message or error returned by the PDP transport API.")
     currency_id = fields.Many2one(
         comodel_name='res.currency',
-        string="Currency",
         required=True,
         help="Currency of the aggregated transactions included in the payload.",
     )
     document_type = fields.Selection(
         selection=[('sale', "Sale"), ('refund', "Refund"), ('mixed', "Mixed")],
-        string="Document Type",
         default='sale',
         required=True,
     )
     report_kind = fields.Selection(
         selection=[('transaction', "Transaction Report"), ('payment', "Payment Report")],
-        string="Report Kind",
         required=True,
         default='transaction',
         index=True,
     )
     operation_type = fields.Selection(
         selection=[('sale', "Sales"), ('purchase', "Acquisitions")],
-        string="Operation Type",
         required=True,
         default='sale',
         index=True,
@@ -111,16 +104,14 @@ class PdpFlow(models.Model):
     )
     transaction_type = fields.Selection(
         selection=[('b2c', "B2C Domestic"), ('international', "International B2B"), ('mixed', "Mixed Scope")],
-        string="Transaction Scope",
         default='b2c',
         required=True,
         index=True,
     )
     transmission_type = fields.Selection(
-        selection=[('IN', "Initial"), ('RE', "Rectificative")],
-        string="Transmission Type",
+        selection=[('initial', "Initial"), ('rectificative', "Rectificative")],
         required=True,
-        default='IN',
+        default='initial',
         help="Type of transmission per Flux 10 v1.2: IN (Initial) or RE (Rectificative).",
     )
     issue_datetime = fields.Datetime(
@@ -129,24 +120,24 @@ class PdpFlow(models.Model):
         help="Timestamp at which the transmission is generated (TT-3).",
         copy=False,
     )
-    tracking_id = fields.Char(string="Tracking Identifier", help="External tracking identifier sent to the Flow Service.", copy=False)
-    has_payload = fields.Boolean(string="Has Payload", compute='_compute_has_payload', readonly=True)
-    has_error_moves = fields.Boolean(string="Has Error Moves", compute='_compute_has_error_moves', readonly=True)
-    revision = fields.Integer(string="Revision", default=0, copy=False)
-    period_start = fields.Date(string="Period Start", copy=False)
-    period_end = fields.Date(string="Period End", copy=False)
-    periodicity_code = fields.Char(string="Periodicity Code", copy=False)
-    is_correction = fields.Boolean(string="Correction Flow", copy=False)
+    tracking_id = fields.Char(help="External tracking identifier sent to the Flow Service.", copy=False)
+    has_payload = fields.Boolean(compute='_compute_has_payload', readonly=True)
+    has_error_moves = fields.Boolean(compute='_compute_has_error_moves', readonly=True)
+    revision = fields.Integer(default=0, copy=False)
+    period_start = fields.Date(copy=False)
+    period_end = fields.Date(copy=False)
+    periodicity_code = fields.Char( copy=False)
+    is_correction = fields.Boolean(string="Is Correction Flow", copy=False)
     last_send_datetime = fields.Datetime(string="Last Send On")
     send_datetime = fields.Datetime(string="Sent On", copy=False)
-    attempt_count = fields.Integer(string="Send Attempts", default=0)
+    attempt_count = fields.Integer(string="Send Attempts")
     acknowledgement_status = fields.Selection(
         selection=[('pending', "Pending"), ('ok', "Accepted"), ('error', "Error")],
         string="Last Known Status",
         default='pending',
         copy=False,
     )
-    acknowledgement_details = fields.Json(string="Acknowledgement Details", copy=False)
+    acknowledgement_details = fields.Json(copy=False)
     company_id = fields.Many2one(
         comodel_name='res.company',
         string="Company",
@@ -329,7 +320,7 @@ class PdpFlow(models.Model):
                     errors.append(_("Missing seller VAT."))
             elif not is_valid_vat(company_vat, company_country):
                 errors.append(_("Invalid seller VAT (%(vat)s).", vat=company_vat))
-        if move.is_purchase_document(include_receipts=False) and self._is_international_partner_for_purchase(move):
+        if move.is_purchase_document() and move._is_international_partner_for_purchase():
             supplier = move.commercial_partner_id
             supplier_vat = supplier.vat
             supplier_country = supplier.country_id.code if supplier.country_id else None
@@ -351,32 +342,26 @@ class PdpFlow(models.Model):
         taxes = move.invoice_line_ids.filtered(lambda line: line.display_type == 'product').mapped('tax_ids')
         return any((tax.l10n_fr_pdp_vatex_code or '').strip() for tax in taxes)
 
-    def _is_international_partner_for_purchase(self, move):
-        """Return True when a vendor bill partner is treated as international."""
-        return move._is_international_partner_for_purchase()
-
     def _update_error_moves(self, invalid_moves, log_event=False):
         self.ensure_one()
         invalid_ids = list(invalid_moves)
         invalid_move_records = self.env['account.move'].browse(invalid_ids)
-        # Avoid spamming chatter if the same invalid set was already recorded.
-        if invalid_move_records.sorted('id') == self.error_move_ids.sorted('id') and self.error_move_message:
-            return
         self.error_move_ids = [Command.set(invalid_ids)]
         details = []
         for move_id, reasons in invalid_moves.items():
             move = self.env['account.move'].browse(move_id)
-            details.append('%s: %s' % (move.display_name, '; '.join(reasons)))
+            # details.append('%s: %s' % (move.display_name, '; '.join(reasons)))
+            details.append(f'{move.display_name}: {"; ".join(reasons)}')
             # Only post on the move if the content differs to limit spam.
-            errors_html = '<br/>'.join(tools.html_escape(reason) for reason in reasons)
+            errors_html = Markup('').join(Markup('<li>%s</li>' % (tools.html_escape(reason))) for reason in reasons)
             body = tools.html_escape(
                 _("Excluded from PDP flow %(flow)s due to validation errors:", flow=self.display_name)
             )
             if errors_html:
-                body = '%s<br/>%s' % (body, errors_html)
+                body = Markup('%s <ul>%s</ul>' % (body, errors_html))
             last_body = move.message_ids[:1].body if move.message_ids else None
-            if last_body != body:
-                move.message_post(body=body, subtype_xmlid='mail.mt_note')
+            if not last_body or last_body.striptags() != body.striptags():  # last_body has <p> tags added, remove all tags for safe comparaison
+                move.message_post(body=body)
         self.error_move_message = '\n'.join(details)
         if log_event:
             self._log_cron_event(
@@ -393,9 +378,8 @@ class PdpFlow(models.Model):
 
     def _build_payload(self):
         """Build single XML payload for the entire flow period."""
-        open_states = {'pending', 'building', 'ready', 'error'}
         for flow in self:
-            if flow.state not in open_states:
+            if flow.state not in FLOW_OPEN_STATES:
                 raise UserError(_("Flow %(name)s has already been sent.", name=flow.name))
             flow._ensure_tracking_id()
             flow.state = 'building'
@@ -480,7 +464,7 @@ class PdpFlow(models.Model):
         for flow in self:
             flow._ensure_tracking_id()
             ignore_errors = self.env.context.get('ignore_error_invoices')
-            if ignore_errors and flow.transmission_type == 'RE':
+            if ignore_errors and flow.transmission_type == 'rectificative':
                 raise UserError(_("Rectificative flows must include all invoices; you cannot exclude invalid invoices."))
 
             # Build payload if not ready
@@ -520,52 +504,63 @@ class PdpFlow(models.Model):
             # Send single payload to proxy.
             response = flow._send_to_proxy()
             transport_state = flow._map_transport_status(response)
-            ack_status, status, ack_details, transport_status, rejected_move_ids = flow._process_acknowledgement(response, transport_state)
+            ack_status, flow_state, ack_details, transport_status, rejected_move_ids = flow._process_acknowledgement(response, transport_state)
             send_datetime = fields.Datetime.now()
             rejected_moves = self.env['account.move'].browse(rejected_move_ids)
             write_vals = {
                 'transport_identifier': response.get('id'),
                 'transport_status': transport_status or response.get('status'),
                 'transport_message': response.get('message'),
-                'state': status,
+                'state': flow_state,
                 'last_send_datetime': send_datetime,
-                'send_datetime': send_datetime if status in {'sent', 'completed'} else flow.send_datetime,
-                'issue_datetime': send_datetime if status in {'sent', 'completed'} else flow.issue_datetime,
+                'send_datetime': send_datetime if flow_state in FLOW_SENT_STATES else flow.send_datetime,
+                'issue_datetime': send_datetime if flow_state in FLOW_SENT_STATES else flow.issue_datetime,
                 'acknowledgement_status': ack_status,
                 'acknowledgement_details': ack_details,
             }
             if rejected_moves:
                 merged_error_moves = (flow.error_move_ids | rejected_moves).ids
+                rejection_lines = [
+                    _("%(move)s: rejected by PDP acknowledgement after transport send.", move=move.display_name)
+                    for move in rejected_moves
+                ]
+                existing_lines = [line for line in (self.error_move_message or '').splitlines() if line]
+                error_move_message = '\n'.join(existing_lines + rejection_lines)
                 write_vals.update({
                     'error_move_ids': [Command.set(merged_error_moves)],
-                    'error_move_message': flow._get_partial_rejection_error_message(rejected_moves),
+                    'error_move_message': error_move_message,
                 })
 
             # Update flow with transport response
             flow.write(write_vals)
-            if rejected_moves:
-                flow._post_partial_rejection_messages(rejected_moves)
+
+            for move in rejected_moves:
+                move.message_post(
+                    body=_("Rejected by PDP acknowledgement for flow %s.", self.display_name),
+                    subtype_xmlid='mail.mt_note',
+                )
+
             flow._upsert_transport_response_attachment({
                 'transport': response,
                 'acknowledgement_status': ack_status,
                 'acknowledgement_details': ack_details or [],
-                'flow_state': status,
+                'state': flow_state,
                 'sent_at': fields.Datetime.to_string(send_datetime),
             })
 
             # Handle correction flow for error invoices if requested
-            if flow.transmission_type == 'IN' and flow.error_move_ids and ignore_errors and status in {'sent', 'completed'}:
+            if flow.transmission_type == 'initial' and flow.error_move_ids and ignore_errors and flow_state in FLOW_SENT_STATES:
                 flow._schedule_correction_for_error_moves()
 
             # Post audit messages on sent moves
-            if status in {'sent', 'completed'}:
+            if flow_state in FLOW_SENT_STATES:
                 flow._post_sent_message_on_moves()
                 flow._mark_payment_events_as_reported()
 
             # Log send result
             flow._message_post_once(_(
                 "Flow sent: status %(status)s, transport %(transport)s. %(details)s",
-                status=status,
+                status=flow_state,
                 transport=response.get('id') or _("n/a"),
                 details=response.get('message') or '',
             ))
@@ -581,25 +576,6 @@ class PdpFlow(models.Model):
         body = _("E-reports %s sent", flow_link)
         for move in sent_moves:
             move.message_post(body=body, subtype_xmlid='mail.mt_note')
-
-    def _post_partial_rejection_messages(self, rejected_moves):
-        """Post an audit note on each move rejected by the proxy acknowledgement."""
-        self.ensure_one()
-        for move in rejected_moves:
-            move.message_post(
-                body=_("Rejected by PDP acknowledgement for flow %s.", self.display_name),
-                subtype_xmlid='mail.mt_note',
-            )
-
-    def _get_partial_rejection_error_message(self, rejected_moves):
-        """Merge existing validation errors with partial transport rejections."""
-        self.ensure_one()
-        rejection_lines = [
-            _("%(move)s: rejected by PDP acknowledgement after transport send.", move=move.display_name)
-            for move in rejected_moves
-        ]
-        existing_lines = [line for line in (self.error_move_message or '').splitlines() if line]
-        return '\n'.join(existing_lines + rejection_lines)
 
     def _mark_payment_events_as_reported(self):
         """Mark pending unreconcile payment events as reported after successful send."""
@@ -627,11 +603,9 @@ class PdpFlow(models.Model):
         proxy_user = self.company_id.account_edi_proxy_client_ids.filtered(
             lambda user: user.proxy_type == 'pdp'
         )[:1]
-        if proxy_user:
-            return proxy_user
-        if tools.config['test_enable']:
-            return False
-        raise UserError(_("No active PDP proxy user is configured for company %(company)s.", company=self.company_id.display_name))
+        if not proxy_user:
+            raise UserError(_("No active PDP proxy user is configured for company %(company)s.", company=self.company_id.display_name))
+        return proxy_user
 
     def _send_to_proxy(self):
         self.ensure_one()
@@ -729,7 +703,7 @@ class PdpFlow(models.Model):
             candidates = {
                 self._normalize_invoice_reference(move.l10n_fr_pdp_invoice_reference or ''),
                 self._normalize_invoice_reference(move.name or ''),
-                self._normalize_invoice_reference(move.ref or ''),
+                self._normalize_invoice_reference(move.ref or ''),  # TODO ref ????
             }
             if candidates.intersection(rejected_refs):
                 matched_moves |= move
@@ -740,11 +714,11 @@ class PdpFlow(models.Model):
         ack_list = (response or {}).get('acknowledgement') or []
         # Default: stick to transport state and pending ack.
         ack_status = 'pending'
-        flow_state = transport_state
+        state = transport_state
         transport_status = False
         rejected_move_ids = []
         if not ack_list:
-            return ack_status, flow_state, False, transport_status, rejected_move_ids
+            return ack_status, state, False, transport_status, rejected_move_ids
 
         # Detect rejection/duplicate acknowledgement codes per spec (Tableau 14)
         rejection_entries = []
@@ -763,25 +737,25 @@ class PdpFlow(models.Model):
             if rejected_moves and len(rejected_moves) < len(sent_moves):
                 # Rejet partiel: only impacted documents are marked as errors.
                 ack_status = 'error'
-                flow_state = 'completed'
+                state = 'completed'
                 transport_status = 'PARTIAL_REJECTED'
                 rejected_move_ids = rejected_moves.ids
             else:
                 # Rejet global (or unknown granularity): keep strict global error behavior.
                 ack_status = 'error'
-                flow_state = 'error'
+                state = 'error'
         elif has_duplicate:
             # Duplicate transmission (G8.05): no business error, keep flow as completed.
             ack_status = 'ok'
-            flow_state = 'completed'
+            state = 'completed'
             transport_status = 'DUPLICATE'
         else:
             ack_status = 'ok'
             # If transport returned only 'sent', upgrade to completed on positive ack.
-            if flow_state == 'sent':
-                flow_state = 'completed'
+            if state == 'sent':
+                state = 'completed'
 
-        return ack_status, flow_state, ack_list, transport_status, rejected_move_ids
+        return ack_status, state, ack_list, transport_status, rejected_move_ids
 
     def _extract_proxy_poll_error_message(self, payload):
         """Extract a readable error message from proxy polling payload."""
@@ -869,7 +843,7 @@ class PdpFlow(models.Model):
                     if mapped.get('transport_message') is not None:
                         write_vals['transport_message'] = mapped.get('transport_message')
                     target_state = mapped.get('state')
-                    if target_state and not (flow.state in {'completed', 'error'} and target_state == 'sent'):
+                    if target_state and not (flow.state in FLOW_SENT_STATES and target_state == 'sent'):
                         write_vals['state'] = target_state
                     ack_status = mapped.get('acknowledgement_status')
                     if ack_status and not (flow.acknowledgement_status in {'ok', 'error'} and ack_status == 'pending'):
@@ -913,7 +887,7 @@ class PdpFlow(models.Model):
                 # - no errors: send as soon as the window opens
                 # - errors: send only on the last day (excluding invalid invoices)
                 # RE sends immediately when ready.
-                if flow.transmission_type == 'IN':
+                if flow.transmission_type == 'initial':
                     window = flow._compute_deadline_window(today)
                     if not window:
                         continue
@@ -960,7 +934,6 @@ class PdpFlow(models.Model):
         self.ensure_one()
         if not self.error_move_ids:
             return
-        open_states = {'pending', 'building', 'ready', 'error'}
         re_flow = self.env['l10n.fr.pdp.flow'].search([
             ('company_id', '=', self.company_id.id),
             ('currency_id', '=', self.currency_id.id),
@@ -969,9 +942,9 @@ class PdpFlow(models.Model):
             ('period_start', '=', self.period_start),
             ('period_end', '=', self.period_end),
             ('periodicity_code', '=', self.periodicity_code),
-            ('transmission_type', '=', 'RE'),
+            ('transmission_type', '=', 'rectificative'),
             ('is_correction', '=', True),
-            ('state', 'in', tuple(open_states)),
+            ('state', 'in', tuple(FLOW_OPEN_STATES)),
         ], limit=1, order='create_date desc')
 
         if re_flow:
@@ -991,7 +964,7 @@ class PdpFlow(models.Model):
             'acknowledgement_details': False,
             'last_send_datetime': False,
             'send_datetime': False,
-            'transmission_type': 'RE',
+            'transmission_type': 'rectificative',
             'is_correction': True,
             'transport_identifier': False,
             'transport_status': False,
@@ -1106,7 +1079,7 @@ class PdpFlow(models.Model):
             'move_ids': [Command.set(moves.ids)],
             **self._payload_reset(),
         }
-        if self.state in {'pending', 'error'}:
+        if self.state == 'error':
             values['state'] = 'pending'
         self.write(values)
         return True
@@ -1124,10 +1097,9 @@ class PdpFlow(models.Model):
             if flow.tracking_id != unique_tracking_id:
                 flow.tracking_id = unique_tracking_id
 
-    def _generate_unique_tracking_id(self, candidate, reserved_ids=None):
+    def _generate_unique_tracking_id(self, candidate, reserved_ids):
         """Return a unique TT-1 identifier per company."""
         self.ensure_one()
-        reserved_ids = reserved_ids if reserved_ids is not None else set()
         max_length = 50
         base = self._sanitize_token(candidate, default='TRACKING').upper()[:max_length]
         current = base
@@ -1161,7 +1133,7 @@ class PdpFlow(models.Model):
             (self.operation_type or '')[:1],
             (self.transaction_type or '')[:3],
             (currency.name if currency else '')[:3],
-            (self.transmission_type or '')[:2],
+            ('RE' if self.transmission_type == 'rectificative' else 'IN'),
             str(reporting_token),
         ]
         return self._sanitize_token('_'.join(p for p in parts if p), default='TRACKING').upper()
@@ -1223,7 +1195,7 @@ class PdpFlow(models.Model):
                 date_str = f"{date_str} Décade {decade}"
 
             # Transmission type (v1.2: IN or RE only)
-            trans_type = _("Rectificative") if flow.transmission_type == 'RE' else _("Initial")
+            trans_type = _("Rectificative") if flow.transmission_type == 'rectificative' else _("Initial")
 
             # Format: Type - Date - Transmission Type
             flow.name = f"{flow_type} - {date_str} - {trans_type}"
@@ -1463,7 +1435,7 @@ class PdpFlow(models.Model):
     def action_create_rectificative_flow(self):
         """Create rectificative (RE) flow (TG-2 removed from specs — no references block)."""
         self.ensure_one()
-        if self.state not in {'completed', 'sent'}:
+        if self.state not in FLOW_SENT_STATES:
             raise UserError(_("Only flows already submitted can be rectified."))
 
         new_flow = self.copy({
@@ -1474,7 +1446,7 @@ class PdpFlow(models.Model):
             'acknowledgement_details': False,
             'last_send_datetime': False,
             'send_datetime': False,
-            'transmission_type': 'RE',
+            'transmission_type': 'rectificative',
             'is_correction': True,
             'tracking_id': False,
             'revision': 0,

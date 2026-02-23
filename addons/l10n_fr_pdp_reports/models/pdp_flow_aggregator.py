@@ -6,15 +6,14 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import Command, api, fields, models, _
 
+from odoo.addons.l10n_fr_pdp_reports.models.pdp_flow import FLOW_OPEN_STATES, FLOW_SENT_STATES
+
 _logger = logging.getLogger(__name__)
 
 
 class PdpFlowAggregator(models.AbstractModel):
     _name = 'l10n.fr.pdp.flow.aggregator'
     _description = 'PDP Flow Aggregator'
-
-    _OPEN_STATES = {'pending', 'building', 'ready', 'error'}
-    _SENT_STATES = {'sent', 'completed'}
 
     # -------------------------------------------------------------------------
     # Public API
@@ -297,15 +296,21 @@ class PdpFlowAggregator(models.AbstractModel):
             transaction_type: Computed scope for the flow (b2c/international/mixed).
             period_end: Period end used to decide when to rebuild pending flows.
             unlink_if_empty: If True, remove any open flow when no moves are found.
-            skip_if_last_sent_same_moves: If True, avoid creating a new RE flow when the last sent one matches.
+            skip_if_last_sent_same_moves: If True, avoid creating a new rectificative flow when the last sent one matches.
         """
-        flow_model = self.env['l10n.fr.pdp.flow']
-        existing_flows = flow_model.search(domain, order='create_date desc')
-        sent_flows = existing_flows.filtered(lambda f: f.state in self._SENT_STATES)
-        open_flows = existing_flows.filtered(lambda f: f.state in self._OPEN_STATES)
+        Flow = self.env['l10n.fr.pdp.flow']
+        existing_flows = Flow.search(domain, order='create_date desc')
+        sent_flows = Flow.browse()
+        # open_flows = Flow.browse()
+        target_open_flows = Flow.browse()
+        for flow in existing_flows:
+            if flow.state in FLOW_SENT_STATES:
+                sent_flows |= flow
+            if flow.state in FLOW_OPEN_STATES:
+                open_flows |= flow
 
         want_correction = bool(sent_flows)
-        target_transmission = 'RE' if want_correction else 'IN'
+        target_transmission = 'rectificative' if want_correction else 'initial'
 
         target_open_flows = open_flows.filtered(
             lambda f: f.transmission_type == target_transmission and bool(f.is_correction) == want_correction,
@@ -322,18 +327,18 @@ class PdpFlowAggregator(models.AbstractModel):
         if unlink_if_empty and not moves:
             if flow:
                 flow.unlink()
-            return flow_model.browse(), flow_model.browse()
+            return Flow.browse(), Flow.browse()
 
         if skip_if_last_sent_same_moves and want_correction and not flow and moves:
             last_sent = sent_flows.sorted('create_date')[-1:]
             if last_sent and moves.sorted('id') == last_sent.move_ids.sorted('id'):
-                return last_sent, flow_model.browse()
+                return last_sent, Flow.browse()
 
         changed = False
         if flow:
             changed = flow._synchronize_moves(moves)
         else:
-            flow = flow_model.create({
+            flow = Flow.create({
                 **create_values,
                 'transaction_type': transaction_type,
                 'transmission_type': target_transmission,
@@ -347,7 +352,7 @@ class PdpFlowAggregator(models.AbstractModel):
         if flow.transaction_type != transaction_type:
             flow.transaction_type = transaction_type
 
-        rebuild_flows = flow_model.browse()
+        rebuild_flows = Flow.browse()
         today = fields.Date.context_today(self)
         if changed or not flow.has_payload or (flow.state == 'pending' and today > period_end):
             rebuild_flows |= flow
@@ -491,7 +496,7 @@ class PdpFlowAggregator(models.AbstractModel):
         """Return True when a line should be considered in payment reporting.
 
         Services with option débits (tax_exigibility='on_invoice') are excluded
-        because TVA is already due at invoicing — no payment reporting needed.
+        because VAT is already due at invoicing — no payment reporting needed.
         """
         taxes = line.tax_ids
         if line.product_id:
@@ -503,7 +508,7 @@ class PdpFlowAggregator(models.AbstractModel):
             )
         if not is_service:
             return False
-        # Only report payments for services with TVA à l'encaissement (on_payment)
+        # Only report payments for services with "TVA à l'encaissement" (on_payment)
         return any(t.tax_exigibility == 'on_payment' for t in taxes) if taxes else True
 
     def _is_payment_partial_aml(self, aml):

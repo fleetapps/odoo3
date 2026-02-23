@@ -1,4 +1,5 @@
 from odoo import models
+from odoo.addons.l10n_fr_pdp_reports.models.pdp_flow import FLOW_OPEN_STATES
 
 
 class ResPartner(models.Model):
@@ -9,12 +10,11 @@ class ResPartner(models.Model):
         tracked_keys = {'vat', 'country_id', 'property_account_position_id'}
         res = super().write(vals)
         if tracked_keys.intersection(vals):
-            open_states = {'draft', 'building', 'ready', 'error'}
             moves = self.env['account.move'].search([
                 ('state', '=', 'posted'),
                 ('move_type', 'in', self.env['account.move'].get_sale_types(include_receipts=True)),
                 ('commercial_partner_id', 'in', self.commercial_partner_id.ids),
             ])
-            if flows := moves.mapped('l10n_fr_pdp_flow_ids').filtered(lambda f: f.state in open_states):
+            if flows := moves.mapped('l10n_fr_pdp_flow_ids').filtered(lambda f: f.state in FLOW_OPEN_STATES):
                 flows._mark_as_outdated()
         return res

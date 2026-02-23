@@ -7,8 +7,7 @@ class ResCompany(models.Model):
     _inherit = 'res.company'
 
     # Make country_id searchable (it's a related field, not stored by default)
-    country_id = fields.Many2one(comodel_name='res.country', search='_search_country_id')
-
+    # country_id = fields.Many2one(comodel_name='res.country', search='_search_country_id')
     l10n_fr_pdp_enabled = fields.Boolean(
         string="Enable PDP E-reporting",
         help="Activate Flux 10 e-reporting generation for this company.",

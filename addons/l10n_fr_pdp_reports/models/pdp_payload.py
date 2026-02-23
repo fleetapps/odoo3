@@ -3,19 +3,21 @@ import re
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
-from functools import lru_cache
 
 from lxml import etree
 
-from odoo import fields, _
+from odoo import _, fields
 from odoo.exceptions import UserError
-from odoo.tools import file_path, float_round, html2plaintext
+from odoo.tools import float_round, html2plaintext
 from odoo.addons.account_edi_ubl_cii_tax_extension.models.account_edi_common import TAX_EXEMPTION_MAPPING
 from odoo.addons.l10n_fr_pdp_reports.utils import drom_com_territories
 
 
 class PdpPayloadBuilder:
-    """Build and validate Flux 10 payloads for a flow"""
+# class PdpFlow10XML(models.AbstractModel):
+#     _name = "pdp.flow.10.xml"
+#     _inherit = 'account.edi.common'
+#     """Build Flow 10 payloads for a flow"""
 
     def __init__(self, flow):
         self.flow = flow
@@ -39,7 +41,6 @@ class PdpPayloadBuilder:
         )
         try:
             xml_root = etree.fromstring(rendered.encode('utf-8'))
-            self._validate_xml_schema(xml_root)
             xml_content = etree.tostring(
                 xml_root,
                 xml_declaration=True,
@@ -51,84 +52,6 @@ class PdpPayloadBuilder:
             'payload': base64.b64encode(xml_content),
             'filename': self._filename(slice_date),
         }
-
-    def _validate_xml_schema(self, xml_root):
-        """Validate generated XML against Flux 10 XSDs when enabled."""
-        mode = self._get_xsd_validation_mode()
-        if mode == 'off':
-            return
-
-        xsd_dir = self._resolve_xsd_directory()
-        if not xsd_dir:
-            if mode == 'strict':
-                raise UserError(_(
-                    "Flux 10 XSD validation is enabled in strict mode but XSD files were not found. "
-                    "Set system parameter %(param)s to a valid XSD folder.",
-                    param='l10n_fr_pdp_reports.xsd_dir',
-                ))
-            return
-
-        try:
-            schema = self._get_ereporting_schema(xsd_dir)
-            schema.assertValid(xml_root)
-        except etree.DocumentInvalid as err:
-            details = self._format_schema_errors(schema.error_log)
-            raise UserError(_("Generated Flux 10 XML is not compliant with AIFE XSD: %(details)s", details=details)) from err
-        except (OSError, etree.XMLSchemaParseError, etree.XMLSyntaxError) as err:
-            raise UserError(_("Unable to load Flux 10 XSD schema: %(error)s", error=err)) from err
-
-    def _get_xsd_validation_mode(self):
-        param_value = (
-            self.env['ir.config_parameter']
-            .sudo()
-            .get_param('l10n_fr_pdp_reports.xsd_validation', 'auto')
-            .strip()
-            .lower()
-        )
-        return param_value if param_value in {'off', 'auto', 'strict'} else 'auto'
-
-    def _resolve_xsd_directory(self):
-        configured_dir = (
-            self.env['ir.config_parameter']
-            .sudo()
-            .get_param('l10n_fr_pdp_reports.xsd_dir', '')
-            .strip()
-        )
-        if configured_dir:
-            if self._has_ereporting_schema(configured_dir):
-                return configured_dir
-            return None
-
-        xsd_directory = 'l10n_fr_pdp_reports/data/xsd'
-        if self._has_ereporting_schema(xsd_directory):
-            return xsd_directory
-        return None
-
-    @staticmethod
-    def _has_ereporting_schema(directory):
-        if not directory:
-            return False
-        try:
-            normalized_directory = directory.rstrip('/\\')
-            xsd_relative_path = normalized_directory + '/ereporting.xsd'
-            file_path(xsd_relative_path, filter_ext=('.xsd',))
-            return True
-        except (FileNotFoundError, ValueError):
-            return False
-
-    @staticmethod
-    def _format_schema_errors(error_log):
-        errors = [f"line {err.line}: {err.message}" for err in list(error_log)[:5]]
-        return ' | '.join(errors) if errors else _("Unknown XSD validation error")
-
-    @staticmethod
-    @lru_cache(maxsize=8)
-    def _get_ereporting_schema(xsd_directory):
-        normalized_directory = xsd_directory.rstrip('/\\')
-        xsd_relative_path = normalized_directory + '/ereporting.xsd'
-        xsd_file = file_path(xsd_relative_path, filter_ext=('.xsd',))
-        schema_doc = etree.parse(xsd_file)
-        return etree.XMLSchema(schema_doc)
 
     # -------------------------------------------------------------------------
     # Report Builders
@@ -310,7 +233,7 @@ class PdpPayloadBuilder:
             'id': flow.tracking_id or flow.name,
             'name': _("Flux 10 Report %(date)s", date=flow.reporting_date),
             'issue_datetime': issue_dt.strftime('%Y%m%d%H%M%S'),
-            'type_code': flow.transmission_type or 'IN',  # TT-4: only IN or RE
+            'type_code': flow.transmission_type or 'initial',  # TT-4: only IN or RE
             'sender': {
                 'scheme_id': '0238',  # 0238 = PA/PPF SIREN scheme (AFNOR table)
                 'id': sender_id,
@@ -646,10 +569,8 @@ class PdpPayloadBuilder:
         if not partner:
             return {}
 
-        delivery_country_code = partner.country_id.code if partner.country_id else ''
-
         # Country codes for DROM-COM territories are mapped to 'FR' for PPF transmission.
-        mapped_country_code = drom_com_territories.map_country_code_for_ppf(delivery_country_code)
+        mapped_country_code = drom_com_territories.map_country_code_for_ppf(partner.country_id.code)
 
         return {
             'date': self.flow._format_date(move.invoice_date or move.date),
@@ -658,7 +579,7 @@ class PdpPayloadBuilder:
             'line2': partner.street2 or '',
             'city': partner.city or '',
             'postal_zone': partner.zip or '',
-            'country': mapped_country_code,
+            'country': mapped_country_code or '',
         }
 
     def _allowance_charges(self, move):
@@ -830,7 +751,7 @@ class PdpPayloadBuilder:
         """Build party (seller/buyer) values."""
         partner = partner.commercial_partner_id
         partner_siret = partner.siret or ''
-        partner_country_code = partner.country_id.code if partner.country_id else ''
+        partner_country_code = partner.country_id.code or ''
 
         # Country codes for DROM-COM territories are mapped to 'FR' for PPF transmission
         mapped_country_code = drom_com_territories.map_country_code_for_ppf(partner_country_code)

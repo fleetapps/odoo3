@@ -39,10 +39,8 @@ class PdpPaymentEvent(models.Model):
         ondelete='set null',
     )
 
-    _sql_constraints = [
-        (
-            'l10n_fr_pdp_payment_event_partial_move_uniq',
-            'unique(source_partial_id, move_id)',
-            'A payment event for this partial reconciliation and invoice already exists.',
-        ),
-    ]
+    _sql_constraints = [(
+        'l10n_fr_pdp_payment_event_partial_move_uniq',
+        'unique(source_partial_id, move_id)',
+        'A payment event for this partial reconciliation and invoice already exists.',
+    )]
