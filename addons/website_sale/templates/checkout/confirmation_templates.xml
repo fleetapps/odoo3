@@ -164,8 +164,10 @@
                                    t-options="{'widget': 'monetary', 'display_currency': tx_sudo.currency_id}"/>
                             </span>
                         </div>
-                        <div t-if="order.reference" class="mt-3">
-                            <b>Communication: </b><span class="o_payment_instructions_box" t-out='order.reference'/>
+                        <div t-if="tx_sudo._get_communication()" class="mt-3">
+                            <b>Communication: </b>
+                            <span class="o_payment_instructions_box"
+                                  t-out="tx_sudo._get_communication()"/>
                         </div>
                     </div>
                     <div t-if="tx_sudo.provider_id.sudo().qr_code">
