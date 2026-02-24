@@ -558,7 +558,7 @@ class PurchaseOrderLine(models.Model):
         """
         if self:
             self.product_id.ensure_one()
-            catalog_info = self[0].order_id._get_product_price_and_data(self.product_id)
+            catalog_info = self[0].order_id._get_product_catalog_seller_data(self.product_id)
             catalog_info.update(
                 quantity=self[0].product_qty if len(self) == 1 else
                     sum(self.mapped(

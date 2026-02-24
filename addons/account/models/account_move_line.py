@@ -3757,7 +3757,6 @@ class AccountMoveLine(models.Model):
         if self:
             self.product_id.ensure_one()
             return {
-                **self[0].move_id._get_product_price_and_data(self[0].product_id),
                 'quantity': sum(
                     self.mapped(
                         lambda line: line.product_uom_id._compute_quantity(

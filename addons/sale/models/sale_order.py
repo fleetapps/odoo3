@@ -2293,21 +2293,24 @@ class SaleOrder(models.Model):
 
     # === CATALOG === #
 
-    def _get_product_catalog_order_data(self, products, **kwargs):
-        pricelist = self.pricelist_id._get_products_price(
+    def _get_product_catalog_product_data(self, product, **kwargs):
+        price = self.pricelist_id._get_product_price(
+            product=product,
             quantity=1.0,
-            products=products,
             currency=self.currency_id,
             date=self.date_order,
             **kwargs,
         )
-        res = super()._get_product_catalog_order_data(products, **kwargs)
+        #  start_date and end_date are only needed within the pricelist and
+        #  shouldn't be returned to the catalog
+        if kwargs.get('start_date') is not None and kwargs.get('end_date') is not None:
+            del kwargs['start_date']
+            del kwargs['end_date']
         has_warning_group = self.env.user.has_group('sale.group_warning_sale')
-        for product in products:
-            res[product.id]['price'] = pricelist.get(product.id)
-            if product.sale_line_warn_msg and has_warning_group:
-                res[product.id]['warning'] = product.sale_line_warn_msg
-        return res
+        product_data = {'price': price}
+        if product.sale_line_warn_msg and has_warning_group:
+            product_data.update(warning=product.sale_line_warn_msg)
+        return super()._get_product_catalog_product_data(product, **product_data, **kwargs)
 
     def _get_product_catalog_record_lines(self, product_ids, *, section_id=None, **kwargs):
         grouped_lines = defaultdict(lambda: self.env['sale.order.line'])

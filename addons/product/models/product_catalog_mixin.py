@@ -54,36 +54,32 @@ class ProductCatalogMixin(models.AbstractModel):
         """
         return {}
 
-    def _get_product_catalog_order_data(self, products, **kwargs):
-        """ Returns a dict containing the products' data. Those data are for products who aren't in
+    def _get_product_catalog_order_data(self, products):
+        """ Returns a dict containing the products' data. This is for products that aren't in
         the record yet. For products already in the record, see `_get_product_catalog_lines_data`.
 
-        For each product, its id is the key and the value is another dict with all needed data.
-        By default, the price is the only needed data but each model is free to add more data.
-        Must be overrided by each model using this mixin.
+        For each product, we call `_get_product_catalog_product_data` that sets every individual product's data
 
         :param products: Recordset of `product.product`.
-        :param dict kwargs: additional values given for inherited models.
         :rtype: dict
         :return: A dict with the following structure:
             {
-                'productId': int
-                'quantity': float (optional)
-                'productType': string
-                'price': float
-                'uomDisplayName': string
-                'code': string (optional)
-                'readOnly': bool (optional)
+                'productId': int : {
+                    'productType': string,
+                    'price': float,
+                    'uomDisplayName': string,
+                    'uomId': int,
+                    'uomConversion: float (optional),
+                    'productUomDisplayName': string (optional)
+                    'code': string (optional)
+                    'readOnly': bool (optional)
+                }
             }
         """
-        return {
-            product.id: {
-                'productType': product.type,
-                'uomDisplayName': product.uom_id.display_name,
-                'code': product.code if product.code else '',
-            }
-            for product in products
-        }
+        catalog_info = {}
+        for product in products:
+            catalog_info[product.id] = self._get_product_catalog_product_data(product)
+        return catalog_info
 
     def _get_product_catalog_order_line_info(self, product_ids, child_field=False, **kwargs):
         """ Returns products information to be shown in the catalog.
@@ -93,13 +89,19 @@ class ProductCatalogMixin(models.AbstractModel):
         :rtype: dict
         :return: A dict with the following structure:
             {
-                'productId': int
-                'quantity': float (optional)
-                'productType': string
-                'price': float
-                'uomDisplayName': string
-                'code': string (optional)
-                'readOnly': bool (optional)
+                'productId': int : {
+                    'price': float,
+                    'uomDisplayName': string,
+                    'uomId': int,
+                    'uomConversion': float (optional),
+                    'uomFactor': float (optional),
+                    'quantity': float (optional)
+                    'productType': string,
+                    'productUomDisplayName': string (optional),
+                    'code': string (optional),
+                    'readOnly': bool (optional),
+                    'warning': string (optional),
+                }
             }
         """
         order_line_info = {}
@@ -115,13 +117,12 @@ class ProductCatalogMixin(models.AbstractModel):
 
         default_data = self._default_order_line_values(child_field)
         products = self.env['product.product'].browse(product_ids)
-        product_data = self._get_product_catalog_order_data(products, **kwargs)
+        products_data = self._get_product_catalog_order_data(products)
 
-        for product_id, data in product_data.items():
+        for product_id, data in products_data.items():
             if product_id in order_line_info:
                 continue
             order_line_info[product_id] = {**default_data, **data}
-
         return order_line_info
 
     def _get_action_add_from_catalog_extra_context(self):
@@ -150,3 +151,31 @@ class ProductCatalogMixin(models.AbstractModel):
         :rtype: float
         """
         return 0.0
+
+    def _get_product_catalog_product_data(self, product, **kwargs):
+        """
+            This function will return a dict containing all the product's data.
+            To be overriden in any module that needs to add extra arguments.
+            :rtype: dict
+            :return: A dict with the following structure:
+                {
+                    'productType': float,
+                    'price': float,
+                    'uomDisplayName': string,
+                    'uomId': int,
+                    'uomConversion': float (optional),
+                    'productUomDisplayName': string (optional),
+                    'code': float (optional),
+                }
+        """
+        product_data = {
+            'productType': product.type,
+            'price': product.standard_price,
+            'uomDisplayName': product.uom_id.display_name,
+            'uomId': product.uom_id.id,
+            'uomConversion': product.uom_id.factor,
+            'productUomDisplayName': product.uom_id.display_name,
+            'code': product.code if product.code else '',
+            **kwargs,
+        }
+        return product_data
