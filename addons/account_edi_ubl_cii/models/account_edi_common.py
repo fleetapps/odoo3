@@ -316,7 +316,7 @@ class AccountEdiCommon(models.AbstractModel):
     def _get_tax_exemption_reason(self, customer, supplier, tax):
         if not tax:
             return {
-                'tax_exemption_reason': _("Exempt from tax"),
+                'tax_exemption_reason': _("Articles 226 items 11 to 15 Directive 2006/112/EN"),
                 'tax_exemption_reason_code': None,
             }
         res = self._get_tax_unece_codes(customer, supplier, tax)
