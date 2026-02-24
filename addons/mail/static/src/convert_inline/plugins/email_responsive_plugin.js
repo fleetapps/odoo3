@@ -232,22 +232,24 @@ export class ResponsivePlugin extends BasePlugin {
                 }
                 return accumulator;
             }, []);
-            clusterInfos.forEach(
-                (clusterInfo) =>
-                    (clusterInfo.rect = this.getBoundingClientRect(
-                        clusterInfo.isBlock
-                            ? clusterInfo.nodes[0]
-                            : this.getNodeClusterRange(
-                                  clusterInfo.nodes.at(0),
-                                  clusterInfo.nodes.at(-1)
-                              )
-                    ))
-            );
+            for (const clusterInfo of clusterInfos) {
+                const nodes = clusterInfos.nodes;
+                clusterInfo.rect = this.getBoundingClientRect(
+                    clusterInfo.isBlock
+                        ? clusterInfo.nodes[0]
+                        : this.getNodeClusterRange(nodes.at(0), nodes.at(-1))
+                );
+            }
             // all clusters available
+            // sort clusters in matrix order (handle float left thingy + arrange them in rows)
+            // -> try to create a row and fill it with clusters
 
-            // need all blocks and their indexes in the array
-            // then need to extract all non-blocks and create clusters
-            // then need to get all boundingClientRects for each cluster
+            // if no row, create row, set height and top as the element to add into it
+            // -> if a row exist, try to put new elements inside, except if the next cluster has
+            // cluster.top > currentRow.top + currentRow.height, in that case, create a new row
+            // evaluate each existing row when trying to add a new cluster inside
+            // then when adding inside a row as a cell, compare if totally outside existing cells or overlapping
+            // -> merge overlapping cells in a row (cells with multiple elements are ok -> needs another matrix)
 
             // TODO EGGMAIL NOW: if every child is inline, we can create a cluster rectangle
             // and only care about spacing inside the parent. (equivalent to 1 block)
