@@ -55,7 +55,7 @@ export class LayoutSnapshotCachePlugin extends BasePlugin {
         this.computedStylesMap = new Map(); // dimensions to WeakMap of element to computed snapshot proxy
         this.domRectProperties = new Set(DOM_RECT_PROPERTIES); // properties of a DOMRect
         this.boundingClientRectsMap = new Map(); // dimensions to WeakMap of element/range to bounding client rect snapshot proxy
-        this.this.nodeClusterRangeMap = new WeakMap(); // node to range of all contiguous non-element nodes in a cluster
+        this.nodeClusterRangeMap = new WeakMap(); // node to range of all contiguous non-element nodes in a cluster
         this.dimensionsKey = "undefined";
         this.computedStylesMap.set(this.dimensionsKey, new WeakMap());
         this.boundingClientRectsMap.set(this.dimensionsKey, new WeakMap());
@@ -230,9 +230,24 @@ export class LayoutSnapshotCachePlugin extends BasePlugin {
      */
     getBoundingClientRect(node) {
         let cluster = node;
+        // TODO EGGMAIL NOW: change condition based on inline-not inline
+        // what to do about inline blocks?
+        // other idea -> keep as is, create a new function receiving an already
+        // created range, cache it, and return the boundingClientRect.
+        // adapt this function to only create the range for a single non-element node
+        // and use the other for multiple nodes -> cleaner api, no surprise.
+        // getNodeClusterRange takes a list of nodes
         if (node.nodeType !== Node.ELEMENT_NODE) {
+            // TODO EGGMAIL NOW: change function purpose: create a range for all
+            // inline blocks in a cluster
             cluster = this.getNodeClusterRange(node);
         }
+        // if range, check commonAncestorContainer is contained in referenceDocument
+        // -> determine exact way of checking if range or node (JS realm)
+        // -> evaluate if it's best to be just before and just after the node instead of at
+        // the start of it (is there a dimension difference for the boundingClientRect
+        // -> maybe it's simpler to be before/after, then the logic to recover the first node is always
+        // startcontainer + offset = node, instead of startcontainer being the node itself
         if (this.config.referenceDocument.contains(node)) {
             // Only the rect of a node inside the referenceDocument can be cached, as
             // the HTML and CSS content inside that document are fixed during conversion.

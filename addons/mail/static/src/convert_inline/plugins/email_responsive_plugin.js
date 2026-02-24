@@ -5,6 +5,7 @@ import { containsAnyNonPhrasingContent } from "@html_editor/utils/dom_info";
 import { childNodes } from "@html_editor/utils/dom_traversal";
 import { memoize } from "@web/core/utils/functions";
 import { useShorthands } from "./hooks";
+import { Matrix, Row, Cell } from "./matrix";
 
 const DIMENSIONS = {
     desktop: EMAIL_DESKTOP_DIMENSIONS,
@@ -147,9 +148,16 @@ export class ResponsivePlugin extends BasePlugin {
         // result: matrix of matrices of positioned elements, there is one for desktop, and one for mobile.
         // once a matrix is done for a parent, we know what the interesting nodes for measurements are,
         // and we can adjust it to fill it with void cells if necessary (do we need to wait for the mobile pass for that?)
+        // -> calculer la taille de la rangee de hauteur du plus grand de ses enfants, nouvelle rangee si le top d'un
+        // enfant est en dehors de la rangee en cours
+        const layout = new Matrix();
         let el = treeWalker.root;
         do {
-            
+            const subNodes = childNodes(el);
+            // TODO EGGMAIL NOW: if every child is inline, we can create a cluster rectangle
+            // and only care about spacing inside the parent. (equivalent to 1 block)
+            // if there are multiple blocks/clusters, then we also have to evaluate
+            // if they are placed horizontally or vertically
         } while ((el = treeWalker.nextNode()));
         /**
          *

@@ -1,4 +1,4 @@
-import { getCSSRules, toInline } from "@mail/views/web/fields/html_mail_field/convert_inline";
+// import { getCSSRules, toInline } from "@mail/views/web/fields/html_mail_field/convert_inline";
 import { PluginManager } from "@html_editor/plugin_manager";
 
 export class EmailHtmlConverter extends PluginManager {
@@ -22,18 +22,17 @@ export class EmailHtmlConverter extends PluginManager {
         }
         this.isReady = true;
 
-        // const inlineTemplate = await this.htmlConversion();
-        // if (!inlineTemplate) {
-        //     return null;
-        // }
+        const inlineTemplate = await this.htmlConversion();
+        if (!inlineTemplate) {
+            return null;
+        }
+        return inlineTemplate.innerHTML;
 
-        // Old toInline
-        // TODO EGGMAIL: adapt usage, use plugin instead of old method
-        const cssRules = getCSSRules(this.config.referenceDocument);
-        await toInline(this.config.reference, cssRules);
-        return this.config.reference.innerHTML;
-
-        // return inlineTemplate.innerHTML;
+        // // Old toInline
+        // // TODO EGGMAIL: adapt usage, use plugin instead of old method
+        // const cssRules = getCSSRules(this.config.referenceDocument);
+        // await toInline(this.config.reference, cssRules);
+        // return this.config.reference.innerHTML;
     }
 
     getEmailTemplate() {
