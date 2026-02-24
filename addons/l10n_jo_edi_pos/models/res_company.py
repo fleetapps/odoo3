@@ -11,5 +11,5 @@ class ResCompany(models.Model):
     def _load_pos_data_fields(self, config_id):
         params = super()._load_pos_data_fields(config_id)
         if self.env.company.account_fiscal_country_id.code == 'JO':
-            params += ["l10n_jo_edi_pos_enabled"]
+            params += ["l10n_jo_edi_pos_enabled", "l10n_jo_edi_demo_mode"]
         return params

@@ -200,3 +200,10 @@ class PosOrder(models.Model):
             )
         if invoice and self.l10n_jo_edi_pos_qr:
             invoice.l10n_jo_edi_qr = self.l10n_jo_edi_pos_qr
+
+    def write(self, vals):
+        if 'l10n_jo_edi_pos_state' in vals and vals['l10n_jo_edi_pos_state'] == 'to_send':
+            vals.update({
+                'l10n_jo_edi_pos_qr': False,
+            })
+        return super().write(vals)
