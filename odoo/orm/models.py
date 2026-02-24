@@ -2454,7 +2454,7 @@ class BaseModel(metaclass=MetaModel):
                     for field in sorted(self._fields.values(), key=lambda f: f.column_order)
                     if field.name != 'id' and field.store and field.column_type
                 ])
-                if self._inherits:
+                if self._inherits or self._name.startswith(('resource.', 'hr.', 'product.', 'account.')):
                     # Randomize first sequence number to avoid having records
                     # with similar ids when testing. For example, avoid having
                     # first res_users and res_partner sharing the same id.
