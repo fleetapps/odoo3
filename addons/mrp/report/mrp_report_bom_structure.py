@@ -125,7 +125,8 @@ class ReportBomStructure(models.AbstractModel):
         if self.env.context.get('warehouse_id'):
             warehouse = self.env['stock.warehouse'].browse(self.env.context.get('warehouse_id'))
         else:
-            warehouse = self.env['stock.warehouse'].browse(self.get_warehouses()[0]['id'])
+            warehouses = self.get_warehouses()
+            warehouse = self.env['stock.warehouse'].browse(warehouses[0]['id']) if warehouses else None
 
         lines = self._get_bom_data(bom, warehouse, product=product, line_qty=bom_quantity, level=0)
         try:
@@ -324,7 +325,9 @@ class ReportBomStructure(models.AbstractModel):
         bom_report_line['components'] = components
         bom_report_line['producible_qty'] = self._compute_current_production_capacity(bom_report_line)
 
-        availabilities = self._get_availabilities(product, current_quantity, product_info, bom_key, quantities_info, level, ignore_stock, components, report_line=bom_report_line)
+        availabilities = self.with_context(has_warehouse=bool(warehouse))._get_availabilities(
+            product, current_quantity, product_info, bom_key, quantities_info, level, ignore_stock, components, report_line=bom_report_line
+        )
         # in case of subcontracting, lead_time will be calculated with components availability delay
         bom_report_line['lead_time'] = route_info.get('lead_time', False)
         bom_report_line['manufacture_delay'] = route_info.get('manufacture_delay', False)
@@ -370,7 +373,10 @@ class ReportBomStructure(models.AbstractModel):
         if not ignore_stock:
             # Useless to compute quantities_info if it's not going to be used later on
             quantities_info = self._get_quantities_info(bom_line.product_id, bom_line.product_uom_id, product_info, parent_bom, parent_product)
-        availabilities = self._get_availabilities(bom_line.product_id, line_quantity, product_info, bom_key, quantities_info, level, ignore_stock, bom_line=bom_line)
+
+        availabilities = self.with_context(has_warehouse=bool(warehouse))._get_availabilities(
+            bom_line.product_id, line_quantity, product_info, bom_key, quantities_info, level, ignore_stock, bom_line=bom_line,
+        )
 
         has_attachments = False
         if not self.env.context.get('minimized', False):
@@ -430,6 +436,8 @@ class ReportBomStructure(models.AbstractModel):
         key = product.id
         if key not in product_info:
             product_info[key] = {'consumptions': {'in_stock': 0}}
+        if not warehouse:
+            return
         if not product_info[key].get(bom_key):
             product_info[key][bom_key] = self._get_resupply_route_info(warehouse, product, quantity, product_info, bom, parent_bom, parent_product)
         elif product_info[key][bom_key].get('route_alert'):
@@ -537,7 +545,8 @@ class ReportBomStructure(models.AbstractModel):
         if self.env.context.get('warehouse_id'):
             warehouse = self.env['stock.warehouse'].browse(self.env.context.get('warehouse_id'))
         else:
-            warehouse = self.env['stock.warehouse'].browse(self.get_warehouses()[0]['id'])
+            warehouses = self.get_warehouses()
+            warehouse = self.env['stock.warehouse'].browse(warehouses[0]['id']) if warehouses else None
 
         level = 1
         data = self._get_bom_data(bom, warehouse, product=product, line_qty=qty, level=0)
@@ -673,21 +682,23 @@ class ReportBomStructure(models.AbstractModel):
     def _get_availabilities(self, product, quantity, product_info, bom_key, quantities_info, level, ignore_stock=False, components=False, bom_line=None, report_line=False):
         # Get availabilities according to stock (today & forecasted).
         stock_state, stock_delay = ('unavailable', False)
-        if not ignore_stock:
+        has_warehouse = self.env.context.get('has_warehouse')
+        if not ignore_stock and has_warehouse:
             stock_state, stock_delay = self._get_stock_availability(product, quantity, product_info, quantities_info, bom_line=bom_line)
 
         # Get availabilities from applied resupply rules
         components = components or []
         route_info = product_info[product.id].get(bom_key)
         resupply_state, resupply_delay = ('unavailable', False)
-        if product and not product.is_storable:
-            resupply_state, resupply_delay = ('available', 0)
-        elif route_info:
-            resupply_state, resupply_delay = self._get_resupply_availability(route_info, components)
+        if has_warehouse:
+            if product and not product.is_storable:
+                resupply_state, resupply_delay = ('available', 0)
+            elif route_info:
+                resupply_state, resupply_delay = self._get_resupply_availability(route_info, components)
 
-        if resupply_state == "unavailable" and route_info == {} and components and report_line and report_line['phantom_bom']:
-            val = self._get_last_availability(report_line)
-            return val
+            if resupply_state == "unavailable" and route_info == {} and components and report_line and report_line['phantom_bom']:
+                val = self._get_last_availability(report_line)
+                return val
 
         base = {
             'resupply_avail_delay': resupply_delay,

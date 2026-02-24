@@ -169,7 +169,7 @@ export class BomOverviewComponent extends Component {
                          "&lead_times=" + this.state.showOptions.leadTimes +
                          "&quantity=" + (this.state.bomQuantity || 1) +
                          "&unfolded_ids=" + JSON.stringify(Array.from(this.unfoldedIds)) +
-                         "&warehouse_id=" + (this.state.currentWarehouse ? this.state.currentWarehouse.id : false);
+                         "&warehouse_id=" + (this.state.currentWarehouse ? this.state.currentWarehouse.id : '');
         if (printAll) {
             reportName += "&all_variants=1";
         } else if (this.showVariants && this.state.currentVariantId) {
