@@ -7,6 +7,14 @@ import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
 import { imageUrl, url } from "@web/core/utils/urls";
 
+export function isTextualMimetype(mimetype) {
+    if (!mimetype) {
+        return false;
+    }
+    const renderedMimetypes = ["application/json", "application/xml"];
+    return renderedMimetypes.includes(mimetype) || mimetype.startsWith("text/");
+}
+
 export class Attachment extends FileModelMixin(Record) {
     static _name = "ir.attachment";
     static new() {
@@ -128,6 +136,35 @@ export class Attachment extends FileModelMixin(Record) {
                 )
             );
         }
+    }
+
+    get isTextualMimetype() {
+        return isTextualMimetype(this.mimetype);
+    }
+
+    get isText() {
+        return super.isText || this.isTextualMimetype;
+    }
+
+    get textualThumbnailUrl() {
+        let url = `/mail/attachment/render_textual/${this.id}?head=1`;
+        const token = this.ownership_token;
+        if (token) {
+            url += `&access_token=${encodeURIComponent(token)}`;
+        }
+        return url;
+    }
+
+    get defaultSource() {
+        if (this.isTextualMimetype) {
+            let url = `/mail/attachment/render_textual/${this.id}`;
+            const token = this.ownership_token;
+            if (token) {
+                url += `?access_token=${encodeURIComponent(token)}`;
+            }
+            return url;
+        }
+        return super.defaultSource;
     }
 }
 

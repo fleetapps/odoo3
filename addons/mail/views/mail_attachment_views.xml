@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="content_textual" name="Thumbnails / Preview for textual documents">
+        <div class="wrap">
+            <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;" t-out="content"/>
+        </div>
+    </template>
+
+    <template id="content_markdown" name="Thumbnails / Preview for markdown documents">
+        <t t-call-assets="web.assets_frontend"/>
+        <t t-call-assets="mail.markdown_assets"/>
+        <div class="wrap" t-out="content"/>
+    </template>
+</odoo>

@@ -108,6 +108,7 @@ For more specific needs, you may also assign custom-defined actions
         'views/discuss_public_templates.xml',
         'views/mail_alias_domain_views.xml',
         'views/mail_alias_views.xml',
+        'views/mail_attachment_views.xml',
         'views/mail_gateway_allowed_views.xml',
         'views/mail_guest_views.xml',
         'views/mail_message_reaction_views.xml',
