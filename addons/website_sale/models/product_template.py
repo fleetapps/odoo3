@@ -447,7 +447,7 @@ class ProductTemplate(models.Model):
         :return: The extra price for the product template attribute value.
         """
         price_extra = super()._get_ptav_price_extra(ptav, currency, date, product_or_template)
-        if self.env.context.get('website_id'):
+        if request.is_frontend:
             product_taxes = product_or_template.sudo().taxes_id._filter_taxes_by_company(
                 self.env.company
             )

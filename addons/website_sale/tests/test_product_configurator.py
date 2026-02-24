@@ -365,7 +365,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
         })
 
         with self.mock_request():
-            ptav_price_extra = self.pc_controller._get_ptav_price_extra(
+            ptav_price_extra = product._get_ptav_price_extra(
                 product.attribute_line_ids.product_template_value_ids,
                 self.currency,
                 datetime(2000, 1, 1),
