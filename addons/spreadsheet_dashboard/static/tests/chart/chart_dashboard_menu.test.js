@@ -29,5 +29,7 @@ test("can change granularity", async () => {
         fieldName: "date",
         granularity: "quarter",
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(["date:quarter"]);
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
+        "date:quarter",
+    ]);
 });

@@ -1526,7 +1526,9 @@ test("can change chart granularity", async () => {
         chartId,
         granularity: "year",
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(["date:year"]);
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
+        "date:year",
+    ]);
 });
 
 test("changing chart granularity reloads data source once with global filter", async () => {
@@ -1753,7 +1755,7 @@ test("filtering a chart axis changes its granularity", async () => {
             id: filterId,
             value,
         });
-        expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(
+        expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual(
             expectedGroupBy,
             {
                 message: `Expected groupBy to be ${expectedGroupBy} for value ${JSON.stringify(
@@ -1795,7 +1797,7 @@ test("filtering doesn't change its granularity if not the horizontal axis", asyn
         id: filterId,
         value: { type: "relative", period: "last_7_days" },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual([
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
         "create_date:year",
     ]);
 });
@@ -1829,7 +1831,9 @@ test("filtering preserves manually changed granularity", async () => {
         id: filterId,
         value: { type: "relative", period: "last_90_days" },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(["create_date:day"]);
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
+        "create_date:day",
+    ]);
     model.dispatch("UPDATE_CHART_GRANULARITY", {
         chartId,
         granularity: "week", // Manually change granularity to from day to week
@@ -1844,7 +1848,7 @@ test("filtering preserves manually changed granularity", async () => {
             to: "2025-04-23",
         },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual([
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
         "create_date:week",
     ]);
 
@@ -1853,7 +1857,7 @@ test("filtering preserves manually changed granularity", async () => {
         id: filterId,
         value: { type: "relative", period: "today" },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual([
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
         "create_date:hour",
     ]);
 });
@@ -1889,7 +1893,9 @@ test("filtering on 'day' doesn't change to hour if not datetime", async () => {
         id: filterId,
         value: { type: "relative", period: "today" },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(["date:day"]);
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
+        "date:day",
+    ]);
 });
 
 test("Odoo charts can have a background color", async () => {
@@ -1902,9 +1908,9 @@ test("Odoo charts can have a background color", async () => {
     };
 
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         modelConfig: { external: { geoJsonService: { getAvailableRegions: () => [] } } },
-        definition: { type: "odoo_bar", metaData, searchParams, id: "42", background: "#FF00FF" },
+        definition: { type: "bar", metaData, searchParams, id: "42", background: "#FF00FF" },
     });
     await waitForDataLoaded(model);
     const sheetId = model.getters.getActiveSheetId();
