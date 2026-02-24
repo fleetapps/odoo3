@@ -121,6 +121,12 @@ class SaleAdvancePaymentInv(models.TransientModel):
     def create_invoices(self):
         self._check_amount_is_positive()
         invoices = self._create_invoices(self.sale_order_ids)
+
+        # In the context of the bank rec widget, we want to automatically reconcile the invoice line
+        if statement_line_id := self.env.context.get('statement_line_id'):
+            statement_line = self.env['account.bank.statement.line'].browse(statement_line_id)
+            lines = invoices.line_ids.filtered(lambda l: l.account_id.account_type in {'asset_receivable', 'liability_payable'})
+            statement_line.set_line_bank_statement_line(lines.ids)
         return self.sale_order_ids.action_view_invoice(invoices=invoices)
 
     def view_draft_invoices(self):
