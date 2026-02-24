@@ -34,3 +34,9 @@ class SaleOrder(models.Model):
                 product_name=product.name,
             )
         return super()._verify_updated_quantity(order_line, product_id, new_qty, uom_id, **kwargs)
+
+    def _can_express_checkout(self):
+        res = super()._can_express_checkout()
+        if any(line.product_id.gelato_product_uid for line in self.order_line):
+            return res and bool(self.partner_shipping_id.email) and bool(self.partner_shipping_id.street)
+        return res

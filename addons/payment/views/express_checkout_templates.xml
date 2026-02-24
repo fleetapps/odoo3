@@ -43,6 +43,7 @@
               t-att-data-shipping-address-update-route="shipping_address_update_route"
               t-att-data-express-checkout-route="express_checkout_route"
               t-att-data-landing-route="landing_route"
+              t-att-data-prevent-express-checkout="prevent_express_checkout"
         >
             <t t-set="provider_sudo" t-value="providers_sudo[:1]"/>
             <t t-set="express_checkout_form_xml_id"

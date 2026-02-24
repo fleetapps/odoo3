@@ -89,7 +89,7 @@ patch(ExpressCheckout.prototype, {
 
         // Check the availability of the Payment Request API first.
         const canMakePayment = await this.waitFor(paymentRequest.canMakePayment());
-        if (canMakePayment) {
+        if (canMakePayment && this.paymentContext?.preventExpressCheckout !== 'True') {
             paymentRequestButton.mount(
                 `#o_stripe_express_checkout_container_${providerData.providerId}`
             );
