@@ -6,6 +6,12 @@ import { getVideoUrl } from "@html_editor/utils/url";
 
 export class X2ManyImageField extends ImageField {
     static template = "html_editor.ImageField";
+    static props = {
+        ...ImageField.props,
+        setAttachmentId: { type: Boolean, optional: true },
+        onlyImage: { type: Boolean, optional: true },
+    };
+
     setup() {
         super.setup();
         this.orm = useService("orm");
@@ -24,7 +30,7 @@ export class X2ManyImageField extends ImageField {
             mediaEl.dataset.src = this.props.record.data.video_url;
         }
         this.dialog.add(CustomMediaDialog, {
-            visibleTabs: ["IMAGES", "VIDEOS"],
+            visibleTabs: this.props.onlyImage ? ["IMAGES"] : ["IMAGES", "VIDEOS"],
             media: mediaEl,
             activeTab: isVideo ? "VIDEOS" : "IMAGES",
             save: (el) => {}, // Simple rebound to fake its execution
@@ -50,10 +56,17 @@ export class X2ManyImageField extends ImageField {
                 }
             );
         }
-        await this.props.record.update({
-            [this.props.name]: attachmentRecord[0].datas,
-            name: attachmentRecord[0].name,
-        });
+
+        if (this.props.setAttachmentId) {
+            await this.props.record.update({
+                [this.props.name]: attachment[0],
+            });
+        } else {
+            await this.props.record.update({
+                [this.props.name]: attachmentRecord[0].datas,
+                name: attachmentRecord[0].name,
+            });
+        }
     }
 
     async onVideoSave(videoInfo) {
@@ -73,6 +86,20 @@ export class X2ManyImageField extends ImageField {
 export const x2ManyImageField = {
     ...imageField,
     component: X2ManyImageField,
+    extractProps: (
+        { attrs, relatedFields, viewMode, views, widget, options, string },
+        dynamicInfo
+    ) => {
+        const x2ManyFieldProps = imageField.extractProps(
+            { attrs, relatedFields, viewMode, views, widget, options, string },
+            dynamicInfo
+        );
+        return {
+            ...x2ManyFieldProps,
+            setAttachmentId: options.set_attachment_id,
+            onlyImage: options.only_image,
+        };
+    },
 };
 
 registry.category("fields").add("x2_many_image", x2ManyImageField);
