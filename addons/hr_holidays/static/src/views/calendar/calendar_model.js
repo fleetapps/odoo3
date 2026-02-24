@@ -36,9 +36,9 @@ export class TimeOffCalendarModel extends CalendarModel {
             }
         }
         if (rawRecord.date_from && rawRecord.date_to) {
-            const dateFrom = DateTime.fromSQL(rawRecord.date_from);
-            const dateTo = DateTime.fromSQL(rawRecord.date_to);
-            result.sameDay = dateFrom.hasSame(dateTo, 'day');
+            const dateFrom = DateTime.fromSQL(rawRecord.date_from).startOf('day');
+            const dateTo = DateTime.fromSQL(rawRecord.date_to).startOf('day');
+            result.leaveSpan = dateTo.diff(dateFrom, 'days').days + 1;
         }
         if (rawRecord.request_unit_half) {
             result.requestDateFromPeriod = rawRecord.request_date_from_period;

@@ -71,23 +71,45 @@ export class TimeOffCalendarYearRenderer extends CalendarYearRenderer {
      * @override
      */
     eventClassNames({ event }) {
-        const classesToAdd = super.eventClassNames(...arguments);
-        const record = this.props.model.records[event.id];
-        if (record && record.requestDateFromPeriod && record.sameDay) {
-            if (record.requestDateFromPeriod === "am" && record.requestDateToPeriod === "am") {
-                classesToAdd.push("o_event_half_left")
-            } else if (record.requestDateFromPeriod === "pm" && record.requestDateToPeriod === "pm") {
-                classesToAdd.push("o_event_half_right")
+    const classesToAdd = super.eventClassNames(...arguments);
+    const record = this.props.model.records[event.id];
+    if (record) {
+        const isHalfStart = record.requestDateFromPeriod === "pm" ||
+            (record?.rawRecord?.request_unit_hours && record.start.c.hour >= 12);
+        const isHalfEnd = record.requestDateToPeriod === "am" ||
+            (record?.rawRecord?.request_unit_hours && record.end.c.hour <= 12);
+
+        if (!isHalfStart && !isHalfEnd) return classesToAdd;
+
+        const isMultiWeek = record.leaveSpan > 7;
+
+        let start = 0;
+        let end = 100;
+
+        if (!isMultiWeek) {
+                start = isHalfStart
+                ? Math.round(50 / record.leaveSpan)
+                : 0;
+                end = isHalfEnd
+                ? Math.round(100 - (50 / record.leaveSpan))
+                : 100;
+
+        } else {
+            // Multi-week: first slice — only care about start
+            if (isHalfStart) {
+                const startDayIndex = record.start.weekday;
+                start = Math.round((50 / (7 - startDayIndex)));
+            }
+            // Multi-week: last slice — only care about end
+            if (isHalfEnd) {
+                const endDayIndex = record.end.weekday;
+                end = Math.round(100 - (50 / (endDayIndex + 1)));
             }
         }
-        // handling half pill UX for custom_hours
-        if (record?.rawRecord?.request_unit_hours && record.sameDay) {
-            if (record.end.c.hour < 12) {
-                classesToAdd.push("o_event_half_left");
-            } else if (record.end.c.hour >= 12 && record.start.c.hour >= 12) {
-                classesToAdd.push("o_event_half_right");
-            }
-        }
-        return classesToAdd;
+
+        classesToAdd.push(`o_event_half_${start}_${end}`);
     }
+    return classesToAdd;
+
+}
 }
