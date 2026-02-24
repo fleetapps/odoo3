@@ -202,13 +202,13 @@ class ProductTemplate(models.Model):
                     value_list=[field_descriptions[v] for v in incompatible_fields],
                 ))
 
-    def get_single_product_variant(self, quantity=1, ptav_ids=[], **kwargs):
+    def get_single_product_variant(self, **kwargs):
         """ Method used by the product configurator to check if the product is configurable or not.
 
         We need to open the product configurator if the product:
         - is configurable (see has_configurable_attributes)
         - has optional products """
-        res = super().get_single_product_variant(quantity, ptav_ids, **kwargs)
+        res = super().get_single_product_variant(**kwargs)
         if res.get('product_id', False):
             has_optional_products = False
             for optional_product in self.product_variant_id.optional_product_ids:
@@ -224,9 +224,7 @@ class ProductTemplate(models.Model):
 
             preloaded_data = self.sale_product_configurator_get_values(
                 product_template_id=self.id,
-                quantity=quantity,
                 only_main_product=False,
-                ptav_ids=ptav_ids,
                 **kwargs,
             )
             res['preloaded_config_data'] = preloaded_data
@@ -236,7 +234,7 @@ class ProductTemplate(models.Model):
     def sale_product_configurator_get_values(
         self,
         product_template_id,
-        quantity,
+        quantity=1,
         currency_id=None,
         so_date=None,
         product_uom_id=None,
