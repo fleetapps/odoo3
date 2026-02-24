@@ -2331,7 +2331,7 @@ class SaleOrder(models.Model):
         return 'order_id'
 
     def _update_order_line_info(
-        self, product_id, quantity, *, section_id=False, child_field='order_line', **kwargs
+        self, product, quantity, uom=False, *, section_id=False, child_field='order_line', **kwargs
     ):
         """ Update sale order line information for a given product or create a
         new one if none exists yet.
@@ -2344,34 +2344,29 @@ class SaleOrder(models.Model):
         """
         request.update_context(catalog_skip_tracking=True)
         sol = self.order_line.filtered(
-            lambda l: l.product_id.id == product_id
+            lambda l: l.product_id.id == product.id
             and l.get_parent_section_line().id == section_id,
         )
         if sol:
             if quantity != 0:
                 sol.product_uom_qty = quantity
             elif self.state in ['draft', 'sent']:
-                price_unit = self.pricelist_id._get_product_price(
-                    product=sol.product_id,
-                    quantity=1.0,
-                    currency=self.currency_id,
-                    date=self.date_order,
-                    **kwargs,
-                )
+                discounted_price = sol._get_discounted_price()
                 sol.unlink()
-                return price_unit
+                return discounted_price
             else:
                 sol.product_uom_qty = 0
         elif quantity > 0:
             sol = self.env['sale.order.line'].create({
                 'order_id': self.id,
-                'product_id': product_id,
+                'product_id': product.id,
                 'product_uom_qty': quantity,
                 'sequence': self._get_new_line_sequence(child_field, section_id),
+                'product_uom_id': uom.id,
             })
         else:  # quantity of 0, no line to update, return defaut pricelist price
             return self.pricelist_id._get_product_price(
-                product=self.env['product.product'].browse(product_id),
+                product=product,
                 quantity=1.0,
                 currency=self.currency_id,
                 date=self.date_order,

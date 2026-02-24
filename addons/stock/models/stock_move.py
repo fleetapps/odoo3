@@ -2630,6 +2630,8 @@ Please change the quantity done or the rounding precision in your settings.""",
             ),
             'readOnly': len(self) > 1,
             'uomDisplayName': len(self) == 1 and self.uom_id.display_name or self.product_id.uom_id.display_name,
+            'uomId': self[0].uom_id.id,
+            'uomConversion': self[0].product_id.uom_id.factor / self[0].uom_id.factor,
         }
 
     def _visible_quantity(self):
