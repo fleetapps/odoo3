@@ -23,6 +23,18 @@ export class BlogPostPageOptionPlugin extends Plugin {
     /** @type {import("plugins").WebsiteResources} */
     resources = {
         builder_options: [BlogPostPageOption],
+        blog_post_design_list_to_save: {
+            selector: "#o_wblog_index_content",
+            getData(el) {
+                const blogPostOptClasses = Array.from(el.classList).filter((className) =>
+                    className.startsWith("o_wblog_post_opt_")
+                );
+                const updateData = {
+                    blog_post_opt_blog_page_container: blogPostOptClasses.join(" "),
+                };
+                return updateData;
+            },
+        },
     };
 }
 

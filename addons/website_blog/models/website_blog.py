@@ -36,6 +36,26 @@ class BlogBlog(models.Model):
     content = fields.Html('Content', translate=html_translate, sanitize=False)
     blog_post_ids = fields.One2many('blog.post', 'blog_id', 'Blog Posts')
     blog_post_count = fields.Integer("Posts", compute='_compute_blog_post_count')
+    blog_page_container = fields.Selection(
+        selection=[
+            ('regular', "Regular"),
+            ('fluid', "Full"),
+        ],
+        default='regular',
+    )
+    blog_layout = fields.Selection(
+        selection=[
+            ('grid', "Grid"),
+            ('bordered_grid', "Bordered Grid"),
+            ('split_grid', "Split Grid"),
+            ('simple_list', "Simple List"),
+            ('compact_list', "Compact List"),
+            ('list', "List"),
+            ('large_list', "Large List"),
+        ],
+        required=True,
+        default='grid',
+    )
 
     def _compute_website_url(self):
         super()._compute_website_url()
