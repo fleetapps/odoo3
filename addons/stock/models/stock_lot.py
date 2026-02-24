@@ -268,7 +268,7 @@ class StockLot(models.Model):
         else:
             domain &= Domain.OR([
                 Domain('picking_partner_id', operator, value),
-                Domain('move_partner_id', operator, value),
+                Domain('move_dest_partner_id', operator, value),
             ])
         domain &= Domain(self._get_outgoing_domain())
         move_lines = self.env['stock.move.line'].search(domain)
