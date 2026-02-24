@@ -20,6 +20,10 @@
 // ------- SearchPanel -------
 
 .o_search_panel {
+    --treeEntry-padding-h: #{map-get($spacers, 3)};
+    --treeEntry-padding-v: #{map-get($spacers, 2)};
+    --searchPanelHeader-margin-y: #{map-get($spacers, 1) * .5};
+
     width: var(--SearchPanel-width, #{$o-search-panel-width});
     font-size: var(--SearchPanel-fontSize, #{$o-search-panel-font-size});
 
@@ -36,8 +40,21 @@
     }
 
     .list-group-item {
-        --list-group-item-padding-y: #{map-get($spacers, 2)};
+        --list-group-color: #{$gray-800};
+        --list-group-item-padding-y: calc(#{map-get($spacers, 2)} - var(--searchPanelHeader-margin-y));
         --list-group-item-padding-x: 0;
+
+        &:where(:not(.list-group-item-action)) {
+            // This acts as a margin, we use padding to avoid space between
+            // pseudo elements used to display the tree.
+            --list-group-item-padding-y: var(--searchPanelHeader-margin-y);
+
+            & + .list-group-item {
+                padding-top: 0;
+            }
+        }
+
+        border-radius: var(--searchPanelHeader-border-radius, var(--border-radius));
     }
 }
 
@@ -84,9 +101,41 @@
     }
 }
 
-.o_search_panel_category_value {
-    padding-left: map-get($spacers, 2);
+.o_search_panel:has(.o_treeEntry:hover) {
+    .o_treeEntry::before,
+    .o_treeEntry::after {
+        background-color: var(--treeEntry--beforeAfter-color, #{$border-color});
+    }
 
+    .o_search_panel_category_value_header_expanded {
+        &::before {
+            background-color: $body-color;
+        }
+    }
+
+    .o_search_panel_category_value:hover > header {
+        --list-group-color: #{$black};
+    }
+
+    // Unfolded parent tree entry and hovered entry
+    .o_treeEntry:hover,
+    .o_treeEntry:has(.o_treeEntry:hover) {
+        &::before {
+            height: var(--treeEntry-branch-top);
+        }
+        &::before, &::after {
+            background-color: $body-color;
+        }
+    }
+
+    .o_treeEntry:has(~ .o_treeEntry:hover, ~ .o_treeEntry .o_treeEntry:hover) {
+        &::before {
+            background-color: $body-color;
+        }
+    }
+}
+
+.o_search_panel_category_value {
     .o_toggle_fold {
         color: $text-muted;
     }
