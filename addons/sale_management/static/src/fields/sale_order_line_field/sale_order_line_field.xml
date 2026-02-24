@@ -12,6 +12,73 @@
                 <span t-else="">Set Optional</span>
             </DropdownItem>
         </t>
+        <t t-name="add_note_button" position="after">
+            <DropdownItem
+                onSelected="() => this.saveSectionTemplate(record)"
+            >
+                <i class="me-1 fa fa-fw fa-save"/>
+                <span>Save as Template</span>
+            </DropdownItem>
+        </t>
+    </t>
+
+    <t t-name="sale_management.ListRenderer.Rows" t-inherit="web.ListRenderer.Rows">
+        <button name="create_control_button" position="attributes">
+            <attribute name="t-if" separator=" " add="and (control.name != 'add_section_control' or !state.sectionTemplates.length)"/>
+        </button>
+        <button name="create_control_button" position="after">
+            <Dropdown
+                t-if="control.type === 'create' and !evalColumnInvisible(control.invisible) and control.name == 'add_section_control' and state.sectionTemplates.length"
+                position="'bottom-end'"
+            >
+                <button
+                    name="section_create_control_button"
+                    t-attf-class="btn btn-link ml16"
+                    t-att-tabindex="props.list.editedRecord ? '-1' : '0'"
+                >
+                    Add a section
+                </button>
+                <t t-set-slot="content">
+                    <DropdownItem
+                        class="'text-action'"
+                        onSelected="() => this.add({ context: control.context })"
+                    >
+                        <div class="d-flex align-items-center gap-2 w-100">
+                            <span class="flex-grow-1 text-truncate">
+                                New Section
+                            </span>
+                        </div>
+                    </DropdownItem>
+
+                    <t t-foreach="state.sectionTemplates" t-as="sectionTemplate" t-key="sectionTemplate.id">
+                        <DropdownItem
+                            onSelected="() => this.env.onAddSectionTemplate(sectionTemplate.id)"
+                        >
+                            <div class="d-flex align-items-center gap-2 w-100">
+                                <span class="flex-grow-1 text-truncate">
+                                    <t t-out="sectionTemplate.name"/>
+                                </span>
+
+                                <span class="text-muted text-nowrap text-end">
+                                    <t t-out="sectionTemplate.source_order_id.name"/>
+                                </span>
+
+                                <a
+                                    href="#"
+                                    role="button"
+                                    class="text-muted p-0"
+                                    title="Delete"
+                                    t-on-click.stop.prevent="() => this.deleteSectionTemplate(sectionTemplate.id)"
+                                    tabindex="-1"
+                                >
+                                    <i class="fa fa-trash"/>
+                                </a>
+                            </div>
+                        </DropdownItem>
+                    </t>
+                </t>
+            </Dropdown>
+        </button>
     </t>
 
 </templates>

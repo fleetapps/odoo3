@@ -150,6 +150,7 @@
                     <t t-foreach="controls" t-as="control" t-key="control_index">
                         <button
                             t-if="control.type === 'create' and !evalColumnInvisible(control.invisible)"
+                            name="create_control_button"
                             t-attf-class="btn btn-link #{control_index !== 0 ? 'ml16' : ''}"
                             t-att-tabindex="props.list.editedRecord ? '-1' : '0'"
                             t-on-click.stop.prevent="() => this.add({ context: control.context })"

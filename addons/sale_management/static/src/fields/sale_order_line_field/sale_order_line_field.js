@@ -1,14 +1,105 @@
 import { getSectionRecords } from '@account/components/section_and_note_fields_backend/section_and_note_fields_backend';
-import { SaleOrderLineListRenderer } from '@sale/js/sale_order_line_field/sale_order_line_field';
+import { onWillStart, useState } from '@odoo/owl';
+import {
+    SaleOrderLineListRenderer,
+    SaleOrderLineOne2Many,
+} from '@sale/js/sale_order_line_field/sale_order_line_field';
 import { makeContext } from '@web/core/context';
 import { x2ManyCommands } from '@web/core/orm_service';
+import { user } from '@web/core/user';
+import { useService } from '@web/core/utils/hooks';
 import { patch } from '@web/core/utils/patch';
+import { uuid } from '@web/core/utils/strings';
+import { getFieldsSpec } from '@web/model/relational_model/utils';
+import { useSubEnv } from '@web/owl2/utils';
+
+
+patch(SaleOrderLineOne2Many.prototype, {
+    setup() {
+        super.setup();
+        this.orm = useService('orm');
+        useSubEnv({ onAddSectionTemplate: this.applySectionTemplate.bind(this) });
+    },
+
+    /**
+     * Apply a section template to the current sale order.
+     *
+     * Retrieves prepared sale.order.line values for the given section template,
+     * assigns proper sequence values, and appends the resulting lines to the order.
+     *
+     * @param {number} templateId - ID of the section template to apply
+     */
+    async applySectionTemplate(templateId) {
+        const fieldsSpec = getFieldsSpec(
+            this.list.activeFields,
+            this.list.fields,
+            this.list.evalContext,
+            { withInvisible: true },
+        );
+        const orderChanges = {
+            order_id: {
+                ...await this.props.record.getChanges(),
+                ...(!this.props.record.isNew && { id: this.props.record.resId }),
+            },
+        };
+
+        const orderLineValues = await this.orm.call(
+            'sale.order.line',
+            'prepare_section_template_order_lines',
+            [templateId, orderChanges, fieldsSpec],
+        );
+
+        // Start from 10 if there are no existing lines
+        const maxSequence = Math.max(9, ...this.list.records.map(record => record.data.sequence));
+        const createCommands = orderLineValues.map((lineValues, index) =>
+            x2ManyCommands.create(undefined, {
+                ...lineValues,
+                sequence: maxSequence + index + 1,
+            }),
+        );
+
+        await this.list.applyCommands(createCommands, { sort: true });
+    },
+})
+
+patch(SaleOrderLineListRenderer, {
+    rowsTemplate : 'sale_management.ListRenderer.Rows',
+})
 
 patch(SaleOrderLineListRenderer.prototype, {
 
     setup() {
         super.setup();
         this.copyFields.push('is_optional');
+        this.state = useState({
+            ...this.state,
+            sectionTemplates: [],
+        });
+
+        onWillStart(async () => {
+            await this.fetchSectionTemplates();
+        });
+    },
+
+    async fetchSectionTemplates() {
+        const data = await this.orm.webSearchRead(
+            'sale.order.template',
+            [
+                ['is_section_template', '=', true],
+                ['user_id', '=', user.userId]
+            ],
+            {
+                specification: { id: {}, name: {}, source_order_id: { fields: { name: {} } } },
+                context: { active_test: false },
+            }
+        );
+        this.state.sectionTemplates = data.records;
+    },
+
+    async deleteSectionTemplate(templateId) {
+        await this.orm.unlink('sale.order.template', [templateId]).then(async () => {
+            await this.fetchSectionTemplates();
+        });
     },
 
     /**
@@ -159,6 +250,42 @@ patch(SaleOrderLineListRenderer.prototype, {
 
         await this.props.list.applyCommands(commands, { sort: true });
         await Promise.all(proms);
+    },
+
+    /**
+     * Saves a section template from section record.
+     *
+     * If the sale order is new or currently being edited,
+     * it is first saved to the database to obtain a stable resId.
+     *
+     * @param {Object} record - section record to create template from.
+     */
+    async saveSectionTemplate(record) {
+        let sectionRecord = record;
+
+        // If order is being created or has unsaved changes(dirty) we must save order first
+        if (this.props.list.model.root.isNew || this.props.list.model.root.dirty) {
+            // A virtual_id is assigned before saving so we can reliably retrieve
+            // the record after the model reloads because at that point, the list is
+            // entirely re-fetched and old record references are no longer valid.
+            const virtualId = record.data.virtual_id || uuid();
+
+            if (!record.data.virtual_id) {
+                await sectionRecord.update({ virtual_id: virtualId });
+            }
+
+            const saved = await this.props.list.model.root.save();
+            if (!saved) {
+                return;
+            }
+            // load list with new records
+            await this.props.list.model.load();
+
+            sectionRecord = this.props.list.records.find((r) => r.data.virtual_id === virtualId);
+        }
+
+        await this.orm.call('sale.order.line', 'save_section_template', [sectionRecord.resId]);
+        await this.fetchSectionTemplates();
     },
 
     /**
