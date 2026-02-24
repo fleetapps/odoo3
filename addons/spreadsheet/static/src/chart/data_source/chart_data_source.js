@@ -111,13 +111,12 @@ export class ChartDataSource extends OdooViewsDataSource {
     }
 }
 
-// TODO remove this.
 export function chartTypeToDataSourceMode(chartType) {
     switch (chartType) {
-        case "odoo_bar":
-        case "odoo_line":
-        case "odoo_pie":
-            return chartType.replace("odoo_", "");
+        case "bar":
+        case "line":
+        case "pie":
+            return chartType;
         default:
             return "bar";
     }
