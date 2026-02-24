@@ -239,13 +239,3 @@ export function isChartJSMiddleClick(event) {
         (event.type === "mouseup" && event.native.button === 1)
     );
 }
-
-/**
- * Change the chart definition type from odoo_xxx to xxx so it can be used by spreadsheet chart helpers
- */
-export function changeTypeToSpreadsheetChart(definition) {
-    return {
-        ...definition,
-        type: definition.type.replace("odoo_", ""),
-    };
-}
