@@ -99,6 +99,10 @@ class ProductTemplate(models.Model):
     # list_price: catalog price, user defined
     list_price = fields.Float(
         'Sales Price', default=1.0,
+        company_dependent=True,
+        compute='_compute_list_price',
+        store=True,
+        readonly=False,
         min_display_digits='Product Price',
         tracking=True,
         help="Price at which the product is sold to customers.",
@@ -329,6 +333,10 @@ class ProductTemplate(models.Model):
                 archived_variants = self.with_context(active_test=False).product_variant_ids
                 if len(archived_variants) == 1:
                     archived_variants[fname] = template[fname]
+
+    def _compute_list_price(self):
+        '''To be overidden in account'''
+        return
 
     @api.depends_context('company')
     @api.depends('product_variant_ids.standard_price')

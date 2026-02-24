@@ -1149,6 +1149,7 @@ class AccountTax(models.Model):
         special_mode=False,
         manual_tax_amounts=None,
         filter_tax_function=None,
+        document_tax_mode=None,
     ):
         """ Compute the tax/base amounts for the current taxes.
 
@@ -1208,6 +1209,8 @@ class AccountTax(models.Model):
                 price_include = True
             elif special_mode == 'total_excluded':
                 price_include = False
+            elif document_tax_mode:
+                price_include = document_tax_mode == 'tax_included'
             else:
                 price_include = tax.price_include
             return {
@@ -1228,6 +1231,7 @@ class AccountTax(models.Model):
                 tax,
                 group=batching_results['group_per_tax'].get(tax.id),
                 batch=batching_results['batch_per_tax'][tax.id],
+                document_tax_mode=document_tax_mode,
             )
             if tax.has_negative_factor:
                 reverse_charge_taxes_data[tax.id] = {
@@ -1342,7 +1346,7 @@ class AccountTax(models.Model):
     # -------------------------------------------------------------------------
 
     @api.model
-    def _adapt_price_unit_to_another_taxes(self, price_unit, product, original_taxes, new_taxes, product_uom=None):
+    def _adapt_price_unit_to_another_taxes(self, price_unit, product, original_taxes, new_taxes, product_uom=None, document_tax_mode=None):
         """ From the price unit and taxes given as parameter, compute a new price unit corresponding to the
         new taxes.
 
@@ -1375,6 +1379,7 @@ class AccountTax(models.Model):
             rounding_method='round_globally',
             product=product,
             product_uom=product_uom,
+            document_tax_mode=document_tax_mode,
         )
         price_unit = taxes_computation['total_excluded']
 
@@ -1386,6 +1391,7 @@ class AccountTax(models.Model):
             product=product,
             product_uom=product_uom,
             special_mode='total_excluded',
+            document_tax_mode=document_tax_mode,
         )
         delta = sum(x['tax_amount'] for x in taxes_computation['taxes_data'] if x['tax'].price_include)
         return price_unit + delta
@@ -1735,7 +1741,7 @@ class AccountTax(models.Model):
         }
 
     @api.model
-    def _add_tax_details_in_base_line(self, base_line, company, rounding_method=None):
+    def _add_tax_details_in_base_line(self, base_line, company, rounding_method=None, document_tax_mode=None):
         """ Perform the taxes computation for the base line and add it to the base line under
         the 'tax_details' key. Those values are rounded or not depending of the tax calculation method.
         If you need to compute monetary fields with that, you probably need to call
@@ -1771,6 +1777,7 @@ class AccountTax(models.Model):
             product_uom=base_line['product_uom_id'],
             special_mode=base_line['special_mode'],
             filter_tax_function=base_line['filter_tax_function'],
+            document_tax_mode=document_tax_mode,
         )
 
         # Only python side for professional with reverse charge
@@ -1809,7 +1816,7 @@ class AccountTax(models.Model):
             })
 
     @api.model
-    def _add_tax_details_in_base_lines(self, base_lines, company):
+    def _add_tax_details_in_base_lines(self, base_lines, company, document_tax_mode=None):
         """ Shortcut to call '_add_tax_details_in_base_line' on multiple base lines at once.
 
         [!] Mirror of the same method in account_tax.js.
@@ -1819,7 +1826,7 @@ class AccountTax(models.Model):
         :param company:     The company owning the base lines.
         """
         for base_line in base_lines:
-            self._add_tax_details_in_base_line(base_line, company)
+            self._add_tax_details_in_base_line(base_line, company, document_tax_mode=document_tax_mode)
 
     @api.model
     def _normalize_target_factors(self, target_factors, allow_negative_factors=False):
@@ -3631,7 +3638,7 @@ class AccountTax(models.Model):
                 price_unit=base_line['price_unit'] * sign * percentage,
                 computation_key=computation_key,
             ))
-        self._add_tax_details_in_base_lines(new_base_lines, company)
+        self._add_tax_details_in_base_lines(new_base_lines, company, document_tax_mode=self._get_document_tax_mode())
         self._round_base_lines_tax_details(new_base_lines, company)
 
         # Smooth distribution of the delta tax/base amounts.

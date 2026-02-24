@@ -95,7 +95,9 @@
                                 'append_fields': ['company_id'],
                             }"
                         />
-                        <field name="tax_string" class="oe_inline"/>
+                        <span class="o_form_label mx-3 oe_edit_only" style="width: 3ch;">=</span>
+                        <field name="after_tax_price" class="oe_inline" style="width: 3ch;"/>
+                        <span class="o_form_label mx-3 oe_edit_only text-center" style="width: 6ch;">Tax Incl.</span>
                     </div>
                 </div>
                 <div name="standard_price_uom" position="after">

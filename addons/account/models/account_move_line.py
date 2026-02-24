@@ -1066,12 +1066,13 @@ class AccountMoveLine(models.Model):
 
             company = line.company_id or self.env.company
             base_line = line.move_id._prepare_product_base_line_for_taxes_computation(line)
-            AccountTax._add_tax_details_in_base_line(base_line, company)
+            document_tax_mode = 'tax_included' if line.move_id.price_is_tax_included else 'tax_excluded'
+            AccountTax._add_tax_details_in_base_line(base_line, company, document_tax_mode=document_tax_mode)
             AccountTax._round_base_lines_tax_details([base_line], company)
             line.price_subtotal = base_line['tax_details']['total_excluded_currency']
             line.price_total = base_line['tax_details']['total_included_currency']
 
-    @api.depends('product_id', 'product_uom_id')
+    @api.depends('product_id', 'product_uom_id', 'move_id.price_is_tax_included')
     def _compute_price_unit(self):
         for line in self:
             if not line.product_id or line.display_type in ('line_section', 'line_subsection', 'line_note') or line.is_imported:
@@ -1082,6 +1083,8 @@ class AccountMoveLine(models.Model):
                 document_type = 'purchase'
             else:
                 document_type = 'other'
+
+            document_tax_mode = 'tax_included' if line.move_id.price_is_tax_included else 'tax_excluded'
             line.price_unit = line.product_id._get_tax_included_unit_price(
                 line.move_id.company_id,
                 line.move_id.currency_id,
@@ -1089,6 +1092,7 @@ class AccountMoveLine(models.Model):
                 document_type,
                 fiscal_position=line.move_id.fiscal_position_id,
                 product_uom=line.product_uom_id,
+                document_tax_mode=document_tax_mode,
             )
 
     @api.depends('product_id', 'product_uom_id')

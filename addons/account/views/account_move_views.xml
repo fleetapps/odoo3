@@ -1189,6 +1189,9 @@
                                         </div>
                                     </div>
                                 </div>
+                                <field name="price_is_tax_included" 
+                                           string="Tax Included"
+                                           widget="boolean_toggle"/>
                             </group>
                         </group>
                         <notebook>
