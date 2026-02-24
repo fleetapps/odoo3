@@ -949,3 +949,54 @@ class TestMultistepManufacturingWarehouse(TestMrpCommon):
             {'product_id': self.product_1.id, 'product_uom_qty': 0, 'product_qty_available': 0},
             {'product_id': self.product_3.id, 'product_uom_qty': 5, 'product_qty_available': 20},
         ])
+
+    def test_first_wo_readiness_drives_mo_availability(self):
+        """MO becomes assigned when the first workorder has no component moves.
+
+        The manufacturing order should be considered ready to start if the very
+        first operation requires no raw materials, even if a later operation
+        still waits for parts.
+        """
+        # build new BOM with two operations
+        prod = self.env['product.product'].create({'name': 'DualProd', 'type': 'product'})
+        comp = self.env['product.product'].create({'name': 'MissingComp', 'type': 'product'})
+        # no stock for component
+        self.env['stock.quant'].with_context(inventory_mode=True).create({
+            'product_id': comp.id,
+            'inventory_quantity': 0.0,
+            'location_id': self.stock_location_14.id,
+        })
+        bom = self.env['mrp.bom'].create({
+            'product_id': prod.id,
+            'product_tmpl_id': prod.product_tmpl_id.id,
+            'product_uom_id': self.uom_unit.id,
+            'ready_to_produce': 'asap',
+            'type': 'normal',
+            'operation_ids': [
+                (0, 0, {'name': 'Op1', 'workcenter_id': self.workcenter_1.id, 'sequence': 1}),
+                (0, 0, {'name': 'Op2', 'workcenter_id': self.workcenter_1.id, 'sequence': 2}),
+            ],
+        })
+        op2 = bom.operation_ids.filtered(lambda o: o.sequence == 2)
+        bom.write({'bom_line_ids': [(0, 0, {
+            'product_id': comp.id,
+            'product_qty': 1,
+            'product_uom_id': self.uom_unit.id,
+            'operation_id': op2.id,
+        })]})
+        mo = self.env['mrp.production'].create({
+            'product_id': prod.id,
+            'product_qty': 1,
+            'product_uom_id': self.uom_unit.id,
+            'bom_id': bom.id,
+        })
+        mo.action_confirm()
+        self.assertEqual(mo.reservation_state, 'assigned', 'MO should be assigned if first WO has no components')
+        wos = mo.workorder_ids.sorted(lambda w: w.operation_id.sequence)
+        self.assertEqual(len(wos), 2)
+        self.assertEqual(wos[0].state, 'ready')
+        self.assertEqual(wos[1].state, 'pending')
+        wos[0].button_start()
+        wos[0].button_finish()
+        self.assertEqual(wos[0].state, 'done')
+        self.assertEqual(wos[1].state, 'waiting')

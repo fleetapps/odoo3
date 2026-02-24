@@ -616,10 +616,12 @@ class MrpProduction(models.Model):
             if production.state in ('draft', 'done', 'cancel'):
                 production.reservation_state = False
                 continue
+            first_wo = production.workorder_ids.sorted(lambda w: w.operation_id.sequence)[:1]
             relevant_move_state = production.move_raw_ids.filtered(lambda m: not (m.picked or float_is_zero(m.product_uom_qty, precision_rounding=m.product_uom.rounding)))._get_relevant_state_among_moves()
+            asap = production.bom_id.ready_to_produce == 'asap'
             # Compute reservation state according to its component's moves.
-            if relevant_move_state == 'partially_available':
-                if production.workorder_ids.operation_id and production.bom_id.ready_to_produce == 'asap':
+            if relevant_move_state == 'partially_available' or (asap and first_wo.state not in ('cancel', 'done')):
+                if production.workorder_ids.operation_id and asap:
                     production.reservation_state = production._get_ready_to_produce_state()
                 else:
                     production.reservation_state = 'confirmed'
@@ -1277,7 +1279,11 @@ class MrpProduction(models.Model):
             moves_in_first_operation = self.move_raw_ids
         else:
             first_operation = operations[0]
-            moves_in_first_operation = self.move_raw_ids.filtered(lambda move: move.operation_id == first_operation)
+            # include moves without any operation as they are effectively needed for the
+            # first operation as well
+            moves_in_first_operation = self.move_raw_ids.filtered(
+                lambda move: (not move.operation_id) or move.operation_id == first_operation
+            )
         moves_in_first_operation = moves_in_first_operation.filtered(
             lambda move: move.bom_line_id and
             not move.bom_line_id._skip_bom_line(self.product_id)
