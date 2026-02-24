@@ -125,19 +125,10 @@ class SaleOrder(models.Model):
 
     def _action_confirm(self):
         """ On SO confirmation, some lines should generate a task or a project. """
-        self._generate_template()
-        for record in self:
-            for lines in record.order_line:
-                if (not lines.project_id.sale_line_id):
-                    lines.project_id.sale_line_id = lines
-        return super()._action_confirm()
 
-    def _generate_template(self):
-        """ On SO confirmation, some lines should generate a task or a project. """
         if self.env.context.get('disable_project_task_generation'):
-            return False
+            return super()._action_confirm()
 
-        project_count = len(self.sudo().project_ids)
         if len(self.company_id) == 1:
             # All orders are in the same company
             self.order_line.sudo().with_company(self.company_id)._timesheet_service_generation()
@@ -155,7 +146,8 @@ class SaleOrder(models.Model):
                     if project == sol.project_id and (project_template := sol.product_template_id.project_template_id):
                         project.sudo().company_id = project_template.sudo().company_id
                         break
-        return len(self.sudo().project_ids) > project_count
+
+        return super()._action_confirm()
 
     def _tasks_ids_domain(self):
         return ['&', ('is_template', '=', False), ('project_id', '!=', False), '|', ('sale_line_id', 'in', self.order_line.ids), ('sale_order_id', 'in', self.ids), ('has_template_ancestor', '=', False)]
@@ -168,13 +160,9 @@ class SaleOrder(models.Model):
                 'tag': 'display_notification',
                 'params': {
                     'type': 'danger',
-                    'message': self.env._("The project couldn't be created because you don't have the right to creat a project"),
+                    'message': self.env._("The project couldn't be created because you don't have the right to create a project"),
                 }
             }
-        # generates projects based on the pre-existing SOLs befor prompting for template selection
-        if (self._generate_template()):
-            return
-
         sorted_line = self.order_line.sorted('sequence')
         default_sale_line = next((
             sol for sol in sorted_line
@@ -288,9 +276,20 @@ class SaleOrder(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if 'state' in vals and vals['state'] == 'cancel':
-            # Remove sale line field reference from all projects
-            self.env['project.project'].sudo().search([('sale_line_id.order_id', 'in', self.ids)]).sale_line_id = False
+        if 'state' in vals:
+            if vals['state'] == 'cancel':
+                # Remove sale line field reference from all projects
+                self.env['project.project'].sudo().search([('sale_line_id.order_id', 'in', self.ids)]).sale_line_id = False
+            if vals['state'] == 'sale':
+                ## Add lines to empty projects
+                for record in self:
+                    try:
+                        sale_line_to_assign = record.get_first_service_line()
+                    except (UserError):
+                        sale_line_to_assign = False
+                    project_with_sale_line = record.sudo().project_ids.filtered(lambda p: p.sale_line_id)
+                    for project_id in record.sudo().project_ids - project_with_sale_line:
+                        project_id.sudo().sale_line_id = sale_line_to_assign
         return res
 
     def _compute_completed_task_percentage(self):
