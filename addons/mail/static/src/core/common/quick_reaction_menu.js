@@ -1,7 +1,8 @@
 import { Component, useExternalListener, useRef, useState } from "@odoo/owl";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { useDropdownState } from "@web/core/dropdown/dropdown_hooks";
-import { loadEmoji, useEmojiPicker } from "@web/core/emoji_picker/emoji_picker";
+import { emojiLoader } from "@web/core/emoji_picker/emoji_loader";
+import { useEmojiPicker } from "@web/core/emoji_picker/emoji_picker";
 import { useService } from "@web/core/utils/hooks";
 
 /**
@@ -73,13 +74,11 @@ export class QuickReactionMenu extends Component {
     }
 
     getEmojiShortcode(emoji) {
-        return this.store.emojiLoader.loaded?.emojiValueToShortcodes?.[emoji]?.[0] ?? "?";
+        return emojiLoader.getShortCode(emoji);
     }
 
     onClick() {
-        if (!this.store.emojiLoader.isLoaded) {
-            loadEmoji();
-        }
+        emojiLoader.load();
         if (this.ui.isSmall) {
             this.props.action.onSelected();
         } else {

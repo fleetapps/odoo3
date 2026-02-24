@@ -19,6 +19,7 @@ import {
 import { describe, getFixture, test } from "@odoo/hoot";
 
 import { queryFirst } from "@odoo/hoot-dom";
+import { emojiLoader } from "@web/core/emoji_picker/emoji_loader";
 
 describe.current.tags("desktop");
 defineMailModels();
@@ -243,15 +244,13 @@ test("shortcodes shown in emoji title in message", async () => {
 });
 
 test("Emoji picker shows failure to load emojis", async () => {
-    // Simulate failure to load emojis
-    patchWithCleanup(odoo.loader.modules.get("@web/core/emoji_picker/emoji_data"), {
-        getEmojis() {
-            return [];
-        },
-    });
     const pyEnv = await startServer();
     const channelId = pyEnv["discuss.channel"].create({ name: "" });
     await start();
+    // Simulate failure to load emojis
+    patchWithCleanup(emojiLoader, {
+        emojis: [],
+    });
     await openDiscuss(channelId);
     await click("button[title='Add Emojis']");
     await contains(".o-EmojiPicker:text('😵‍💫 Failed to load emojis...')");

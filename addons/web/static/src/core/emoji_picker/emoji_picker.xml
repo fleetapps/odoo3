@@ -24,11 +24,12 @@
                     <span class="o-EmojiPicker-empty">😢</span>
                     <span>No emojis match your search</span>
                 </t>
-                <t t-if="recentEmojis.length > 0">
+                <t t-set="_recentEmojis" t-value="recentEmojis" />
+                <t t-if="_recentEmojis.length > 0">
                     <t t-if="!searchTerm" t-call="web.EmojiPicker.section">
                         <t t-set="category" t-value="recentCategory"/>
                     </t>
-                    <t t-foreach="recentEmojis" t-as="emoji" t-key="'recent_' + emoji_index">
+                    <t t-foreach="_recentEmojis" t-as="emoji" t-key="'recent_' + emoji_index">
                         <t t-call="web.EmojiPicker.emoji">
                             <t t-set="inRecent" t-value="true"/>
                             <t t-set="emoji" t-value="emoji"/>
