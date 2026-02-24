@@ -1652,6 +1652,25 @@ def _optimize_type_datetime_relative(condition, model):
     return DomainCondition(condition.field_expr, operator, value)
 
 
+@field_type_optimization(['properties'], level=OptimizationLevel.DYNAMIC_VALUES)
+def _optimize_properties_date_datetime(condition, model):
+    operator = condition.operator
+    definition = model.get_property_definition(condition.field_expr)
+    property_type = definition.get("type")
+    if (
+        operator not in ('in', 'not in', '>', '<', '<=', '>=')
+        or property_type not in ('date', 'datetime')
+        or not isinstance(condition.value, (str, OrderedSet))
+    ):
+        return condition
+
+    if property_type == 'date':
+        value = _value_to_date(condition.value, model.env)
+    else:
+        value, _ = _value_to_datetime(condition.value, model.env)
+    return DomainCondition(condition.field_expr, operator, value)
+
+
 @field_type_optimization(['binary'])
 def _optimize_type_binary_attachment(condition, model):
     field = condition._field(model)

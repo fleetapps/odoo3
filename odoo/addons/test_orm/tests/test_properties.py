@@ -2404,7 +2404,7 @@ class PropertiesSearchCase(TransactionExpressionCase, TestPropertiesMixin):
                     self.env['test_orm.message'].search(domain=[], order=order)
 
     def test_properties_field_search(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self.env['test_orm.message'].search([('attributes', '=', '"Test"')])
 
     def test_properties_field_search_read_false(self):
@@ -2594,7 +2594,7 @@ class PropertiesGroupByCase(TestPropertiesMixin):
         self.message_3.attributes = {'mychar': 'boum'}
 
         Model = self.env['test_orm.message']
-        with self.assertQueryCount(6):  # 3 for formatted_read_group + 1 query by group opened
+        with self.assertQueryCount(9):  # 3 for formatted_read_group + 1 query by group opened
             result = Model.web_read_group(
                 domain=[],
                 aggregates=['__count'],

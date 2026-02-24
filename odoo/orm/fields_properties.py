@@ -7,6 +7,7 @@ import json
 import typing
 import uuid
 from collections import abc, defaultdict
+import datetime
 from operator import attrgetter
 
 from odoo.exceptions import AccessError, UserError, MissingError
@@ -754,8 +755,16 @@ class Properties(Field):
         except KeyError:
             raise ValueError(f"Invalid operator {operator} for Properties")
 
-        if isinstance(value, str):
-            sql_left = SQL("(%s ->> %s)", raw_sql_field, property_name)  # JSONified value
+        if isinstance(value, (str, datetime.datetime, datetime.date)):
+            if isinstance(value, str):
+                sql_left = SQL("(%s ->> %s)", raw_sql_field, property_name)  # JSONified value
+            else:
+                # JSONified date value
+                sql_left = SQL(
+                    "NULLIF(%s ->> %s, 'false')::date",
+                    raw_sql_field,
+                    property_name,
+                )
             sql_right = SQL("%s", value)
             sql = SQL(
                 "%s%s%s",
