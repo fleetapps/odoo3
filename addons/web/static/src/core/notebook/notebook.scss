@@ -16,6 +16,18 @@
                 display: none;
             }
         }
+        ul{
+           width:100%;
+           li{
+            width: 100%;
+            word-wrap: break-word;
+            button {
+                width: 100%;
+                word-wrap: break-word;
+                white-space: normal;
+            }
+           } 
+        }
     }
 
     .nav {
