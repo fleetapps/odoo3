@@ -2,7 +2,6 @@
 
 import random
 from datetime import datetime, timedelta
-from typing import Literal
 
 from dateutil.relativedelta import relativedelta
 
@@ -21,7 +20,12 @@ from odoo.addons.website_sale.models.website import (
 
 class SaleOrder(models.Model):
     _name = 'sale.order'
-    _inherit = ['sale.order', 'website.checkout.alert.mixin']
+    _inherit = [
+        'sale.order',
+        # Add global alert to the order shown at the top of the checkout page.
+        # Note: alerts are transient, they are cleared after being rendered.
+        'website.checkout.alert.mixin',
+    ]
 
     website_id = fields.Many2one(
         help="Website through which this order was placed for eCommerce orders.",
@@ -958,20 +962,25 @@ class SaleOrder(models.Model):
         """
         self.ensure_one()
 
-        if not self._has_deliverable_products():
-            return True
+        if self._has_deliverable_products():
+            return self._is_cart_ready_for_delivery()
 
+        return True
+
+    def _is_cart_ready_for_delivery(self):
+        """Whether the cart is ready to be delivered. This hook is called post /shop/checkout."""
         if not self.carrier_id:
-            self._add_warning_alert(self.env._("No shipping method is selected."))
+            self._add_blocking_alert(self.env._("No delivery method is selected."))
             return False
 
         if self.carrier_id not in self._get_delivery_methods():
-            self._add_warning_alert(
+            self._add_blocking_alert(
                 self.env._(
                     "Unfortunately, the delivery method that you selected is no longer available."
                     " Please update your choice. We apologize for any inconvenience."
                 )
             )
+            return False
 
         return True
 
@@ -1002,17 +1011,6 @@ class SaleOrder(models.Model):
     def _add_blocking_alert(self, message: str, /, **kwargs):
         """Add an alert of 'danger' level blocking the navigation to the next checkout step."""
         return self._add_danger_alert(message, blocking=True, **kwargs)
-
-    def _add_alert(self, level: Literal['info', 'warning', 'danger'], message: str, /, **kwargs):
-        """Add a global alert to the order shown at the top of the checkout page.
-
-        Note: alerts are transient, they are cleared after being rendered.
-
-        :param level: Severity/style of the alert.
-        :param message: The message text to display to the customer.
-        :param kwargs: Extra info added in the alert dictionary.
-        """
-        return super()._add_alert(level, message, **kwargs)  # Override for docstring
 
     def _clear_alerts(self):
         self.order_line._clear_alerts()

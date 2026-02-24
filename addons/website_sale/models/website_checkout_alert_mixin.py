@@ -41,7 +41,7 @@ class WebsiteCheckoutAlertMixin(models.AbstractModel):
             record.alerts = alerts
 
     def _get_alerts(self) -> list[dict]:
-        _ = self and self.ensure_one()  # At most one
+        self and self.ensure_one()  # At most one
         return self.alerts or []
 
     def _join_alert_messages(self):

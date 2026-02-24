@@ -97,17 +97,17 @@ class SaleOrder(models.Model):
             country = self.env['res.country'].search([('code', '=', country_code)], limit=1)
         return super()._get_pickup_locations(country=country, **kwargs)
 
-    def _is_cart_ready_for_payment(self):
+    def _is_cart_ready_for_delivery(self):
         """Override of `website_sale` to include errors if no pickup location is selected and to
         ensure the cart is available in the selected store, even if out-of-stock orders are
         allowed."""
-        ready = super()._is_cart_ready_for_payment()
-        if not self._has_deliverable_products():
-            return ready
+        ready = super()._is_cart_ready_for_delivery()
 
         in_store = self.carrier_id.delivery_type == 'in_store'
         if in_store and not self.pickup_location_data:
-            self._add_warning_alert(self.env._("Please choose a store to collect your order."))
+            self._add_blocking_alert(
+                self.env._("Please choose a store to collect your order.")
+            )
             return False
 
         # `website_sale_stock` overrides `_is_cart_ready_for_checkout` to checks stock in all
@@ -115,9 +115,10 @@ class SaleOrder(models.Model):
         # selected warehouse/store only.
         wh_id = self.warehouse_id.id if in_store else self._get_shop_warehouse_id()
         if wh_id and not self._is_in_stock(wh_id, add_alerts=True):
-            self._add_warning_alert(
-                (in_store and self.env._("Some products are not available in the selected store."))
-                or self.env._(
+            self._add_blocking_alert(
+                self.env._("Some products are not available in the selected store.")
+                if in_store
+                else self.env._(
                     "Unfortunately, we can not deliver this order with the selected delivery"
                     " method. Please update your choice and try again."
                 )
