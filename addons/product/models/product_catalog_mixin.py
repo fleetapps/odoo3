@@ -80,6 +80,11 @@ class ProductCatalogMixin(models.AbstractModel):
             product.id: {
                 'productType': product.type,
                 'uomDisplayName': product.uom_id.display_name,
+                'uomId': product.uom_id.id,
+                'availableUoms': [
+                    {'id': uom.id, 'name': uom.display_name}
+                    for uom in product.product_tmpl_id._get_available_uoms()
+                ],
                 'code': product.code if product.code else '',
             }
             for product in products
@@ -112,6 +117,13 @@ class ProductCatalogMixin(models.AbstractModel):
             }
             if not order_line_info[product.id]['uomDisplayName']:
                 order_line_info[product.id]['uomDisplayName'] = product.uom_id.display_name
+            if not order_line_info[product.id].get('uomId'):
+                order_line_info[product.id]['uomId'] = product.uom_id.id
+            if not order_line_info[product.id].get('availableUoms'):
+                order_line_info[product.id]['availableUoms'] = [
+                    {'id': uom.id, 'name': uom.display_name}
+                    for uom in product.product_tmpl_id._get_available_uoms()
+                ]
 
         default_data = self._default_order_line_values(child_field)
         products = self.env['product.product'].browse(product_ids)

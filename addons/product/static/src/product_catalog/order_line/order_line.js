@@ -10,6 +10,8 @@ export class ProductCatalogOrderLine extends Component {
         price: Number,
         productType: String,
         uomDisplayName: String,
+        uomId: { type: Number, optional: true },
+        availableUoms: { type: Array, optional: true },
         uomFactor: { type: Number, optional: true },
         code: { type: String, optional: true },
         readOnly: { type: Boolean, optional: true },
@@ -49,6 +51,14 @@ export class ProductCatalogOrderLine extends Component {
         const digits = [false, this.env.precision];
         const options = { digits, decimalPoint: ".", thousandsSep: "" };
         return parseFloat(formatFloat(this.props.quantity, options));
+    }
+
+    get hasMultipleUoms() {
+        return this.props.availableUoms && this.props.availableUoms.length > 1;
+    }
+
+    onUomChange(ev) {
+        this.env.setUom(parseInt(ev.target.value));
     }
 
     get showPrice() {
