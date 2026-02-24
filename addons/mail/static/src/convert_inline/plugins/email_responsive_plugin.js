@@ -7,6 +7,48 @@ import { memoize } from "@web/core/utils/functions";
 import { useShorthands } from "./hooks";
 import { Matrix, Row, Cell } from "./matrix";
 
+const BLOCK_TAG_NAMES = [
+    "ADDRESS",
+    "ARTICLE",
+    "ASIDE",
+    "BLOCKQUOTE",
+    "DETAILS",
+    "DIALOG",
+    "DD",
+    "DIV",
+    "DL",
+    "DT",
+    "FIELDSET",
+    "FIGCAPTION",
+    "FIGURE",
+    "FOOTER",
+    "FORM",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "H5",
+    "H6",
+    "HEADER",
+    "HGROUP",
+    "HR",
+    "LI",
+    "MAIN",
+    "NAV",
+    "OL",
+    "P",
+    "PRE",
+    "SECTION",
+    "TABLE",
+    "UL",
+    "SELECT",
+    "OPTION",
+    "TR",
+    "TD",
+    "TBODY",
+    "THEAD",
+    "TH",
+];
 const DIMENSIONS = {
     desktop: EMAIL_DESKTOP_DIMENSIONS,
     mobile: EMAIL_MOBILE_DIMENSIONS,
@@ -23,6 +65,7 @@ export class ResponsivePlugin extends BasePlugin {
         useShorthands(this, "layoutSnapshotCache", [
             "getBoundingClientRect",
             "getNodeClusterRange",
+            "getStylePropertyValue",
         ]);
         this.layoutDimensions = { width: 0, height: 0 };
         this.htmlStructures = new Map();
@@ -35,6 +78,24 @@ export class ResponsivePlugin extends BasePlugin {
                 }
             }
         });
+    }
+
+    /**
+     * Custom `isBlock` function using the email_layout_snapshot_cache
+     */
+    isBlock(node) {
+        if (!node || node.nodeType !== Node.ELEMENT_NODE || !node.isConnected) {
+            return false;
+        }
+        if (node.nodeName === "BR") {
+            // see html_editor isBlock for explanation (browser compatibility)
+            return false;
+        }
+        const display = this.getStylePropertyValue(node, "display");
+        if (display && display !== "none") {
+            return !display.includes("inline") && display !== "contents";
+        }
+        return BLOCK_TAG_NAMES.includes(node.nodeName);
     }
 
     // Algorithm to organize blocks between each other in a email sensible way.
@@ -154,10 +215,46 @@ export class ResponsivePlugin extends BasePlugin {
         let el = treeWalker.root;
         do {
             const subNodes = childNodes(el);
+            const clusterInfos = subNodes.reduce((accumulator, node) => {
+                const isBlock = this.isBlock(node);
+                const prevClusterInfo = accumulator.at(-1);
+                const clusterInfo =
+                    isBlock || !prevClusterInfo || prevClusterInfo.isBlock
+                        ? {
+                              nodes: [node],
+                              isBlock,
+                          }
+                        : prevClusterInfo;
+                if (clusterInfo !== prevClusterInfo) {
+                    accumulator.push(clusterInfo);
+                } else {
+                    clusterInfo.nodes.push(node);
+                }
+                return accumulator;
+            }, []);
+            clusterInfos.forEach(
+                (clusterInfo) =>
+                    (clusterInfo.rect = this.getBoundingClientRect(
+                        clusterInfo.isBlock
+                            ? clusterInfo.nodes[0]
+                            : this.getNodeClusterRange(
+                                  clusterInfo.nodes.at(0),
+                                  clusterInfo.nodes.at(-1)
+                              )
+                    ))
+            );
+            // all clusters available
+
+            // need all blocks and their indexes in the array
+            // then need to extract all non-blocks and create clusters
+            // then need to get all boundingClientRects for each cluster
+
             // TODO EGGMAIL NOW: if every child is inline, we can create a cluster rectangle
             // and only care about spacing inside the parent. (equivalent to 1 block)
             // if there are multiple blocks/clusters, then we also have to evaluate
             // if they are placed horizontally or vertically
+            // evaluate inline cluster, then ask for a range and the container for that
+            // range.
         } while ((el = treeWalker.nextNode()));
         /**
          *

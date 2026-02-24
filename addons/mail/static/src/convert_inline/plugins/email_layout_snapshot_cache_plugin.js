@@ -55,7 +55,7 @@ export class LayoutSnapshotCachePlugin extends BasePlugin {
         this.computedStylesMap = new Map(); // dimensions to WeakMap of element to computed snapshot proxy
         this.domRectProperties = new Set(DOM_RECT_PROPERTIES); // properties of a DOMRect
         this.boundingClientRectsMap = new Map(); // dimensions to WeakMap of element/range to bounding client rect snapshot proxy
-        this.nodeClusterRangeMap = new WeakMap(); // node to range of all contiguous non-element nodes in a cluster
+        this.nodeClusterRangeMap = new WeakMap(); // startNode to endNode->range Map
         this.dimensionsKey = "undefined";
         this.computedStylesMap.set(this.dimensionsKey, new WeakMap());
         this.boundingClientRectsMap.set(this.dimensionsKey, new WeakMap());
@@ -165,27 +165,26 @@ export class LayoutSnapshotCachePlugin extends BasePlugin {
         return rectSnapshot;
     }
 
-    getNodeClusterRange(node) {
-        let range;
-        const isInReference = this.config.referenceDocument.contains(node);
+    getNodeClusterRange(startNode, endNode = startNode) {
+        let range, rangeMap;
+        const isInReference =
+            this.config.referenceDocument.contains(startNode) &&
+            this.config.referenceDocument.contains(endNode);
         if (isInReference) {
-            range = this.nodeClusterRangeMap.get(node);
+            rangeMap = this.nodeClusterRangeMap.get(startNode);
+            range = rangeMap?.get(endNode);
         }
         if (!range) {
-            range = this.config.referenceDocument.createRange();
-            let firstNode = node;
-            while (firstNode.previousSibling.nodeType !== Node.ELEMENT_NODE) {
-                firstNode = firstNode.previousSibling;
-            }
-            let lastNode = node;
-            while (lastNode.nextSibling.nodeType !== Node.ELEMENT_NODE) {
-                lastNode = lastNode.nextSibling;
-            }
-            range.setStart(firstNode, 0);
-            range.setEnd(lastNode, lastNode.length);
+            range = startNode.ownerDocument.createRange();
+            range.setStartBefore(startNode);
+            range.setEndAfter(endNode);
         }
         if (isInReference) {
-            this.nodeClusterRangeMap.set(node, range);
+            if (!rangeMap) {
+                rangeMap = new WeakMap();
+                this.nodeClusterRangeMap.set(startNode, rangeMap);
+            }
+            rangeMap.set(endNode, range);
         }
         return range;
     }
@@ -222,34 +221,20 @@ export class LayoutSnapshotCachePlugin extends BasePlugin {
      * The cache is short-lived otherwise (it has its own scope), and a new call to this function
      * will essentially generate a call to `getBoundingClientRect`.
      * For non-element nodes, the returned boundingClientRect is the one generated from the range
-     * related to the cluster of contiguous non-element nodes, as finer detailing is not needed for
-     * the email layout.
+     * around that node.
      *
-     * @param {Node} node
+     * @param {Node|Range} cluster
      * @returns {Object} cached bounding client rect
      */
-    getBoundingClientRect(node) {
-        let cluster = node;
-        // TODO EGGMAIL NOW: change condition based on inline-not inline
-        // what to do about inline blocks?
-        // other idea -> keep as is, create a new function receiving an already
-        // created range, cache it, and return the boundingClientRect.
-        // adapt this function to only create the range for a single non-element node
-        // and use the other for multiple nodes -> cleaner api, no surprise.
-        // getNodeClusterRange takes a list of nodes
-        if (node.nodeType !== Node.ELEMENT_NODE) {
-            // TODO EGGMAIL NOW: change function purpose: create a range for all
-            // inline blocks in a cluster
-            cluster = this.getNodeClusterRange(node);
+    getBoundingClientRect(cluster) {
+        if (
+            cluster instanceof cluster.ownerDocument.defaultView.Node &&
+            cluster.nodeType !== Node.ELEMENT_NODE
+        ) {
+            cluster = this.getNodeClusterRange(cluster);
         }
-        // if range, check commonAncestorContainer is contained in referenceDocument
-        // -> determine exact way of checking if range or node (JS realm)
-        // -> evaluate if it's best to be just before and just after the node instead of at
-        // the start of it (is there a dimension difference for the boundingClientRect
-        // -> maybe it's simpler to be before/after, then the logic to recover the first node is always
-        // startcontainer + offset = node, instead of startcontainer being the node itself
-        if (this.config.referenceDocument.contains(node)) {
-            // Only the rect of a node inside the referenceDocument can be cached, as
+        if (this.config.referenceDocument.contains(cluster)) {
+            // Only the rect of a node/range inside the referenceDocument can be cached, as
             // the HTML and CSS content inside that document are fixed during conversion.
             const cachedRect =
                 this.boundingClientRectsMap.get(this.dimensionsKey).get(cluster) ??
