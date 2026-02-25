@@ -180,7 +180,7 @@ class MailTrackMixin(models.AbstractModel):
     def _track_get_fields_info(self, tracked_fields: Iterable[str]) -> ValuesType:
         tracked_fields_get = self.fields_get(
             tracked_fields,
-            attributes=('string', 'type', 'selection', 'currency_field')
+            attributes=('company_dependent', 'string', 'type', 'selection', 'currency_field')
         )
         if set(tracked_fields_get.keys()) < set(tracked_fields):
             current_fields_info = self.env.cr.precommit.data.get(f'mail.tracking.fields_info.{self._name}', {})
@@ -403,6 +403,7 @@ class MailTrackMixin(models.AbstractModel):
             'old_value': initial_value,
             'new_value': new_value,
         }
+        # when no field linked to tracking, store data in field_info, like when the field is removed
         if not field:
             values['field_info'] = {
                 'desc': col_info['string'],
@@ -497,6 +498,10 @@ class MailTrackMixin(models.AbstractModel):
             })
         else:
             raise NotImplementedError(f'Unsupported tracking on field {field.name} (type {col_info["type"]}')
+
+        # store company information for company dependent fields
+        if col_info.get('company_dependent') is True:
+            values['company_id'] = (col_info.get('force_company') or self.env.company).id
 
         return values
 

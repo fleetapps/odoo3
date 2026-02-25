@@ -284,7 +284,7 @@ class TestTrackingAPI(TestTrackingCommon):
         records = self.test_tracking_records.with_env(self.env)[0]
         fieldnames = records._track_get_fields()
         self.assertEqual(fieldnames, {
-            'selection_field', 'text_field', 'many2one_field_id', 'char_field', 'float_field', 'properties',
+            'selection_field', 'text_field', 'many2one_field_id', 'many2one_cd_field_id', 'char_field', 'float_field', 'properties',
             'boolean_field', 'date_field', 'integer_field', 'many2many_field', 'datetime_field', 'one2many_field',
             'float_field_with_digits', 'monetary_field', 'properties_parent_id'
         })
@@ -905,6 +905,7 @@ class TestTrackingInternals(MailCommon):
             'html_field': '<p>Html Value</p>',
             'integer_field': 42,
             'many2one_field_id': self.test_partner.id,
+            'many2one_cd_field_id': self.test_partner.id,
             'monetary_field': 42.42,
             'selection_field': 'first',
             'text_field': 'text_value',
@@ -922,6 +923,7 @@ class TestTrackingInternals(MailCommon):
             ('float_field_with_digits', 'float', 0, 3.00001, {}),
             ('integer_field', 'integer', 0, 42, {}),
             ('many2one_field_id', 'many2one', self.env['res.partner'], self.test_partner, {}),
+            ('many2one_cd_field_id', 'many2one', self.env['res.partner'], self.test_partner, {'company': self.company_admin}),
             ('monetary_field', 'monetary', False, 42.42, {'currency': self.env.ref('base.USD')}),
             ('selection_field', 'selection', '', 'FIRST', {}),
             ('text_field', 'text', False, 'text_value', {}),
@@ -933,7 +935,7 @@ class TestTrackingInternals(MailCommon):
         )
         # check formatting for all field types
         formatted_values_all = new_message.sudo().tracking_value_ids._tracking_value_format()
-        for (field_name, field_type, _, _, _), formatted_vals in zip(tracking_value_list, formatted_values_all):
+        for (field_name, field_type, _, _, _), formatted_vals in zip(tracking_value_list, formatted_values_all, strict=True):
             currency = self.env.ref('base.USD').id if field_type == 'monetary' else False
             precision = None if field_name != 'float_field_with_digits' else (10, 8)
             with self.subTest(field_name=field_name):
@@ -1127,7 +1129,7 @@ class TestTrackingInternals(MailCommon):
                 ],
             }
         )
-        self.assertEqual(properties_record_1._mail_track_get_field_sequence("properties"), 100,
+        self.assertEqual(properties_record_1._mail_track_get_field_sequence("properties"), 13,
             "Properties field should have the same sequence as their parent")
 
     @users('employee')

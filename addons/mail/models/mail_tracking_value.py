@@ -34,6 +34,7 @@ class MailTrackingValue(models.Model):
 
     currency_id = fields.Many2one('res.currency', 'Currency', readonly=True, ondelete='set null',
         help="Used to display the currency when tracking monetary values")
+    company_id = fields.Many2one('res.company', 'Company', readonly=True, ondelete='set null')
 
     mail_message_id = fields.Many2one('mail.message', 'Message ID', required=True, index=True, ondelete='cascade')
 

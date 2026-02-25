@@ -1124,6 +1124,9 @@ class MockEmail(common.BaseCase, MockSmtplibCase):
         else:
             self.assertEqual(1, 0, f'Tracking: unsupported tracking test on {value_type}')
 
+        if (additional_info or {}).get('company'):
+            self.assertEqual(tracking.company_id, additional_info['company'])
+
         if (additional_info or {}).get('field_info'):
             for key, val in additional_info['field_info'].items():
                 self.assertEqual(tracking.field_info[key], val)
