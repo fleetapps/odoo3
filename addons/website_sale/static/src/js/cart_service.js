@@ -224,7 +224,6 @@ export class CartService {
                     isMainProductConfigurable: !isConfigured,
                     showQuantity: showQuantity,
                 },
-                result.preloaded_config_data,
                 rest
             );
         }
@@ -341,14 +340,12 @@ export class CartService {
         combination,
         productCustomAttributeValues,
         options,
-        preloadedData,
         additionalData
     ) {
         return await new Promise((resolve) => {
             this.dialog.add(ProductConfiguratorDialog, {
                 productTemplateId: productTemplateId,
                 ptavIds: combination,
-                preloadedData,
                 customPtavs: productCustomAttributeValues.map(customPtav => ({
                     id: customPtav.custom_product_template_attribute_value_id,
                     value: customPtav.custom_value,
