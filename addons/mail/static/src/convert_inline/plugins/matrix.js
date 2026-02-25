@@ -1,13 +1,11 @@
-export class Matrix extends Array {
-
-}
-
-export class Row extends Array {
-    height = 0;
+export class Band {
     top = 0;
-}
+    bottom = 0;
+    clusterInfos = [];
 
-export class Cell {
-    width = 0;
-    left = 0;
+    addClusterInfo(clusterInfo) {
+        this.clusterInfos.push(clusterInfo);
+        this.top = Math.min(this.top, clusterInfo.rect.top);
+        this.bottom = Math.max(this.bottom, clusterInfo.rect.bottom);
+    }
 }

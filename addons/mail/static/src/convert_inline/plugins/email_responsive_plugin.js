@@ -5,7 +5,7 @@ import { containsAnyNonPhrasingContent } from "@html_editor/utils/dom_info";
 import { childNodes } from "@html_editor/utils/dom_traversal";
 import { memoize } from "@web/core/utils/functions";
 import { useShorthands } from "./hooks";
-import { Matrix, Row, Cell } from "./matrix";
+import { Band } from "./matrix";
 
 const BLOCK_TAG_NAMES = [
     "ADDRESS",
@@ -53,6 +53,35 @@ const DIMENSIONS = {
     desktop: EMAIL_DESKTOP_DIMENSIONS,
     mobile: EMAIL_MOBILE_DIMENSIONS,
 };
+
+function getDX({ left: l1, right: r1 }, { left: l2, right: r2 }) {
+    return Math.max(l1, l2) - Math.min(r1, r2);
+}
+
+function getDY({ top: t1, bottom: b1 }, { top: t2, bottom: b2 }) {
+    return Math.max(t1, t2) - Math.min(b1, b2);
+}
+
+function getOverlapX(rect1, rect2) {
+    const dx = getDX(rect1, rect2);
+    return Math.max(0, -dx);
+}
+
+function getOverlapY(rect1, rect2) {
+    const dy = getDY(rect1, rect2);
+    return Math.max(0, -dy);
+}
+
+function getGapX(rect1, rect2) {
+    const dx = getDX(rect1, rect2);
+    return Math.max(0, dx);
+}
+
+function getGapY(rect1, rect2) {
+    const dy = getDY(rect1, rect2);
+    return Math.max(0, dy);
+}
+
 export class ResponsivePlugin extends BasePlugin {
     static id = "ResponsivePlugin";
     static dependencies = ["layoutSnapshotCache"];
@@ -144,35 +173,77 @@ export class ResponsivePlugin extends BasePlugin {
     }
 
     analyzeSiblingSpacing(siblingRect1, siblingRect2) {
-        const { left: l1, right: r1, top: t1, bottom: b1 } = siblingRect1;
-        const { left: l2, right: r2, top: t2, bottom: b2 } = siblingRect2;
-        const dx = Math.max(l1, l2) - Math.min(r1, r2);
-        const overlapX = Math.max(0, -dx);
-        const dy = Math.max(t1, t2) - Math.min(b1, b2);
-        const overlapY = Math.max(0, -dy);
         // TODO EGGMAIL: reconsider the 4x4 quadrant with 2 empty space cells,
         // sometimes it may be better to approximate to a row/column if the
         // spaces are not meaningful. And the reverse is also true, sometimes
         // it may be useful to handle a double overlap as rows/columns.
         return {
-            row: !overlapX,
-            column: !overlapY,
-            spacingX: Math.max(0, dx),
-            spacingY: Math.max(0, dy),
+            row: !getOverlapX(siblingRect1, siblingRect2),
+            column: !getOverlapY(siblingRect1, siblingRect2),
+            gapX: getGapX(siblingRect1, siblingRect2),
+            gapY: getGapY(siblingRect1, siblingRect2),
         };
     }
 
     // Idea here is to compare the spacing desktop vs mobile, to split into
     // fixed value, variable value, and define the best fitted layout strategy
-    analyzeContainerSpacing(targetRect, containerRect) {
-        const { left: l1, right: r1, top: t1, bottom: b1 } = targetRect;
-        const { left: l2, right: r2, top: t2, bottom: b2 } = containerRect;
+    analyzeContainerSpacing(innerRect, outerRect) {
+        const { left: l1, right: r1, top: t1, bottom: b1 } = innerRect;
+        const { left: l2, right: r2, top: t2, bottom: b2 } = outerRect;
         return {
             spacingTop: Math.abs(t1 - t2),
             spacingLeft: Math.abs(l1 - l2),
             spacingBottom: Math.abs(b2 - b1),
             spacingRight: Math.abs(r2 - r1),
         };
+    }
+
+    computeClusterInfos(parent) {
+        const subNodes = childNodes(parent);
+        const clusterInfos = subNodes.reduce((accumulator, node) => {
+            const isBlock = this.isBlock(node);
+            const prevClusterInfo = accumulator.at(-1);
+            const clusterInfo =
+                isBlock || !prevClusterInfo || prevClusterInfo.isBlock
+                    ? {
+                            nodes: [node],
+                            isBlock,
+                        }
+                    : prevClusterInfo;
+            if (clusterInfo !== prevClusterInfo) {
+                accumulator.push(clusterInfo);
+            } else {
+                clusterInfo.nodes.push(node);
+            }
+            return accumulator;
+        }, []);
+        return clusterInfos;
+    }
+
+    computeBands(clusterInfos) {
+        const bands = [new Band()];
+        for (const clusterInfo of clusterInfos) {
+            const nodes = clusterInfos.nodes;
+            clusterInfo.rect = this.getBoundingClientRect(
+                clusterInfo.isBlock
+                    ? clusterInfo.nodes[0]
+                    : this.getNodeClusterRange(nodes.at(0), nodes.at(-1))
+            );
+            // go through every band
+            // if a band is empty, fill it
+            // if intersect with a band, mark as candidate
+            // fuse every candidate band as one band
+            // if does not intersect with any band, create a new band and fill it
+            const bandCandidates = [];
+            for (const band of bands) {
+                if (band.clusterInfos.length === 0) {
+                    band.addClusterInfo(clusterInfo);
+                    continue;
+                }
+                const overlapY = Math.max
+                const dy = getDY(band, clusterInfo.rect);
+            }
+        }
     }
 
     analyzePositioningLayout(layoutType) {
@@ -211,38 +282,15 @@ export class ResponsivePlugin extends BasePlugin {
         // and we can adjust it to fill it with void cells if necessary (do we need to wait for the mobile pass for that?)
         // -> calculer la taille de la rangee de hauteur du plus grand de ses enfants, nouvelle rangee si le top d'un
         // enfant est en dehors de la rangee en cours
-        const layout = new Matrix();
         let el = treeWalker.root;
         do {
-            const subNodes = childNodes(el);
-            const clusterInfos = subNodes.reduce((accumulator, node) => {
-                const isBlock = this.isBlock(node);
-                const prevClusterInfo = accumulator.at(-1);
-                const clusterInfo =
-                    isBlock || !prevClusterInfo || prevClusterInfo.isBlock
-                        ? {
-                              nodes: [node],
-                              isBlock,
-                          }
-                        : prevClusterInfo;
-                if (clusterInfo !== prevClusterInfo) {
-                    accumulator.push(clusterInfo);
-                } else {
-                    clusterInfo.nodes.push(node);
-                }
-                return accumulator;
-            }, []);
-            for (const clusterInfo of clusterInfos) {
-                const nodes = clusterInfos.nodes;
-                clusterInfo.rect = this.getBoundingClientRect(
-                    clusterInfo.isBlock
-                        ? clusterInfo.nodes[0]
-                        : this.getNodeClusterRange(nodes.at(0), nodes.at(-1))
-                );
-            }
+            const clusterInfos = this.computeClusterInfos(el);
+            const bands = this.computeBands(clusterInfos);
             // all clusters available
             // sort clusters in matrix order (handle float left thingy + arrange them in rows)
             // -> try to create a row and fill it with clusters
+            // TODO EGGMAIL NOW:
+
 
             // if no row, create row, set height and top as the element to add into it
             // -> if a row exist, try to put new elements inside, except if the next cluster has
