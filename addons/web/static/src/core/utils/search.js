@@ -1,20 +1,5 @@
 import { normalize } from "@web/core/l10n/utils";
-
-/**
- * @param {string} pattern
- * @param {string|string[]} strs
- * @returns {number}
- */
-function match(pattern, strs) {
-    if (!Array.isArray(strs)) {
-        strs = [strs];
-    }
-    let globalScore = 0;
-    for (const str of strs) {
-        globalScore = Math.max(globalScore, _match(pattern, str));
-    }
-    return globalScore;
-}
+import { isIterable } from "./arrays";
 
 /**
  * This private function computes a score that represent the fact that the
@@ -27,31 +12,27 @@ function match(pattern, strs) {
  * Better matches will get a higher score: consecutive letters are better,
  * and a match closer to the beginning of the string is also scored higher.
  *
- * @param {string} pattern
- * @param {string} str
- * @returns {number}
+ * @param {string} nPattern (normalized)
+ * @param {string} nString (normalized)
  */
-function _match(pattern, str) {
+function getFuzzyScore(nPattern, nString) {
     let totalScore = 0;
     let currentScore = 0;
     let patternIndex = 0;
 
-    pattern = normalize(pattern);
-    str = normalize(str);
-
-    const len = str.length;
+    const len = nString.length;
 
     for (let i = 0; i < len; i++) {
-        if (str[i] === pattern[patternIndex]) {
+        if (nString[i] === nPattern[patternIndex]) {
             patternIndex++;
             currentScore += 100 + currentScore - i / 200;
         } else {
             currentScore = 0;
         }
-        totalScore = totalScore + currentScore;
+        totalScore += currentScore;
     }
 
-    return patternIndex === pattern.length ? totalScore : 0;
+    return patternIndex === nPattern.length ? totalScore : 0;
 }
 
 /**
@@ -61,23 +42,32 @@ function _match(pattern, str) {
  *
  * @template T
  * @param {string} pattern
- * @param {T[]} list
- * @param {(element: T) => (string|string[])} fn
+ * @param {Iterable<T>} items
+ * @param {(element: T) => (string | Iterable<string>)} mapFn
  * @returns {T[]}
  */
-export function fuzzyLookup(pattern, list, fn) {
+export function fuzzyLookup(pattern, items, mapFn) {
+    const nPattern = normalize(pattern);
+    /** @type {{ score: number, item: T }[]} */
     const results = [];
-    list.forEach((data) => {
-        const score = match(pattern, fn(data));
-        if (score > 0) {
-            results.push({ score, elem: data });
+    for (const item of items) {
+        let strings = mapFn(item);
+        if (!isIterable(strings)) {
+            strings = [strings];
         }
-    });
+        let score = 0;
+        for (const string of strings) {
+            score = Math.max(score, getFuzzyScore(nPattern, normalize(string)));
+        }
+        if (score > 0) {
+            results.push({ score, item });
+        }
+    }
 
-    // we want better matches first
+    // Put best scores at the start of the list
     results.sort((a, b) => b.score - a.score);
 
-    return results.map((r) => r.elem);
+    return results.map((r) => r.item);
 }
 
 // Does `pattern` fuzzy match `string`?
@@ -87,7 +77,7 @@ export function fuzzyLookup(pattern, list, fn) {
  * @returns {boolean}
  */
 export function fuzzyTest(pattern, string) {
-    return _match(pattern, string) !== 0;
+    return getFuzzyScore(normalize(pattern), normalize(string)) > 0;
 }
 
 /**
@@ -101,32 +91,37 @@ export function fuzzyTest(pattern, string) {
  * between the pattern and each candidate
  *
  * @param {string} pattern - The string to match.
- * @param {string[]} list - The list of strings to compare against the pattern.
+ * @param {Iterable<string>} items - The list of strings to compare against the pattern.
  * @param {number} errorRatio - Controls how many errors can a word have depending of its length.
  * @returns {string[]} The list of the words that matches within a defined number of errors.
  */
-export function fuzzyLevenshteinLookup(pattern, list, errorRatio = 3) {
+export function fuzzyLevenshteinLookup(pattern, items, errorRatio = 3) {
     // We limit the maximum number of errors depending on the word length
     // to not have "overcorrections" into words that doesn't have anything
     // in common with what the user typed
-    const maxNbrCorrection = Math.round(pattern.length / errorRatio);
+    const maxNbrCorrection = Math.round(nPattern.length / errorRatio);
+    const nPattern = normalize(pattern);
+    /** @type {{ score: number, item: string }[]} */
     const results = [];
-    list.forEach((candidate) => {
+    for (const item of items) {
+        const nCandidate = normalize(item);
         let score = -1;
-        if (candidate.includes(pattern)) {
+        if (nCandidate.includes(nPattern)) {
             score = 0;
-            results.push({ score, elem: pattern });
+            results.push({ score, item: nPattern });
         } else {
-            score = getLevenshteinScore(pattern, candidate);
+            score = getLevenshteinScore(nPattern, nCandidate);
             if (score >= 0 && score <= maxNbrCorrection) {
-                results.push({ score, elem: candidate });
+                results.push({ score, item });
             }
         }
-    });
-    results.sort((a, b) => a.score - b.score);
-    return results.map((r) => r.elem);
-}
+    }
 
+    // Put lowest distances at the start of the list
+    results.sort((a, b) => a.score - b.score);
+
+    return results.map((r) => r.item);
+}
 
 /**
  * Computes the Levenshtein distance between two strings.
@@ -136,10 +131,10 @@ export function fuzzyLevenshteinLookup(pattern, list, errorRatio = 3) {
  * @returns {number} The Levenshtein distance between `a` and `b`.
  */
 function getLevenshteinScore(a, b) {
-    let aLength = a.length;
-    let bLength = b.length;
+    const aLength = a.length;
+    const bLength = b.length;
 
-    let distanceMatrix = [];
+    const distanceMatrix = [];
     for (let i = 0; i <= aLength; i++) {
         distanceMatrix[i] = [];
         for (let j = 0; j <= bLength; j++) {
