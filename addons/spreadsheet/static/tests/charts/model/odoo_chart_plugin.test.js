@@ -360,7 +360,10 @@ test("Data reloaded upon domain update for charts other than pie/bar/line", asyn
 
     const newDefinition = model.getters.getChartDefinition(chartId);
     updateChart(model, chartId, {
-        searchParams: { ...newDefinition.searchParams, domain: [["1", "=", "1"]] },
+        dataSource: {
+            ...newDefinition.dataSource,
+            searchParams: { ...newDefinition.dataSource.searchParams, domain: [["1", "=", "1"]] },
+        },
     });
     await waitForDataLoaded(model);
     expect.verifySteps(["formatted_read_group"]); // Data re-loaded on domain update
@@ -398,7 +401,10 @@ test("Updating the domain keeps the global filters domain", async () => {
 
     const updatedDefinition = {
         ...definition,
-        searchParams: { ...definition.searchParams, domain: [["1", "=", "1"]] },
+        dataSource: {
+            ...definition.dataSource,
+            searchParams: { ...definition.dataSource.searchParams, domain: [["1", "=", "1"]] },
+        },
     };
     model.dispatch("UPDATE_CHART", {
         definition: updatedDefinition,
@@ -775,7 +781,10 @@ test("cumulative line chart with past data before domain period with cumulated s
         definition: {
             ...cumulativeChartDefinition,
             cumulative: true,
-            cumulatedStart: true,
+            dataSource: {
+                ...cumulativeChartDefinition.dataSource,
+                cumulatedStart: true,
+            },
         },
     });
     const sheetId = model.getters.getActiveSheetId();
@@ -786,7 +795,7 @@ test("cumulative line chart with past data before domain period with cumulated s
     ]);
     const figure = model.exportData().sheets[0].figures[0];
     expect(figure.data.cumulative).toBe(true);
-    expect(figure.data.cumulatedStart).toBe(true);
+    expect(figure.data.dataSource.cumulatedStart).toBe(true);
 });
 
 test("update existing chart to cumulate past data", async () => {
