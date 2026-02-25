@@ -81,6 +81,32 @@ function getGapY(rect1, rect2) {
     return Math.max(0, dy);
 }
 
+function getSiblingSpacing(siblingRect1, siblingRect2) {
+    // TODO EGGMAIL: reconsider the 4x4 quadrant with 2 empty space cells,
+    // sometimes it may be better to approximate to a row/column if the
+    // spaces are not meaningful. And the reverse is also true, sometimes
+    // it may be useful to handle a double overlap as rows/columns.
+    return {
+        row: !getOverlapX(siblingRect1, siblingRect2),
+        column: !getOverlapY(siblingRect1, siblingRect2),
+        gapX: getGapX(siblingRect1, siblingRect2),
+        gapY: getGapY(siblingRect1, siblingRect2),
+    };
+}
+
+// Idea here is to compare the spacing desktop vs mobile, to split into
+// fixed value, variable value, and define the best fitted layout strategy
+function getContainerSpacing(innerRect, outerRect) {
+    const { left: l1, right: r1, top: t1, bottom: b1 } = innerRect;
+    const { left: l2, right: r2, top: t2, bottom: b2 } = outerRect;
+    return {
+        spacingTop: Math.abs(t1 - t2),
+        spacingLeft: Math.abs(l1 - l2),
+        spacingBottom: Math.abs(b2 - b1),
+        spacingRight: Math.abs(r2 - r1),
+    };
+}
+
 export class ResponsivePlugin extends BasePlugin {
     static id = "ResponsivePlugin";
     static dependencies = ["layoutSnapshotCache"];
@@ -99,6 +125,10 @@ export class ResponsivePlugin extends BasePlugin {
         this.layoutToBands = new Map(); // layoutName (desktop/mobile) -> map: node -> bands
         this.ignoredInlineNodes = new WeakSet();
         this.filterInlineNodes = memoize((node) => {
+            // TODO EGGMAIL: evaluate if memoize makes sense here or if we should
+            // independently compute ignoredInlineNodes depending on the layout,
+            // to capture nodes that are inline in one layout and block in another
+            // (should not happen, but who knows)
             const subNodes = [];
             let hasSomeBlock = false;
             let child = node.firstChild;
@@ -115,6 +145,20 @@ export class ResponsivePlugin extends BasePlugin {
                 }
             }
         });
+    }
+
+    createLayoutTreeWalker() {
+        return this.config.referenceDocument.createTreeWalker(
+            this.config.reference,
+            NodeFilter.SHOW_ELEMENT,
+            (node) => {
+                if (this.ignoredInlineNodes.has(node)) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                this.filterInlineNodes(node);
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        );
     }
 
     /**
@@ -144,6 +188,7 @@ export class ResponsivePlugin extends BasePlugin {
     computeEmailHtmlStructure() {
         this.parseWithLayout("desktop");
         this.parseWithLayout("mobile");
+        this.applyLayoutStrategies();
         // TODO EGGMAIL: create final layout based on measured layouts
     }
 
@@ -153,36 +198,10 @@ export class ResponsivePlugin extends BasePlugin {
         if (this.layoutDimensions.width !== dimensions.width) {
             this.config.updateLayoutDimensions(dimensions);
         }
-        this.analyzePositioningLayout(layoutType);
+        this.computeLayoutBands(layoutType);
         if (this.layoutDimensions.width !== originalDimensions.width) {
             this.config.updateLayoutDimensions(originalDimensions);
         }
-    }
-
-    analyzeSiblingSpacing(siblingRect1, siblingRect2) {
-        // TODO EGGMAIL: reconsider the 4x4 quadrant with 2 empty space cells,
-        // sometimes it may be better to approximate to a row/column if the
-        // spaces are not meaningful. And the reverse is also true, sometimes
-        // it may be useful to handle a double overlap as rows/columns.
-        return {
-            row: !getOverlapX(siblingRect1, siblingRect2),
-            column: !getOverlapY(siblingRect1, siblingRect2),
-            gapX: getGapX(siblingRect1, siblingRect2),
-            gapY: getGapY(siblingRect1, siblingRect2),
-        };
-    }
-
-    // Idea here is to compare the spacing desktop vs mobile, to split into
-    // fixed value, variable value, and define the best fitted layout strategy
-    analyzeContainerSpacing(innerRect, outerRect) {
-        const { left: l1, right: r1, top: t1, bottom: b1 } = innerRect;
-        const { left: l2, right: r2, top: t2, bottom: b2 } = outerRect;
-        return {
-            spacingTop: Math.abs(t1 - t2),
-            spacingLeft: Math.abs(l1 - l2),
-            spacingBottom: Math.abs(b2 - b1),
-            spacingRight: Math.abs(r2 - r1),
-        };
     }
 
     /**
@@ -213,7 +232,7 @@ export class ResponsivePlugin extends BasePlugin {
         return clusterInfos;
     }
 
-    computeBands(clusterInfos) {
+    computeClusterBands(clusterInfos) {
         let bands = new Set();
         for (const clusterInfo of clusterInfos) {
             const nodes = clusterInfo.nodes;
@@ -243,7 +262,7 @@ export class ResponsivePlugin extends BasePlugin {
             band.addClusterInfo(clusterInfo);
         }
         for (const band of bands) {
-            // TODO EGGMAIL: sorting is not stable (clusters with same center position are "identical")
+            // TODO EGGMAIL: sorting is not perfect (clusters with same center position are "identical")
             band.clusterInfos.sort((clusterInfo1, clusterInfo2) => {
                 const { left: l1, width: w1 } = clusterInfo1;
                 const { left: l2, width: w2 } = clusterInfo2;
@@ -253,91 +272,16 @@ export class ResponsivePlugin extends BasePlugin {
         return Array.from(bands).sort((band1, band2) => band1.top - band2.top);
     }
 
-    analyzePositioningLayout(layoutType) {
+    computeLayoutBands(layoutType) {
         const nodeToBands = new WeakMap();
         this.layoutToBands.set(layoutType, nodeToBands);
-        const treeWalker = this.config.referenceDocument.createTreeWalker(
-            this.config.reference,
-            NodeFilter.SHOW_ELEMENT,
-            (node) => {
-                if (this.ignoredInlineNodes.has(node)) {
-                    return NodeFilter.FILTER_REJECT;
-                }
-                this.filterInlineNodes(node);
-                return NodeFilter.FILTER_ACCEPT;
-            }
-        );
+        const treeWalker = this.createLayoutTreeWalker();
         let el = treeWalker.root;
         do {
             const clusterInfos = this.computeClusterInfos(el);
-            const bands = this.computeBands(clusterInfos);
+            const bands = this.computeClusterBands(clusterInfos);
             nodeToBands.set(el, bands);
         } while ((el = treeWalker.nextNode()));
-
-        // while ((el = treeWalker.nextNode())) {
-
-        //     if (prev) {
-        //         // the parent is a row candidate if at least 2 of its children are "row" aligned
-
-        //         // compare alignment (vertical/horizontal)
-        //         // mark parent as horizontal cluster if horizontal
-        //         // gaps between elements
-        //     } else {
-
-        //         // check for left offset with parent (margin, padding, etc)
-        //         // mark parent left padding value, check if already set
-        //         // if parent right padding change in mobile mode, mark as horizontal cluster (potential offset-x)
-        //         // take care of padding in relative units? Ignore?
-        //     }
-        //     if (next) {
-        //         // compare alignment (vertical/horizontal)
-        //         // mark parent as horizontal cluster if horizontal
-        //     } else {
-        //         // there is no guarantee that the last DOM child is the rightmost one, especially
-        //         // if it is a single row partially wrapped
-
-        //         // check for right offset with parent
-        //         // mark parent right padding value, check if already set
-        //         // if parent right padding change in mobile mode, mark as horizontal cluster (potential unfinished row)
-        //         // take care of padding in relative units? Ignore?
-        //     }
-        //     // mark width and compare with mobile mode -> same => fixed width, different => % width or no width (start/end of row if some fixed width)
-
-        //     // if sibling => comparison heuristic (left/right/top/bottom)
-
-        //     // if no previousSibling => compare x position (left) with parent to check for offset
-        //     // if no nextSibling => compare x position (right) with parent to check for isolated col-md-10
-
-        //     // how to differenciate with padding?
-        //     // -> if the padding value is not identical, could be approximated with a padding constant + an offset column.
-        //     // -> Take care of padding values in % or other relative units.
-
-        //     // how to differenciate with margin-auto?
-        //     // -> does not even seem to work currently
-        //     // -> investigate what is supposed to happen with that, maybe it shouldn't be there at all
-        //     // -> all media queries from bootstrap seem to wrongly be there?
-        //     // -> no usage of horizontal margins in the normal editor (to verify), and if they are detected, they should be handled as an "offset" so it's not wrong not to consider them I guess
-
-        //     // Any variation in padding create a cluster candidate => to be determined later
-
-        //     // do we need the mobile interpretation at this stage? Yes, it will
-        //     // add some missing clusters without any conclusion, and we can easily check
-        //     // if an element is a cluster in both, only in desktop, or only in mobile
-
-        //     // TODO: verify that cluster identification works in following cases:
-        //     // alert block (float),
-        //     // container/row/col combo with offsets and unfinished rows
-        //     // normal table
-        //     // d-flex block without container/row/col?
-
-        //     // if heuristics are correct -> start implementing "table" conversion
-        //     // This should resolve almost all layout concerns (need to identify attributes/relevant css properties)
-        //     // decide which properties we copy from class_to_style, more difficult when applying on tables
-        //     // next issue would be images, fontawesome to image, and so on
-        //     // handle outlook with ghost tables
-        //     // handle colors
-        //     // handle stylesheets in mail for usage of convert_inline
-        // }
     }
 
     onUpdateLayoutDimensions(layoutDimensions) {
