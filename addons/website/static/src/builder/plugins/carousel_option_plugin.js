@@ -391,6 +391,9 @@ export class SetAutoplayAction extends BuilderAction {
     apply({ editingElement, params: { bsRide, ariaLive } }) {
         editingElement.dataset.bsRide = bsRide;
         editingElement.querySelector(".carousel-inner")?.setAttribute("aria-live", ariaLive);
+        if (bsRide === "false") {
+            editingElement.classList.add("o_carousel_pause_btn_hidden");
+        }
     }
 }
 
