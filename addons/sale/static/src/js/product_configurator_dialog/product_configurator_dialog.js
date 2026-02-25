@@ -134,11 +134,9 @@ export class ProductConfiguratorDialog extends Component {
     }
 
     async _loadData(onlyMainProduct) {
-        return this.orm.call(
-            'product.template',
-            'sale_product_configurator_get_values',
-            [this.props.productTemplateId],
-            {
+        debugger;
+        if (this.getValuesUrl == '/website_sale/product_configurator/get_values'){
+            return rpc(this.getValuesUrl, {
                 product_template_id: this.props.productTemplateId,
                 quantity: this.props.quantity,
                 currency_id: this.currency.id,
@@ -151,6 +149,25 @@ export class ProductConfiguratorDialog extends Component {
                 show_packaging: this.env.showPackaging,
                 ...this._getAdditionalRpcParams(),
             });
+        }else{
+            return this.orm.call(
+                'product.template',
+                'sale_product_configurator_get_values',
+                [this.props.productTemplateId],
+                {
+                    product_template_id: this.props.productTemplateId,
+                    quantity: this.props.quantity,
+                    currency_id: this.currency.id,
+                    so_date: this.props.soDate,
+                    product_uom_id: this.props.productUOMId,
+                    company_id: this.props.companyId,
+                    pricelist_id: this.props.pricelistId,
+                    ptav_ids: this.props.ptavIds,
+                    only_main_product: onlyMainProduct,
+                    show_packaging: this.env.showPackaging,
+                    ...this._getAdditionalRpcParams(),
+                });
+        }
     }
 
     /**
