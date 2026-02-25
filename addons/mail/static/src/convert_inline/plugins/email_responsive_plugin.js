@@ -4,7 +4,7 @@ import { EMAIL_DESKTOP_DIMENSIONS, EMAIL_MOBILE_DIMENSIONS } from "../hooks";
 import { childNodes } from "@html_editor/utils/dom_traversal";
 import { memoize } from "@web/core/utils/functions";
 import { useShorthands } from "./hooks";
-import { Band } from "./matrix";
+import { Band } from "./responsive_utils";
 
 const BLOCK_TAG_NAMES = [
     "ADDRESS",
@@ -96,7 +96,7 @@ export class ResponsivePlugin extends BasePlugin {
             "getStylePropertyValue",
         ]);
         this.layoutDimensions = { width: 0, height: 0 };
-        this.htmlStructures = new Map();
+        this.layoutToBands = new Map(); // layoutName (desktop/mobile) -> map: node -> bands
         this.ignoredInlineNodes = new WeakSet();
         this.filterInlineNodes = memoize((node) => {
             const subNodes = [];
@@ -159,29 +159,6 @@ export class ResponsivePlugin extends BasePlugin {
         }
     }
 
-    // TODO EGGMAIL: remove, useless?
-    getElementPositioningInfo(element) {
-        return {
-            target: { el: element, rect: this.getBoundingClientRect(element) },
-            parent: {
-                el: element.parentElement,
-                rect: this.getBoundingClientRect(element.parentElement),
-            },
-            next: element.nextElementSibling
-                ? {
-                      el: element.nextElementSibling,
-                      rect: this.getBoundingClientRect(element.nextElementSibling),
-                  }
-                : undefined,
-            prev: element.previousElementSibling
-                ? {
-                      el: element.previousElementSibling,
-                      rect: this.getBoundingClientRect(element.previousElementSibling),
-                  }
-                : undefined,
-        };
-    }
-
     analyzeSiblingSpacing(siblingRect1, siblingRect2) {
         // TODO EGGMAIL: reconsider the 4x4 quadrant with 2 empty space cells,
         // sometimes it may be better to approximate to a row/column if the
@@ -208,6 +185,12 @@ export class ResponsivePlugin extends BasePlugin {
         };
     }
 
+    /**
+     * TODO EGGMAIL: DISCLAIMER:
+     * Only consider clusters of elements that are direct childNodes of their parent
+     * any style that disregard the DOM hierarchy (eg position: absolute) is not
+     * supported
+     */
     computeClusterInfos(parent) {
         const subNodes = childNodes(parent);
         const clusterInfos = subNodes.reduce((accumulator, node) => {
@@ -271,6 +254,8 @@ export class ResponsivePlugin extends BasePlugin {
     }
 
     analyzePositioningLayout(layoutType) {
+        const nodeToBands = new WeakMap();
+        this.layoutToBands.set(layoutType, nodeToBands);
         const treeWalker = this.config.referenceDocument.createTreeWalker(
             this.config.reference,
             NodeFilter.SHOW_ELEMENT,
@@ -278,77 +263,18 @@ export class ResponsivePlugin extends BasePlugin {
                 if (this.ignoredInlineNodes.has(node)) {
                     return NodeFilter.FILTER_REJECT;
                 }
-                // Disregard phasing content children
-                // TODO EGGMAIL: filterPhrasingContentNodes is too restrictive, some phrasing content
-                // could have been "dressed" as a block, do we want to support that?
-                // if so, filterPhrasingContentNodes should be reworked in consequence.
-                // -> Thinking about `img` blocks with `d-block` + some margin
-                // -> maybe we should identify blocks with the display: block first ? Not sure what's the best approach here
-                // what if there is a block element inside an inline element next to other inline elements? We have to dig deeper
-                // to identify that situation
-                // maybe elements which need to be flagged are those with a margin/padding value?
-                // What we could do is apply the horizontal scan technique inside these block to identify if
-                // a particular element has block-like behavior (img with margin, with d-block, etc) compared
-                // to its peers
                 this.filterInlineNodes(node);
                 return NodeFilter.FILTER_ACCEPT;
             }
         );
-        /**
-         *
-         */
-        // pass 1: treewalk, map sorted children matrices
-        // matrices contain every child participating in the layout, if their own children
-        // do not, they don't need matrices. Maybe images/fa-icons are an exception to that rule?
-        // result: matrix of matrices of positioned elements, there is one for desktop, and one for mobile.
-        // once a matrix is done for a parent, we know what the interesting nodes for measurements are,
-        // and we can adjust it to fill it with void cells if necessary (do we need to wait for the mobile pass for that?)
-        // -> calculer la taille de la rangee de hauteur du plus grand de ses enfants, nouvelle rangee si le top d'un
-        // enfant est en dehors de la rangee en cours
         let el = treeWalker.root;
         do {
             const clusterInfos = this.computeClusterInfos(el);
             const bands = this.computeBands(clusterInfos);
-            console.log(bands);
-            // all clusters available
-            // sort clusters in matrix order (handle float left thingy + arrange them in rows)
-            // -> try to create a row and fill it with clusters
-            // TODO EGGMAIL NOW:
-
-            // if no row, create row, set height and top as the element to add into it
-            // -> if a row exist, try to put new elements inside, except if the next cluster has
-            // cluster.top > currentRow.top + currentRow.height, in that case, create a new row
-            // evaluate each existing row when trying to add a new cluster inside
-            // then when adding inside a row as a cell, compare if totally outside existing cells or overlapping
-            // -> merge overlapping cells in a row (cells with multiple elements are ok -> needs another matrix)
-
-            // TODO EGGMAIL NOW: if every child is inline, we can create a cluster rectangle
-            // and only care about spacing inside the parent. (equivalent to 1 block)
-            // if there are multiple blocks/clusters, then we also have to evaluate
-            // if they are placed horizontally or vertically
-            // evaluate inline cluster, then ask for a range and the container for that
-            // range.
+            nodeToBands.set(el, bands);
         } while ((el = treeWalker.nextNode()));
 
-        // -> evaluate children from their parent after having sorted them in a position matrix
-        // -> treewalk can be done to identify all parents, during the treewalk we can define the new
-        // traversal order (based on matric positions), and then do the real algo path
         // while ((el = treeWalker.nextNode())) {
-        //     // TODO EGGMAIL: ensure compatibility of this algo with RTL
-        //     const { target, parent, prev, next } = this.getElementPositioningInfo(el);
-        //     // What are we searching for:
-        //     // the parent is a row candidate if at least 2 of its children are "row" aligned, but they
-        //     // are not necessarily DOM direct siblings
-        //     // We are not considering position-absolute elements or other positioned elements that break the
-        //     // DOM flow (only exception = simple float)
-
-        //     // TODO EGGMAIL: VERY IMPORTANT PREMISES
-        //     // Simplification of this heuristic: layout is strongly based on DOM hierarchy, any style
-        //     // disregarding the DOM hierarchy (position absolute, some float elements, ...) will
-        //     // not be handled properly (they don't need to if editor content is sufficiently cared for)
-        //     // even then, it is still recommended to sort children in a position matrix to be able
-        //     // to make measurements on the correct elements.
-        //     // The only phrasing content evaluated as potential blocks are `<img>` and fa icons?
 
         //     if (prev) {
         //         // the parent is a row candidate if at least 2 of its children are "row" aligned
@@ -357,7 +283,6 @@ export class ResponsivePlugin extends BasePlugin {
         //         // mark parent as horizontal cluster if horizontal
         //         // gaps between elements
         //     } else {
-        //         // there is no guarantee that the first DOM child is the leftmost one
 
         //         // check for left offset with parent (margin, padding, etc)
         //         // mark parent left padding value, check if already set
@@ -413,7 +338,6 @@ export class ResponsivePlugin extends BasePlugin {
         //     // handle colors
         //     // handle stylesheets in mail for usage of convert_inline
         // }
-        this.htmlStructures.set(layoutType, undefined);
     }
 
     onUpdateLayoutDimensions(layoutDimensions) {
