@@ -12,7 +12,7 @@ class ResUsers(models.Model):
         compute='_compute_crm_team_ids', search='_search_crm_team_ids')
     crm_team_member_ids = fields.One2many('crm.team.member', 'user_id', string='Sales Team Members')
     sale_team_id = fields.Many2one(
-        'crm.team', string='User Sales Team', compute='_compute_sale_team_id',
+        'crm.team', string='User Sales Team', compute='_compute_sale_team_id', inverse='_inverse_sale_team_id',
         readonly=True, store=True,
         help="Main user sales team. Used notably for pipeline, or to set sales team in invoicing or subscription.")
 
@@ -35,14 +35,23 @@ class ResUsers(models.Model):
 
         return domain
 
-    @api.depends('crm_team_member_ids.crm_team_id', 'crm_team_member_ids.create_date', 'crm_team_member_ids.active')
+    @api.depends('crm_team_member_ids.active', 'crm_team_member_ids.crm_team_id', 'crm_team_member_ids.crm_team_id.active',
+                 'crm_team_member_ids.create_date', 'sale_team_id.active')
     def _compute_sale_team_id(self):
-        for user in self:
-            if not user.crm_team_member_ids.ids:
-                user.sale_team_id = False
+        # Only computed when the team is not set or archived (can be manually assigned using the CRM team switcher).
+        # Can only be False if there's no accessible team.
+        default_team = self.env['crm.team'].with_context(active_test=True).search([], limit=1).id
+        for user in self.filtered(lambda user: not user.sale_team_id or not user.sale_team_id.active):
+            # User oldest active team or fallback on the first accessible active team.
+            sorted_memberships = user.crm_team_member_ids.filtered(lambda membership: membership.crm_team_id.active)  # sorted by create date
+            if sorted_memberships:
+                user.sale_team_id = sorted_memberships[0].crm_team_id
             else:
-                sorted_memberships = user.crm_team_member_ids  # sorted by create date
-                user.sale_team_id = sorted_memberships[0].crm_team_id if sorted_memberships else False
+                user.sale_team_id = default_team
+
+    def _inverse_sale_team_id(self):
+        # Recompute if sale team is assigned to a falsy team.
+        self.filtered(lambda user: not user.sale_team_id or not user.sale_team_id.exists())._compute_sale_team_id()
 
     def action_archive(self):
         self.env['crm.team.member'].search([('user_id', 'in', self.ids)]).action_archive()

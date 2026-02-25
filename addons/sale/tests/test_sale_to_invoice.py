@@ -1323,9 +1323,10 @@ class TestSaleToInvoice(TestSaleCommon):
     def test_refund_salesteam(self):
         """Check that salesperson & sales team doesn't change when creating a refund."""
         salesperson = self.user
-        team1, team2 = self.env['crm.team'].create([
-            {'name': "Team 1", 'member_ids': [Command.link(salesperson.id)]},
-            {'name': "Team 2"},
+        team1 = salesperson.sale_team_id
+        team2, _ = self.env['crm.team'].create([
+            {'name': "Team 2", 'member_ids': [Command.link(salesperson.id)]},
+            {'name': "Team 3"},
         ])
         self.assertEqual(salesperson.sale_team_id, team1)
         self.sale_order.write({

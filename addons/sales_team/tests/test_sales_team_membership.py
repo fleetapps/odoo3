@@ -289,24 +289,38 @@ class TestMembership(TestSalesCommon):
         self.assertEqual(self.user_sales_leads.crm_team_ids, self.sales_team_1)
         self.assertEqual(self.user_sales_leads.sale_team_id, self.sales_team_1)
 
+        # archive demo teams to ignore them for the test
+        self.env['crm.team'].search([('name', 'in', ['Sales', 'Pre-Sales'])]).write({'active': False})
         # subscribe to new team -> default team is still the old one
         self.new_team.write({
             'member_ids': [(4, self.user_sales_leads.id)]
         })
         self.assertEqual(self.user_sales_leads.crm_team_ids, self.sales_team_1 | self.new_team)
         self.assertEqual(self.user_sales_leads.sale_team_id, self.sales_team_1)
-
-        # archive membership to first team -> second one becomes default
-        self.sales_team_1_m1.write({'active': False})
-        self.assertEqual(self.user_sales_leads.crm_team_ids, self.new_team)
-        self.assertEqual(self.user_sales_leads.sale_team_id, self.new_team)
-
-        # activate membership to first team -> first one becomes default again
-        self.sales_team_1_m1.write({'active': True})
+        # create new team without memberships -> default team is still the old one
+        new_team_no_membership = self.env['crm.team'].create({
+            'name': 'Test No Membership',
+            'sequence': 15,
+        })
         self.assertEqual(self.user_sales_leads.crm_team_ids, self.sales_team_1 | self.new_team)
         self.assertEqual(self.user_sales_leads.sale_team_id, self.sales_team_1)
-
-        # keep only one membership -> default team
-        self.sales_team_1_m1.unlink()
+        # archive first team -> second one becomes default (oldest membership)
+        self.sales_team_1.write({'active': False})
         self.assertEqual(self.user_sales_leads.crm_team_ids, self.new_team)
         self.assertEqual(self.user_sales_leads.sale_team_id, self.new_team)
+        # archive second team -> team without memberships becomes default (first accessible team)
+        self.new_team.write({'active': False})
+        self.assertFalse(self.user_sales_leads.crm_team_ids)
+        self.assertEqual(self.user_sales_leads.sale_team_id, new_team_no_membership)
+        # archive team without memberships -> default team is False (no existing team left)
+        new_team_no_membership.write({'active': False})
+        self.assertFalse(self.user_sales_leads.crm_team_ids)
+        self.assertFalse(self.user_sales_leads.sale_team_id)
+        # activate first team -> first team becomes default (if no sale team, set to oldest membership)
+        self.sales_team_1.write({'active': True})
+        self.assertEqual(self.user_sales_leads.crm_team_ids, self.sales_team_1)
+        self.assertEqual(self.user_sales_leads.sale_team_id, self.sales_team_1)
+        # activate second team -> first team is still default
+        self.new_team.write({'active': True})
+        self.assertEqual(self.user_sales_leads.crm_team_ids, self.sales_team_1 | self.new_team)
+        self.assertEqual(self.user_sales_leads.sale_team_id, self.sales_team_1)

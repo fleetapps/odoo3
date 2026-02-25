@@ -108,6 +108,8 @@ class TestSalesCommon(TransactionCase):
             'user_id': cls.user_admin.id,
             'crm_team_id': cls.sales_team_1.id,
         })
+        cls.user_sales_leads.sale_team_id = cls.sales_team_1
+        cls.user_admin.sale_team_id = cls.sales_team_1
 
 
 class TestSalesMC(TestSalesCommon):
