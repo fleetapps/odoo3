@@ -56,6 +56,7 @@ import { closestElement } from "@html_editor/utils/dom_traversal";
  * @property { BuilderOptionsPlugin['getRemoveDisabledReason'] } getRemoveDisabledReason
  * @property { BuilderOptionsPlugin['getCloneDisabledReason'] } getCloneDisabledReason
  * @property { BuilderOptionsPlugin['getReloadSelector'] } getReloadSelector
+ * @property { BuilderOptionsPlugin['getUnfolded'] } getUnfolded
  * @property { BuilderOptionsPlugin['setNextTarget'] } setNextTarget
  * @property { BuilderOptionsPlugin['getBuilderOptionContext'] } getBuilderOptionContext
  */
@@ -129,6 +130,7 @@ export class BuilderOptionsPlugin extends Plugin {
         "getRemoveDisabledReason",
         "getCloneDisabledReason",
         "getReloadSelector",
+        "getUnfolded",
         "setNextTarget",
         "getBuilderOptionContext",
     ];
@@ -143,6 +145,14 @@ export class BuilderOptionsPlugin extends Plugin {
             if (this.config.initialTarget) {
                 const el = this.editable.querySelector(this.config.initialTarget);
                 this.updateContainers(el);
+                for (
+                    let i = 0;
+                    i < this.lastContainers.length && i < this.config.initialUnfolded.length;
+                    i++
+                ) {
+                    const shouldBeFolded = !this.config.initialUnfolded[i];
+                    this.lastContainers[i].folded &&= shouldBeFolded;
+                }
             }
         },
         get_options_container_top_buttons: (el) => {
@@ -257,6 +267,10 @@ export class BuilderOptionsPlugin extends Plugin {
             return "footer";
         }
         return null;
+    }
+
+    getUnfolded() {
+        return this.lastContainers.map((c) => !c.folded);
     }
 
     updateContainers(target, { forceUpdate = false } = {}) {

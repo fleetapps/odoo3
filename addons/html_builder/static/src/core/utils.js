@@ -660,8 +660,9 @@ function useOperationWithReload(callApply, reload) {
         env.editor.shared.history.addStep();
         await env.editor.shared.savePlugin.save();
         const target = env.editor.shared.builderOptions.getReloadSelector(editingElement);
+        const unfolded = env.editor.shared.builderOptions.getUnfolded(editingElement);
         const url = reload.getReloadUrl?.();
-        await env.editor.config.reloadEditor({ target, url });
+        await env.editor.config.reloadEditor({ target, unfolded, url });
         env.services.ui.unblock();
     };
 }

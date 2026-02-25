@@ -65,6 +65,7 @@ export class WebsiteBuilderClientAction extends Component {
 
     setup() {
         this.target = null;
+        this.unfolded = [];
         this.orm = useService("orm");
         this.notification = useService("notification");
         this.dialog = useService("dialog");
@@ -227,6 +228,7 @@ export class WebsiteBuilderClientAction extends Component {
             onlyCustomizeTab: this.translation,
             config: {
                 initialTarget: this.target,
+                initialUnfolded: this.unfolded,
                 builderSidebar: {
                     withHiddenSidebar: async (cb) => {
                         try {
@@ -543,6 +545,7 @@ export class WebsiteBuilderClientAction extends Component {
     async reloadEditor(param = {}) {
         this.initialTab = param.initialTab;
         this.target = param.target || null;
+        this.unfolded = param.unfolded || [];
         await this.reloadIframe(this.state.isEditing, param.url);
         // Disable the current instance of the builder and trigger a new
         // instance of it with `t-key`
@@ -553,6 +556,7 @@ export class WebsiteBuilderClientAction extends Component {
     async reloadIframeAndCloseEditor() {
         delete this.initialTab;
         this.target = null;
+        this.unfolded = [];
         const isEditing = false;
         this.state.isEditing = isEditing;
         this.addSystrayItems();
