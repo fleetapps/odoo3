@@ -232,7 +232,7 @@ class SaleOrder(models.Model):
             cancelled_history_lines -= coupon_history_lines
 
         # Recalculate balance for all affected cards
-        self._recompute_loyalty_card_balances(affected_coupons)
+        affected_coupons._recompute_loyalty_card_balances()
 
         self.order_line.filtered(lambda line: line.is_reward_line).unlink()
         self.coupon_point_ids.coupon_id.sudo().filtered(
@@ -250,7 +250,7 @@ class SaleOrder(models.Model):
             - Line was redeemer: refund points to original issuer
             - Line was issuer: reallocate points from another eligible source
         3. Delete tracks and history records
-        4. compensate debts and update active status
+        4. Compensate debts and update active status
 
         :param coupon_history_lines: Cancelled loyalty history lines
         """
@@ -293,33 +293,13 @@ class SaleOrder(models.Model):
         coupon_history_lines.sudo().unlink()
 
         # Handle any remaining debts and update active status
-        card_in_debt = issuers_to_compensate.card_id.points < 0
-        for issuer in issuers_to_compensate.exists():
-            issuer.active = True
-            if card_in_debt:
-                issuer.compensate_existing_debts()
+        issuers_to_compensate = issuers_to_compensate.exists()
+        issuers_to_compensate.active = True
+        issuers_to_compensate.compensate_existing_debts()
 
         # Re-redeem points for the tracks that lost their issuer
         if reallocation_values:
             self.env['loyalty.history'].redeem_loyalty_points(reallocation_values)
-
-    def _recompute_loyalty_card_balances(self, coupons):
-        """
-        Recalculate the total point balance for loyalty cards after cancellations.
-        Formula: sum(available_issued_points) - sum(debts)
-
-        :param coupons: loyalty cards which needs a balance recomputation.
-        """
-        for coupon in coupons:
-            available = sum(coupon.history_ids.mapped('available_issued_points'))
-
-            debts = self.env['loyalty.point.track'].sudo().search([
-                ('issuer_line_id', '=', False),
-                ('redeemer_line_id.card_id', '=', coupon.id),
-            ])
-            total_debt = abs(sum(debts.mapped('points')))
-
-            coupon.points = available - total_debt
 
     def action_open_reward_wizard(self):
         self.ensure_one()

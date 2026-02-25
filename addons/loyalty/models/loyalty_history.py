@@ -36,6 +36,8 @@ class LoyaltyHistory(models.Model):
     order_model = fields.Char(readonly=True)
     order_id = fields.Many2oneReference(model_field='order_model', readonly=True)
 
+    # === CONSTRAINT METHODS === #
+
     @api.constrains('expiration_date')
     def _check_line_expiration_date_not_in_the_past(self):
         for history_line in self:
@@ -47,30 +49,7 @@ class LoyaltyHistory(models.Model):
                     "The expiry date cannot be in the past. Please select a valid date."
                 ))
 
-    def _get_sorted_history_lines(self, lines):
-        """
-        Sorts loyalty history lines by redemption priority.
-
-        Points are ordered by:
-            1. Nearest expiration date (soonest first).
-            2. Earlier creation order, if expiration dates are equal.
-            3. Points without an expiration date are placed last.
-        """
-        return lines.sorted(
-            key=lambda line: (
-                line.expiration_date is False,
-                line.expiration_date,
-                line.id,
-            ),
-        )
-
-    def _get_order_portal_url(self):
-        self.ensure_one()
-        return False
-
-    def _get_order_description(self):
-        self.ensure_one()
-        return self.env[self.order_model].browse(self.order_id).display_name
+    # === CRUD METHODS === #
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -83,6 +62,16 @@ class LoyaltyHistory(models.Model):
             if expire_after := card.program_id.expire_after:
                 vals['expiration_date'] = fields.Date.today() + timedelta(days=expire_after)
         return super().create(vals_list)
+
+    # === BUSINESS METHODS === #
+
+    def _get_order_portal_url(self):
+        self.ensure_one()
+        return False
+
+    def _get_order_description(self):
+        self.ensure_one()
+        return self.env[self.order_model].browse(self.order_id).display_name
 
     def redeem_loyalty_points(self, reward_values):
         """
@@ -130,6 +119,23 @@ class LoyaltyHistory(models.Model):
                     'points': -points_to_redeem,
                 })
             self.env['loyalty.point.track'].sudo().create(point_track_vals)
+
+    def _get_sorted_history_lines(self, lines):
+        """
+        Sorts loyalty history lines by redemption priority.
+
+        Points are ordered by:
+            1. Nearest expiration date (soonest first).
+            2. Earlier creation order, if expiration dates are equal.
+            3. Points without an expiration date are placed last.
+        """
+        return lines.sorted(
+            key=lambda line: (
+                line.expiration_date is False,
+                line.expiration_date,
+                line.id,
+            ),
+        )
 
     def compensate_existing_debts(self):
         """
