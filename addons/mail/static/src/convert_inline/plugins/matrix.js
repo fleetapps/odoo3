@@ -1,11 +1,13 @@
 export class Band {
-    top = 0;
-    bottom = 0;
+    top;
+    bottom;
     clusterInfos = [];
 
     addClusterInfo(clusterInfo) {
         this.clusterInfos.push(clusterInfo);
+        this.top ??= clusterInfo.rect.top;
         this.top = Math.min(this.top, clusterInfo.rect.top);
+        this.bottom ??= clusterInfo.rect.bottom;
         this.bottom = Math.max(this.bottom, clusterInfo.rect.bottom);
     }
 

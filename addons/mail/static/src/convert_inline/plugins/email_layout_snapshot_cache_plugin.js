@@ -227,13 +227,14 @@ export class LayoutSnapshotCachePlugin extends BasePlugin {
      * @returns {Object} cached bounding client rect
      */
     getBoundingClientRect(cluster) {
+        const realmNode = cluster.commonAncestorContainer || cluster;
         if (
-            cluster instanceof cluster.ownerDocument.defaultView.Node &&
+            cluster instanceof realmNode.ownerDocument.defaultView.Node &&
             cluster.nodeType !== Node.ELEMENT_NODE
         ) {
             cluster = this.getNodeClusterRange(cluster);
         }
-        if (this.config.referenceDocument.contains(cluster)) {
+        if (this.config.referenceDocument.contains(realmNode)) {
             // Only the rect of a node/range inside the referenceDocument can be cached, as
             // the HTML and CSS content inside that document are fixed during conversion.
             const cachedRect =

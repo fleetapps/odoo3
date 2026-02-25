@@ -1,7 +1,6 @@
 import { BasePlugin } from "@html_editor/base_plugin";
 import { registry } from "@web/core/registry";
 import { EMAIL_DESKTOP_DIMENSIONS, EMAIL_MOBILE_DIMENSIONS } from "../hooks";
-import { containsAnyNonPhrasingContent } from "@html_editor/utils/dom_info";
 import { childNodes } from "@html_editor/utils/dom_traversal";
 import { memoize } from "@web/core/utils/functions";
 import { useShorthands } from "./hooks";
@@ -98,12 +97,21 @@ export class ResponsivePlugin extends BasePlugin {
         ]);
         this.layoutDimensions = { width: 0, height: 0 };
         this.htmlStructures = new Map();
-        this.nonLayoutNodes = new Set();
-        this.filterPhrasingContentNodes = memoize((node) => {
-            const result = containsAnyNonPhrasingContent(node);
-            if (!result) {
-                for (const child of childNodes(node)) {
-                    this.nonLayoutNodes.add(child);
+        this.ignoredInlineNodes = new WeakSet();
+        this.filterInlineNodes = memoize((node) => {
+            const subNodes = [];
+            let hasSomeBlock = false;
+            let child = node.firstChild;
+            while (child) {
+                if (!hasSomeBlock && this.isBlock(child)) {
+                    hasSomeBlock = true;
+                }
+                subNodes.push(child);
+                child = child.nextSibling;
+            }
+            if (!hasSomeBlock) {
+                for (const child of subNodes) {
+                    this.ignoredInlineNodes.add(child);
                 }
             }
         });
@@ -136,6 +144,7 @@ export class ResponsivePlugin extends BasePlugin {
     computeEmailHtmlStructure() {
         this.parseWithLayout("desktop");
         this.parseWithLayout("mobile");
+        // TODO EGGMAIL: create final layout based on measured layouts
     }
 
     parseWithLayout(layoutType) {
@@ -150,6 +159,7 @@ export class ResponsivePlugin extends BasePlugin {
         }
     }
 
+    // TODO EGGMAIL: remove, useless?
     getElementPositioningInfo(element) {
         return {
             target: { el: element, rect: this.getBoundingClientRect(element) },
@@ -199,7 +209,6 @@ export class ResponsivePlugin extends BasePlugin {
     }
 
     computeClusterInfos(parent) {
-        // TODO EGGMAIL: filter out clusters with no dimension ?
         const subNodes = childNodes(parent);
         const clusterInfos = subNodes.reduce((accumulator, node) => {
             const isBlock = this.isBlock(node);
@@ -207,9 +216,9 @@ export class ResponsivePlugin extends BasePlugin {
             const clusterInfo =
                 isBlock || !prevClusterInfo || prevClusterInfo.isBlock
                     ? {
-                            nodes: [node],
-                            isBlock,
-                        }
+                          nodes: [node],
+                          isBlock,
+                      }
                     : prevClusterInfo;
             if (clusterInfo !== prevClusterInfo) {
                 accumulator.push(clusterInfo);
@@ -224,12 +233,15 @@ export class ResponsivePlugin extends BasePlugin {
     computeBands(clusterInfos) {
         let bands = new Set();
         for (const clusterInfo of clusterInfos) {
-            const nodes = clusterInfos.nodes;
+            const nodes = clusterInfo.nodes;
             clusterInfo.rect = this.getBoundingClientRect(
                 clusterInfo.isBlock
                     ? clusterInfo.nodes[0]
                     : this.getNodeClusterRange(nodes.at(0), nodes.at(-1))
             );
+            if (clusterInfo.rect.height === 0 || clusterInfo.rect.width === 0) {
+                continue;
+            }
             const bandCandidates = [];
             for (const band of bands) {
                 if (getOverlapY(band, clusterInfo.rect)) {
@@ -238,8 +250,8 @@ export class ResponsivePlugin extends BasePlugin {
             }
             let band = bandCandidates.shift();
             if (!band) {
-               band = new Band();
-               bands.add(band);
+                band = new Band();
+                bands.add(band);
             }
             bands = bands.difference(new Set(bandCandidates));
             for (const candidate of bandCandidates) {
@@ -252,19 +264,18 @@ export class ResponsivePlugin extends BasePlugin {
             band.clusterInfos.sort((clusterInfo1, clusterInfo2) => {
                 const { left: l1, width: w1 } = clusterInfo1;
                 const { left: l2, width: w2 } = clusterInfo2;
-                return (l1 + w1 / 2) - (l2 + w2 / 2)
+                return l1 + w1 / 2 - (l2 + w2 / 2);
             });
         }
         return Array.from(bands).sort((band1, band2) => band1.top - band2.top);
     }
 
     analyzePositioningLayout(layoutType) {
-        const referenceToInfo = new WeakMap();
         const treeWalker = this.config.referenceDocument.createTreeWalker(
             this.config.reference,
             NodeFilter.SHOW_ELEMENT,
             (node) => {
-                if (this.nonLayoutNodes.has(node)) {
+                if (this.ignoredInlineNodes.has(node)) {
                     return NodeFilter.FILTER_REJECT;
                 }
                 // Disregard phasing content children
@@ -279,7 +290,7 @@ export class ResponsivePlugin extends BasePlugin {
                 // What we could do is apply the horizontal scan technique inside these block to identify if
                 // a particular element has block-like behavior (img with margin, with d-block, etc) compared
                 // to its peers
-                this.filterPhrasingContentNodes(node);
+                this.filterInlineNodes(node);
                 return NodeFilter.FILTER_ACCEPT;
             }
         );
@@ -298,11 +309,11 @@ export class ResponsivePlugin extends BasePlugin {
         do {
             const clusterInfos = this.computeClusterInfos(el);
             const bands = this.computeBands(clusterInfos);
+            console.log(bands);
             // all clusters available
             // sort clusters in matrix order (handle float left thingy + arrange them in rows)
             // -> try to create a row and fill it with clusters
             // TODO EGGMAIL NOW:
-
 
             // if no row, create row, set height and top as the element to add into it
             // -> if a row exist, try to put new elements inside, except if the next cluster has
@@ -318,93 +329,90 @@ export class ResponsivePlugin extends BasePlugin {
             // evaluate inline cluster, then ask for a range and the container for that
             // range.
         } while ((el = treeWalker.nextNode()));
-        /**
-         *
-         */
 
         // -> evaluate children from their parent after having sorted them in a position matrix
         // -> treewalk can be done to identify all parents, during the treewalk we can define the new
         // traversal order (based on matric positions), and then do the real algo path
-        while ((el = treeWalker.nextNode())) {
-            // TODO EGGMAIL: ensure compatibility of this algo with RTL
-            const { target, parent, prev, next } = this.getElementPositioningInfo(el);
-            // What are we searching for:
-            // the parent is a row candidate if at least 2 of its children are "row" aligned, but they
-            // are not necessarily DOM direct siblings
-            // We are not considering position-absolute elements or other positioned elements that break the
-            // DOM flow (only exception = simple float)
+        // while ((el = treeWalker.nextNode())) {
+        //     // TODO EGGMAIL: ensure compatibility of this algo with RTL
+        //     const { target, parent, prev, next } = this.getElementPositioningInfo(el);
+        //     // What are we searching for:
+        //     // the parent is a row candidate if at least 2 of its children are "row" aligned, but they
+        //     // are not necessarily DOM direct siblings
+        //     // We are not considering position-absolute elements or other positioned elements that break the
+        //     // DOM flow (only exception = simple float)
 
-            // TODO EGGMAIL: VERY IMPORTANT PREMISES
-            // Simplification of this heuristic: layout is strongly based on DOM hierarchy, any style
-            // disregarding the DOM hierarchy (position absolute, some float elements, ...) will
-            // not be handled properly (they don't need to if editor content is sufficiently cared for)
-            // even then, it is still recommended to sort children in a position matrix to be able
-            // to make measurements on the correct elements.
-            // The only phrasing content evaluated as potential blocks are `<img>` and fa icons?
+        //     // TODO EGGMAIL: VERY IMPORTANT PREMISES
+        //     // Simplification of this heuristic: layout is strongly based on DOM hierarchy, any style
+        //     // disregarding the DOM hierarchy (position absolute, some float elements, ...) will
+        //     // not be handled properly (they don't need to if editor content is sufficiently cared for)
+        //     // even then, it is still recommended to sort children in a position matrix to be able
+        //     // to make measurements on the correct elements.
+        //     // The only phrasing content evaluated as potential blocks are `<img>` and fa icons?
 
-            if (prev) {
-                // the parent is a row candidate if at least 2 of its children are "row" aligned
+        //     if (prev) {
+        //         // the parent is a row candidate if at least 2 of its children are "row" aligned
 
-                // compare alignment (vertical/horizontal)
-                // mark parent as horizontal cluster if horizontal
-                // gaps between elements
-            } else {
-                // there is no guarantee that the first DOM child is the leftmost one
+        //         // compare alignment (vertical/horizontal)
+        //         // mark parent as horizontal cluster if horizontal
+        //         // gaps between elements
+        //     } else {
+        //         // there is no guarantee that the first DOM child is the leftmost one
 
-                // check for left offset with parent (margin, padding, etc)
-                // mark parent left padding value, check if already set
-                // if parent right padding change in mobile mode, mark as horizontal cluster (potential offset-x)
-                // take care of padding in relative units? Ignore?
-            }
-            if (next) {
-                // compare alignment (vertical/horizontal)
-                // mark parent as horizontal cluster if horizontal
-            } else {
-                // there is no guarantee that the last DOM child is the rightmost one, especially
-                // if it is a single row partially wrapped
+        //         // check for left offset with parent (margin, padding, etc)
+        //         // mark parent left padding value, check if already set
+        //         // if parent right padding change in mobile mode, mark as horizontal cluster (potential offset-x)
+        //         // take care of padding in relative units? Ignore?
+        //     }
+        //     if (next) {
+        //         // compare alignment (vertical/horizontal)
+        //         // mark parent as horizontal cluster if horizontal
+        //     } else {
+        //         // there is no guarantee that the last DOM child is the rightmost one, especially
+        //         // if it is a single row partially wrapped
 
-                // check for right offset with parent
-                // mark parent right padding value, check if already set
-                // if parent right padding change in mobile mode, mark as horizontal cluster (potential unfinished row)
-                // take care of padding in relative units? Ignore?
-            }
-            // mark width and compare with mobile mode -> same => fixed width, different => % width or no width (start/end of row if some fixed width)
+        //         // check for right offset with parent
+        //         // mark parent right padding value, check if already set
+        //         // if parent right padding change in mobile mode, mark as horizontal cluster (potential unfinished row)
+        //         // take care of padding in relative units? Ignore?
+        //     }
+        //     // mark width and compare with mobile mode -> same => fixed width, different => % width or no width (start/end of row if some fixed width)
 
-            // if sibling => comparison heuristic (left/right/top/bottom)
+        //     // if sibling => comparison heuristic (left/right/top/bottom)
 
-            // if no previousSibling => compare x position (left) with parent to check for offset
-            // if no nextSibling => compare x position (right) with parent to check for isolated col-md-10
+        //     // if no previousSibling => compare x position (left) with parent to check for offset
+        //     // if no nextSibling => compare x position (right) with parent to check for isolated col-md-10
 
-            // how to differenciate with padding?
-            // -> if the padding value is not identical, could be approximated with a padding constant + an offset column.
-            // -> Take care of padding values in % or other relative units.
+        //     // how to differenciate with padding?
+        //     // -> if the padding value is not identical, could be approximated with a padding constant + an offset column.
+        //     // -> Take care of padding values in % or other relative units.
 
-            // how to differenciate with margin-auto?
-            // -> does not even seem to work currently
-            // -> investigate what is supposed to happen with that, maybe it shouldn't be there at all
-            // -> all media queries from bootstrap seem to wrongly be there?
-            // -> no usage of horizontal margins in the normal editor (to verify), and if they are detected, they should be handled as an "offset" so it's not wrong not to consider them I guess
+        //     // how to differenciate with margin-auto?
+        //     // -> does not even seem to work currently
+        //     // -> investigate what is supposed to happen with that, maybe it shouldn't be there at all
+        //     // -> all media queries from bootstrap seem to wrongly be there?
+        //     // -> no usage of horizontal margins in the normal editor (to verify), and if they are detected, they should be handled as an "offset" so it's not wrong not to consider them I guess
 
-            // Any variation in padding create a cluster candidate => to be determined later
+        //     // Any variation in padding create a cluster candidate => to be determined later
 
-            // do we need the mobile interpretation at this stage? Yes, it will
-            // add some missing clusters without any conclusion, and we can easily check
-            // if an element is a cluster in both, only in desktop, or only in mobile
+        //     // do we need the mobile interpretation at this stage? Yes, it will
+        //     // add some missing clusters without any conclusion, and we can easily check
+        //     // if an element is a cluster in both, only in desktop, or only in mobile
 
-            // TODO: verify that cluster identification works in following cases:
-            // alert block (float),
-            // container/row/col combo with offsets and unfinished rows
-            // normal table
-            // d-flex block without container/row/col?
+        //     // TODO: verify that cluster identification works in following cases:
+        //     // alert block (float),
+        //     // container/row/col combo with offsets and unfinished rows
+        //     // normal table
+        //     // d-flex block without container/row/col?
 
-            // if heuristics are correct -> start implementing "table" conversion
-            // This should resolve almost all layout concerns (need to identify attributes/relevant css properties)
-            // decide which properties we copy from class_to_style, more difficult when applying on tables
-            // next issue would be images, fontawesome to image, and so on
-            // handle outlook with ghost tables
-            // handle colors
-            // handle stylesheets in mail for usage of convert_inline
-        }
+        //     // if heuristics are correct -> start implementing "table" conversion
+        //     // This should resolve almost all layout concerns (need to identify attributes/relevant css properties)
+        //     // decide which properties we copy from class_to_style, more difficult when applying on tables
+        //     // next issue would be images, fontawesome to image, and so on
+        //     // handle outlook with ghost tables
+        //     // handle colors
+        //     // handle stylesheets in mail for usage of convert_inline
+        // }
         this.htmlStructures.set(layoutType, undefined);
     }
 
