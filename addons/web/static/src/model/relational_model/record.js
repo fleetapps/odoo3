@@ -187,9 +187,17 @@ export class Record extends DataPoint {
 
     delete() {
         return this.model.mutex.exec(async () => {
-            const unlinked = await this.model.orm.unlink(this.resModel, [this.resId], {
-                context: this.context,
-            });
+            let unlinked = false;
+            try {
+                unlinked = await this.model.orm.unlink(this.resModel, [this.resId], {
+                    context: this.context,
+                });
+            } catch (e) {
+                if (e instanceof ConnectionLostError) {
+                    return this._offlineDelete();
+                }
+                throw e;
+            }
             if (!unlinked) {
                 return false;
             }
@@ -209,6 +217,30 @@ export class Record extends DataPoint {
                 this._setEvalContext();
             }
         });
+    }
+
+    async _offlineDelete() {
+        this._offlineId = this.model.offline.scheduleORM(
+            this.resModel,
+            "unlink",
+            [[this.resId]],
+            { context: this.context },
+            {
+                id: this._offlineId,
+                extras: {
+                    actionId: this.model.env.config.actionId,
+                    actionName: this.model.env.config.actionName,
+                    viewType: this.model.env.config.viewType,
+                    displayName:
+                        this.data.display_name ||
+                        this.data.complete_name ||
+                        this.data.name ||
+                        _t("record"),
+                    timeStamp: Date.now(),
+                },
+            }
+        );
+        return true;
     }
 
     async discard() {
@@ -328,7 +360,8 @@ export class Record extends DataPoint {
 
     setOfflineChanges(offlineId) {
         this._offlineId = offlineId;
-        this._offlineChanges = this.model.offline.scheduledORM[offlineId].value.extras.changes;
+        this._offlineChanges =
+            this.model.offline.scheduledORM[offlineId].value.extras.changes || {};
         return this.update(this._offlineChanges);
     }
 

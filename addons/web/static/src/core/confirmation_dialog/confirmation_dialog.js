@@ -16,12 +16,9 @@ export class ConfirmationDialog extends Component {
     static props = {
         close: Function,
         title: {
-            validate: (m) => {
-                return (
-                    typeof m === "string" ||
-                    (typeof m === "object" && typeof m.toString === "function")
-                );
-            },
+            validate: (m) =>
+                typeof m === "string" ||
+                (typeof m === "object" && typeof m.toString === "function"),
             optional: true,
         },
         size: { type: String, optional: true },
@@ -32,6 +29,7 @@ export class ConfirmationDialog extends Component {
         cancel: { type: Function, optional: true },
         cancelLabel: { type: String, optional: true },
         dismiss: { type: Function, optional: true },
+        availableOffline: { type: Boolean, optional: true },
     };
     static defaultProps = {
         confirmLabel: _t("Ok"),
@@ -39,6 +37,7 @@ export class ConfirmationDialog extends Component {
         confirmClass: "btn-primary",
         title: _t("Confirmation"),
         size: "sm",
+        availableOffline: false,
     };
 
     setup() {

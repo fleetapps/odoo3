@@ -1,4 +1,11 @@
-import { onRendered, useComponent, useLayoutEffect, useRef, useState, useSubEnv } from "@web/owl2/utils";
+import {
+    onRendered,
+    useComponent,
+    useLayoutEffect,
+    useRef,
+    useState,
+    useSubEnv,
+} from "@web/owl2/utils";
 import { _t } from "@web/core/l10n/translation";
 import { hasTouch } from "@web/core/browser/feature_detection";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
@@ -585,6 +592,7 @@ export class FormController extends Component {
             },
             delete: {
                 isAvailable: () => activeActions.delete && !this.model.root.isNew,
+                availableOffline: true,
                 sequence: 50,
                 icon: "fa fa-trash-o",
                 description: _t("Delete"),

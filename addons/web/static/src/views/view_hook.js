@@ -210,6 +210,7 @@ export function useDeleteRecords(model) {
             confirmLabel: _t("Delete"),
             confirmClass: "btn-danger",
             title: _t("Bye-bye, record!"),
+            availableOffline: true,
         };
     }
     return (dialogProps, records) => {

@@ -27,25 +27,27 @@ class OfflineSystray extends Component {
     get groupEntries() {
         const items = [];
         for (const { key, value } of Object.values(this.offlineService.scheduledORM)) {
-            // OfflineSystray for the moment only support web_save!
+            const item = {
+                id: key,
+                timeStamp: value.extras.timeStamp,
+                actionName: value.extras.actionName,
+                displayName: value.extras.displayName,
+                clickable: value.extras.viewType === "form",
+                error: value.extras.error,
+                tooltip: JSON.stringify({
+                    timeStamp: formatDateTime(DateTime.fromMillis(value.extras.timeStamp)),
+                    changes: Object.entries(value.extras.changes || {}),
+                }),
+            };
             if (value.method === "web_save") {
-                const status = value.args[0].length ? _t("Edited") : _t("Created");
-                const statusColor = value.args[0].length ? "2" : "10";
-                items.push({
-                    id: key,
-                    timeStamp: value.extras.timeStamp,
-                    actionName: value.extras.actionName,
-                    displayName: value.extras.displayName,
-                    status,
-                    statusColor,
-                    clickable: value.extras.viewType === "form",
-                    error: value.extras.error,
-                    tooltip: JSON.stringify({
-                        timeStamp: formatDateTime(DateTime.fromMillis(value.extras.timeStamp)),
-                        changes: Object.entries(value.extras.changes),
-                    }),
-                });
+                item.status = value.args[0].length ? _t("Edited") : _t("Created");
+                item.statusColor = value.args[0].length ? "2" : "10";
             }
+            if (value.method === "unlink") {
+                item.status = _t("Deleted");
+                item.statusColor = "1";
+            }
+            items.push(item);
         }
         const sections = Object.entries(groupBy(items, (item) => item.actionName || ""));
         sections.forEach(([_name, items]) => {

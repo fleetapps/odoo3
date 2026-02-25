@@ -1,4 +1,11 @@
-import { render, onWillRender, useLayoutEffect, useRef, useState, useSubEnv } from "@web/owl2/utils";
+import {
+    render,
+    onWillRender,
+    useLayoutEffect,
+    useRef,
+    useState,
+    useSubEnv,
+} from "@web/owl2/utils";
 import { _t } from "@web/core/l10n/translation";
 import { evaluateExpr, evaluateBooleanExpr } from "@web/core/py_js/py";
 import { user } from "@web/core/user";
@@ -451,6 +458,7 @@ export class ListController extends Component {
             },
             delete: {
                 isAvailable: () => this.activeActions.delete,
+                availableOffline: true,
                 sequence: 50,
                 icon: "fa fa-trash-o",
                 description: _t("Delete"),

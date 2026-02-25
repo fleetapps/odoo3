@@ -6,6 +6,7 @@ import { DataPoint } from "./datapoint";
 import { Operation } from "./operation";
 import { Record as RelationalRecord } from "./record";
 import { getFieldsSpec, resequence } from "./utils";
+import { ConnectionLostError } from "@web/core/network/rpc";
 
 /**
  * @typedef {import("./record").Record} RelationalRecord
@@ -276,9 +277,17 @@ export class DynamicList extends DataPoint {
             resIds = await this.getResIds(true);
             records = this.records.filter((r) => resIds.includes(r.resId));
         }
-        const unlinked = await this.model.orm.unlink(this.resModel, resIds, {
-            context: this.context,
-        });
+        let unlinked = false;
+        try {
+            unlinked = await this.model.orm.unlink(this.resModel, resIds, {
+                context: this.context,
+            });
+        } catch (e) {
+            if (e instanceof ConnectionLostError) {
+                return this._offlineDeleteRecords(records, resIds);
+            }
+            throw e;
+        }
         if (!unlinked) {
             return false;
         }
@@ -295,6 +304,33 @@ export class DynamicList extends DataPoint {
         }
         await this.model.load();
         return unlinked;
+    }
+
+    async _offlineDeleteRecords(records, resIds) {
+        this.model.offline.scheduleORM(
+            this.resModel,
+            "unlink",
+            [resIds],
+            { context: this.context },
+            {
+                extras: {
+                    actionId: this.model.env.config.actionId,
+                    actionName: this.model.env.config.actionName,
+                    viewType: this.model.env.config.viewType,
+                    displayName: records
+                        .map(
+                            (r) =>
+                                r.data.display_name ||
+                                r.data.complete_name ||
+                                this.data.name ||
+                                _t("record")
+                        )
+                        .join(" - "),
+                    timeStamp: Date.now(),
+                },
+            }
+        );
+        return true;
     }
 
     async _multiSave(editedRecord, changes) {
