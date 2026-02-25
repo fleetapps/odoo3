@@ -1131,8 +1131,8 @@ class ProductTemplate(models.Model):
     def _get_contextual_pricelist(self):
         """ Override to fallback on website current pricelist """
         pricelist = super()._get_contextual_pricelist()
-        if self.env.context.get('website_id') and not pricelist:
-            return self.website_id.pricelist_ids
+        if request and request.is_frontend and not pricelist:
+            return request.pricelist
         return pricelist
 
     def _website_show_quick_add(self):
