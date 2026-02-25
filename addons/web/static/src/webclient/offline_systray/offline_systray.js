@@ -47,6 +47,14 @@ class OfflineSystray extends Component {
                 item.status = _t("Deleted");
                 item.statusColor = "1";
             }
+            if (value.method === "action_archive") {
+                item.status = _t("Archive");
+                item.statusColor = "8";
+            }
+            if (value.method === "action_unarchive") {
+                item.status = _t("Unarchive");
+                item.statusColor = "4";
+            }
             items.push(item);
         }
         const sections = Object.entries(groupBy(items, (item) => item.actionName || ""));

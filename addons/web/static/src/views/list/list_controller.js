@@ -443,6 +443,7 @@ export class ListController extends Component {
             },
             archive: {
                 isAvailable: () => this.archiveEnabled,
+                availableOffline: true,
                 sequence: 40,
                 icon: "oi oi-archive",
                 description: _t("Archive"),
@@ -451,6 +452,7 @@ export class ListController extends Component {
             },
             unarchive: {
                 isAvailable: () => this.archiveEnabled,
+                availableOffline: true,
                 sequence: 45,
                 icon: "oi oi-unarchive",
                 description: _t("Unarchive"),

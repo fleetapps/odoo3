@@ -224,6 +224,7 @@ export class DynamicList extends DataPoint {
                 cancel: () => {},
                 confirm: () => this.archive(isSelected),
                 confirmLabel: _t("Archive"),
+                availableOffline: true,
             };
             this.model.dialog.add(ConfirmationDialog, { ...defaultProps, ...dialogProps });
         } else {
@@ -504,7 +505,15 @@ export class DynamicList extends DataPoint {
         const method = state ? "action_archive" : "action_unarchive";
         const context = this.context;
         const resIds = await this.getResIds(isSelected);
-        const action = await this.model.orm.call(this.resModel, method, [resIds], { context });
+        let action;
+        try {
+            action = await this.model.orm.call(this.resModel, method, [resIds], { context });
+        } catch (e) {
+            if (e instanceof ConnectionLostError) {
+                return this._offlineToggleArchive(method, resIds);
+            }
+            throw e;
+        }
         if (
             this.isDomainSelected &&
             resIds.length === this.model.activeIdsLimit &&
@@ -527,6 +536,34 @@ export class DynamicList extends DataPoint {
         } else {
             return reload();
         }
+    }
+
+    async _offlineToggleArchive(method, resIds) {
+        const records = this.records.filter((r) => resIds.includes(r.resId));
+        this.model.offline.scheduleORM(
+            this.resModel,
+            method,
+            [resIds],
+            { context: this.context },
+            {
+                extras: {
+                    actionId: this.model.env.config.actionId,
+                    actionName: this.model.env.config.actionName,
+                    viewType: this.model.env.config.viewType,
+                    displayName: records
+                        .map(
+                            (r) =>
+                                r.data.display_name ||
+                                r.data.complete_name ||
+                                this.data.name ||
+                                _t("record")
+                        )
+                        .join(" - "),
+                    timeStamp: Date.now(),
+                },
+            }
+        );
+        return true;
     }
 
     async _toggleSelection() {

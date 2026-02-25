@@ -1385,14 +1385,46 @@ export class Record extends DataPoint {
      */
     async _toggleArchive(state) {
         const method = state ? "action_archive" : "action_unarchive";
-        const action = await this.model.orm.call(this.resModel, method, [[this.resId]], {
-            context: this.context,
-        });
+        let action;
+        try {
+            action = await this.model.orm.call(this.resModel, method, [[this.resId]], {
+                context: this.context,
+            });
+        } catch (e) {
+            if (e instanceof ConnectionLostError) {
+                return this._offlineToggleArchive(method);
+            }
+            throw e;
+        }
         if (action && Object.keys(action).length) {
             this.model.action.doAction(action, { onClose: () => this._load() });
         } else {
             return this._load();
         }
+    }
+
+    async _offlineToggleArchive(method) {
+        this._offlineId = this.model.offline.scheduleORM(
+            this.resModel,
+            method,
+            [[this.resId]],
+            { context: this.context },
+            {
+                id: this._offlineId,
+                extras: {
+                    actionId: this.model.env.config.actionId,
+                    actionName: this.model.env.config.actionName,
+                    viewType: this.model.env.config.viewType,
+                    displayName:
+                        this.data.display_name ||
+                        this.data.complete_name ||
+                        this.data.name ||
+                        _t("record"),
+                    timeStamp: Date.now(),
+                },
+            }
+        );
+        return true;
     }
 
     _toggleSelection(selected) {
