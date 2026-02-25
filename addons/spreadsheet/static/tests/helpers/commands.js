@@ -211,6 +211,7 @@ export function createBasicChart(
             verticalAxisPosition: "left",
             legendPosition: "top",
             stackedBar: false,
+            dataSetStyles: {},
             ...definition,
         },
     });

@@ -1931,7 +1931,8 @@ test("Odoo charts can have a background color", async () => {
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
 
-    const chartTypes = chartRegistry.getKeys().filter((type) => type.startsWith("odoo_"));
+    // only the ones supported.
+    const chartTypes = chartRegistry.getKeys();
 
     for (const type of chartTypes) {
         model.dispatch("UPDATE_CHART", {

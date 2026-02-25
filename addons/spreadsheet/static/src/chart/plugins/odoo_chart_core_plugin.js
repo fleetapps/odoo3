@@ -12,10 +12,10 @@ import { _t } from "@web/core/l10n/translation";
  */
 
 const CHART_PLACEHOLDER_DISPLAY_NAME = {
-    odoo_bar: _t("Odoo Bar Chart"),
-    odoo_line: _t("Odoo Line Chart"),
-    odoo_pie: _t("Odoo Pie Chart"),
-    odoo_radar: _t("Odoo Radar Chart"),
+    bar: _t("Odoo Bar Chart"),
+    line: _t("Odoo Line Chart"),
+    pie: _t("Odoo Pie Chart"),
+    radar: _t("Odoo Radar Chart"),
 };
 
 export class OdooChartCorePlugin extends OdooCorePlugin {
@@ -54,7 +54,7 @@ export class OdooChartCorePlugin extends OdooCorePlugin {
     handle(cmd) {
         switch (cmd.type) {
             case "CREATE_CHART": {
-                if (cmd.definition.dataSource.type === "odoo") {
+                if (cmd.definition.dataSource?.type === "odoo") {
                     this._addOdooChart(cmd.chartId);
                 }
                 break;
@@ -120,7 +120,7 @@ export class OdooChartCorePlugin extends OdooCorePlugin {
     getChartGranularity(chartId) {
         const definition = this.getters.getChartDefinition(chartId);
         const dataSource = definition.dataSource;
-        if (dataSource.type === "odoo" && dataSource.metaData.groupBy.length) {
+        if (dataSource?.type === "odoo" && dataSource.metaData.groupBy.length) {
             const horizontalAxis = dataSource.metaData.groupBy[0];
             const [fieldName, granularity] = horizontalAxis.split(":");
             return { fieldName, granularity };
@@ -137,12 +137,12 @@ export class OdooChartCorePlugin extends OdooCorePlugin {
         for (const sheet of data.sheets) {
             if (sheet.figures) {
                 for (const figure of sheet.figures) {
-                    if (figure.tag === "chart" && figure.data.dataSource.type === "odoo") {
+                    if (figure.tag === "chart" && figure.data.dataSource?.type === "odoo") {
                         this._addOdooChart(figure.data.chartId, figure.data.fieldMatching ?? {});
                     } else if (figure.tag === "carousel") {
                         for (const chartId in figure.data.chartDefinitions) {
                             const fieldMatching = figure.data.fieldMatching ?? {};
-                            if (figure.data.chartDefinitions[chartId].dataSource.type === "odoo") {
+                            if (figure.data.chartDefinitions[chartId].dataSource?.type === "odoo") {
                                 this._addOdooChart(chartId, fieldMatching[chartId]);
                             }
                         }
@@ -160,7 +160,7 @@ export class OdooChartCorePlugin extends OdooCorePlugin {
         for (const sheet of data.sheets) {
             if (sheet.figures) {
                 for (const figure of sheet.figures) {
-                    if (figure.tag === "chart" && figure.data.dataSource.type === "odoo") {
+                    if (figure.tag === "chart" && figure.data.dataSource?.type === "odoo") {
                         figure.data.fieldMatching = this.getChartFieldMatch(figure.data.chartId);
                         figure.data.dataSource.searchParams.domain = new Domain(
                             figure.data.dataSource.searchParams.domain
@@ -169,7 +169,7 @@ export class OdooChartCorePlugin extends OdooCorePlugin {
                         figure.data.fieldMatching = {};
                         for (const chartId in figure.data.chartDefinitions) {
                             const chartDefinition = figure.data.chartDefinitions[chartId];
-                            if (chartDefinition.dataSource.type === "odoo") {
+                            if (chartDefinition.dataSource?.type === "odoo") {
                                 figure.data.fieldMatching[chartId] =
                                     this.getChartFieldMatch(chartId);
                                 chartDefinition.dataSource.searchParams.domain = new Domain(
