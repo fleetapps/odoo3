@@ -82,11 +82,19 @@ export class BlockTab extends Component {
                                 // Add the dropzones corresponding to the snippet
                                 // and make them invisible.
                                 const selectors = this.shared.dropzone.getSelectors(snippetEl);
-                                const dropzoneEls =
-                                    this.shared.dropzone.activateDropzones(selectors);
+                                let dropzoneEls = this.shared.dropzone.activateDropzones(selectors);
                                 this.editable
                                     .querySelectorAll(".oe_drop_zone")
                                     .forEach((dropzoneEl) => dropzoneEl.classList.add("invisible"));
+                                // Do not allow drop by click in another snippet
+                                // (e.g., "table of content") unless it is a
+                                // "s_popup".
+                                dropzoneEls = [...dropzoneEls].filter(
+                                    (dropzoneEl) =>
+                                        !dropzoneEl.closest(
+                                            "[data-snippet]:not(.s_popup), #website_cookies_bar"
+                                        )
+                                );
 
                                 // Find the dropzone closest to the center of the
                                 // viewport and not located in the top quarter of

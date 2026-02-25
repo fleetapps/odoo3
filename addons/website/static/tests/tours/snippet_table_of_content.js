@@ -41,6 +41,17 @@ registerWebsitePreviewTour('snippet_table_of_content', {
     // To make sure that the public widgets of the two previous ones started.
     ...insertSnippet({id: "s_banner", name: "Banner", groupName: "Intro"}),
     {
+        content: "Click on the s_banner snippet",
+        trigger: ":iframe .s_banner",
+        run: "click",
+    },
+    {
+        content: "Drag the s_banner snippet in the s_table_of_content'",
+        trigger: "body .o_overlay_options .o_move_handle, body .o_overlay_options .o_move_handle:not(:visible)",
+        run: "drag_and_drop :iframe .s_table_of_content",
+    },
+    goBackToBlocks(),
+    {
         content: "Drag the Intro snippet group and drop it.",
         trigger: ".o-snippets-menu .o_block_tab:not(.o_we_ongoing_insertion) .o_snippet[name='Intro'] .o_snippet_thumbnail",
         run: "drag_and_drop :iframe #wrap",
