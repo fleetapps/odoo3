@@ -1,7 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 from odoo import api, models
 from math import floor
-from odoo.exceptions import AccessError
 
 
 class PosLoadMixin(models.AbstractModel):
@@ -102,13 +101,10 @@ class PosLoadMixin(models.AbstractModel):
         model = self._name
         if model in local_data['models'] and model in local_data['records'] and len(local_data['records'][model]):
             ids = local_data['records'][model].keys()
-            # Timestamp in python is giving timestamp in seconds.
-            # Timestamp in JS is giving timestamp in milliseconds.
-            # We multiply by 1000 to compare both in milliseconds.
             records = server_data['records'].filtered(lambda x: self.load_pos_data_force_loading() or not str(x.id) in ids or (x.write_date and floor(x.write_date.timestamp()) > local_data['records'][model][str(x.id)]))
         else:
             records = server_data['records']
         return {
             **server_data,
-            'records': records._load_pos_data_read(records, config_id) if len(records) > 0 else [],
+            'records': records._load_pos_data_read(records, config_id),
         }

@@ -9,10 +9,6 @@ export class EventQuestionAnswer extends models.ServerModel {
         return ["question_id", "name", "sequence"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

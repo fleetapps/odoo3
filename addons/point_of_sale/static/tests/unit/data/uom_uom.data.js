@@ -7,10 +7,6 @@ export class UomUom extends models.ServerModel {
         return ["id", "name", "factor", "is_pos_groupable", "parent_path"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 5,

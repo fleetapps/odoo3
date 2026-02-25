@@ -666,12 +666,7 @@ class TestPoSProductsWithTax(TestPoSCommon):
         # - Product no tax from XX      => tax from Branch X should be set
         # - Product no tax from branch  => 2 taxes from parent company should be set
         # - Product no tax              => no tax should be set
-        pos_data = pos_session.load_data({
-            'models': [],
-            'records': {},
-            'search_params': {},
-            'only_records': False,
-        })
+        pos_data = pos_session.load_data()
         self.assertEqual(
             next(iter(filter(lambda p: p['id'] == product_all_taxes.product_tmpl_id.id, pos_data['product.template']['records'])))['taxes_id'],
             tax_xx.ids

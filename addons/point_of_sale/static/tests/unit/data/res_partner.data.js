@@ -27,10 +27,6 @@ export class ResPartner extends MailResPartner {
         ];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         ...MailResPartner.prototype.constructor._records,
         {

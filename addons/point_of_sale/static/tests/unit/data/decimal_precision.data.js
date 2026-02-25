@@ -7,10 +7,6 @@ export class DecimalPrecision extends models.ServerModel {
         return ["id", "name", "digits"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

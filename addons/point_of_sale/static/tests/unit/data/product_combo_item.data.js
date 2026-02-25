@@ -7,10 +7,6 @@ export class ProductComboItem extends models.ServerModel {
         return ["id", "combo_id", "product_id", "extra_price"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

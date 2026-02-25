@@ -7,10 +7,6 @@ export class ResourceCalendarAttendance extends models.ServerModel {
         return ["id", "hour_from", "hour_to", "dayofweek"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

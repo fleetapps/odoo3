@@ -7,10 +7,6 @@ export class PosBill extends models.ServerModel {
         return ["id", "name", "value"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

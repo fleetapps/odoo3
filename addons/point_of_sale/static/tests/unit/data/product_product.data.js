@@ -20,8 +20,11 @@ export class ProductProduct extends models.ServerModel {
         ];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
+    _load_pos_data_read(data) {
+        for (const record of data) {
+            record["_is_pos_special_product"] = false;
+        }
+        return data;
     }
 
     _records = [

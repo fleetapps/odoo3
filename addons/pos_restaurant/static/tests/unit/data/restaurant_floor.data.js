@@ -9,10 +9,6 @@ export class RestaurantFloor extends models.ServerModel {
         return ["name", "table_ids", "sequence", "pos_config_ids"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 2,

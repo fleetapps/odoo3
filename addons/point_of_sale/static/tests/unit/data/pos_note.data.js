@@ -7,10 +7,6 @@ export class PosNote extends models.ServerModel {
         return ["name", "color"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

@@ -6,8 +6,4 @@ export class StockRoute extends models.ServerModel {
     _load_pos_data_fields() {
         return [];
     }
-
-    _load_pos_data_dependencies() {
-        return [];
-    }
 }

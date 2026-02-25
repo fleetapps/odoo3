@@ -11,10 +11,6 @@ export class LoyaltyCard extends models.ServerModel {
         return ["partner_id", "code", "points", "program_id", "expiration_date", "write_date"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

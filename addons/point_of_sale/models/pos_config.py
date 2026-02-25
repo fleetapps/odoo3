@@ -331,12 +331,11 @@ class PosConfig(models.Model):
         record['_data_server_date'] = self.env.context.get('pos_last_server_date') or self.env.cr.now()
         record['_has_cash_move_perm'] = self.env.user.has_group('account.group_account_invoice')
         record['_has_cash_delete_perm'] = self.env.user.has_group('account.group_account_basic')
-        record['_pos_special_products_ids'] = self.env['pos.config']._get_special_products().ids
         record['_module_pos_settle_due'] = bool(self.env['ir.module.module'].search([('name', '=', 'pos_settle_due'), ('state', '=', 'installed')], limit=1))
 
         # Add custom fields for 'formula' taxes.
         # We can ignore data for _load_pos_data_domain since isn't needed in the domain computation of account.tax
-        taxes = self.env['account.tax'].search(self.env['account.tax']._load_pos_data_domain({'pos.config': records}))
+        taxes = self.env['account.tax'].search(self.env['account.tax']._load_pos_data_domain({'pos.config': config}))
         product_fields = taxes._eval_taxes_computation_prepare_product_fields()
         record['_product_default_values'] = \
             self.env['account.tax']._eval_taxes_computation_prepare_product_default_values(product_fields)

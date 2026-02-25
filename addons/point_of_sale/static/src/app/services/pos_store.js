@@ -707,7 +707,24 @@ export class PosStore extends WithLazyGetterTrap {
      * @returns {Promise<Object>}
      */
     async loadNewProducts(domain, offset = 0, limit = 0) {
-        const result = await this.data.loadProductFromPos(domain, offset, limit);
+        const modelDomain = {
+            "product.template": domain,
+        };
+        const modelOffset = {
+            "product.template": offset,
+        };
+        const modelLimit = {
+            "product.template": limit,
+        };
+        const result = await this.data.loadRecordsFromPos(
+            ["product.template"],
+            modelDomain,
+            modelOffset,
+            modelLimit,
+            {
+                active_test: false,
+            }
+        );
         this.productAttributesExclusion = this.computeProductAttributesExclusion(
             result["product.template.attribute.value"]
         );
@@ -2413,9 +2430,9 @@ export class PosStore extends WithLazyGetterTrap {
     getExcludedProductIds() {
         return [
             this.config.tip_product_id?.product_tmpl_id?.id,
-            ...this.config._pos_special_products_ids.map(
-                (id) => this.models["product.product"].get(id)?.product_tmpl_id?.id
-            ),
+            ...this.models["product.product"]
+                .filter((p) => p._is_pos_special_product)
+                .map((p) => p.product_tmpl_id?.id),
         ].filter(Boolean);
     }
 

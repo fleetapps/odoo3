@@ -7,10 +7,6 @@ export class ResLang extends models.ServerModel {
         return ["id", "name", "code", "flag_image_url", "display_name"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

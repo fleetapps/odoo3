@@ -7,10 +7,6 @@ export class AccountJournal extends models.ServerModel {
         return [];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

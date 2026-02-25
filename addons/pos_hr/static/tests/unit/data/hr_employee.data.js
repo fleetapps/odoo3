@@ -11,10 +11,6 @@ export class HrEmployee extends models.ServerModel {
         return ["name", "user_id", "work_contact_id"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 2,

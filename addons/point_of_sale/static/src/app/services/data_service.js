@@ -302,9 +302,6 @@ export class PosData extends Reactive {
         const results = {};
 
         for (const name in data) {
-            if (name in this.opts.databaseTable) {
-                continue;
-            }
             results[name] = data[name];
         }
 
@@ -322,6 +319,10 @@ export class PosData extends Reactive {
             }
             results[name] = data[name].reduce((acc, item) => {
                 if (typeof item.id === "number") {
+                    // deserializeDateTime(item.write_date) is precise to the second,
+                    // we can divide by 1000 without losing precision.
+                    // Timestamp in Python is giving timestamp in seconds,
+                    // we will thus compare both in seconds.
                     const date = deserializeDateTime(item.write_date).ts / 1000 || 0; // seconds since epoch
                     acc[item.id] = date;
                 }
@@ -837,18 +838,32 @@ export class PosData extends Reactive {
             const models = this.getRelatedModels(model);
             data.models.push(...models);
 
-            let domain = [["id", "in", Array.from(ids)]];
+            const domain = [["id", "in", Array.from(ids)]];
             if (["product.product", "product.template"].includes(model)) {
-                domain = [
-                    ["id", "in", Array.from(ids)],
-                    "|",
-                    ["active", "=", true],
-                    ["active", "=", false],
-                ];
+                if (model === "product.product") {
+                    data.search_params[model] = {
+                        domain: domain,
+                        context: { active_test: false },
+                    };
+                    data.search_params["product.template"] = {
+                        domain: [["product_variant_ids", "in", Array.from(ids)]],
+                        context: { active_test: false },
+                    };
+                } else {
+                    data.search_params[model] = {
+                        domain: domain,
+                        context: { active_test: false },
+                    };
+                    data.search_params["product.product"] = {
+                        domain: [["product_tmpl_id", "in", Array.from(ids)]],
+                        context: { active_test: false },
+                    };
+                }
+            } else {
+                data.search_params[model] = {
+                    domain: domain,
+                };
             }
-            data.search_params[model] = {
-                domain: domain,
-            };
         }
         data.models = [...new Set(data.models)];
         data.records = await this.getCachedServerIdsFromIndexedDB(data.models);
@@ -866,36 +881,45 @@ export class PosData extends Reactive {
         return acc;
     }
 
-    async loadProductFromPos(domain, offset = 0, limit = 0) {
-        const models = this.getRelatedModels("product.template");
+    async loadRecordsFromPos(
+        models,
+        domain = {},
+        offset = {},
+        limit = {},
+        context = {},
+        loadRelated = true
+    ) {
+        if (loadRelated) {
+            models = new Set(models);
+            for (const model of models) {
+                const related = this.getRelatedModels(model);
+                related.forEach((m) => models.add(m));
+            }
+        }
         const localData = await this.getCachedServerIdsFromIndexedDB(models);
-        const testLocalData = {
-            models: models,
+        const search_params = {};
+        for (const model of models) {
+            search_params[model] = {
+                domain: domain[model] || false,
+                offset: offset[model] || 0,
+                limit: limit[model] || false,
+            };
+        }
+        const loadDataParams = {
+            models: Array.from(models),
             records: localData,
-            search_params: {
-                "product.template": {
-                    domain: domain,
-                    offset: offset,
-                    limit: limit || false,
-                },
-            },
+            search_params,
             only_records: true,
         };
-        const data = await this.call(
+        return await this.callRelated(
             "pos.session",
             "load_data",
-            [odoo.pos_session_id, testLocalData],
+            [odoo.pos_session_id, loadDataParams],
             {
-                context: {
-                    load_archived: true,
-                },
+                context,
             },
             false
         );
-
-        // In case of scan unknown barcode, the backend may return an empty list
-        this.synchronizeServerDataInIndexedDB(data);
-        return this.models.loadConnectedData(data);
     }
 
     async syncData() {

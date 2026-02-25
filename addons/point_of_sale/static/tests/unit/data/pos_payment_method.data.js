@@ -18,10 +18,6 @@ export class PosPaymentMethod extends models.ServerModel {
         ];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 2,

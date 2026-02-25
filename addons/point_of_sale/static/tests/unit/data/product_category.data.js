@@ -7,10 +7,6 @@ export class ProductCategory extends models.ServerModel {
         return ["id", "name", "parent_id"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 2,

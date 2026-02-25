@@ -5,6 +5,9 @@ import { rpc } from "@web/core/network/rpc";
 
 export const unpatchSelf = patch(PosData.prototype, {
     async loadInitialData() {
+        if (odoo.debug === "assets") {
+            window.performance.mark("pos_data_service_init");
+        }
         const configId = session.data.config_id;
         const oldLocalData = await this.getCachedServerDataFromIndexedDB();
         const partners = oldLocalData?.["res.partner"] || [];

@@ -16,10 +16,6 @@ export class EventRegistrationAnswer extends models.ServerModel {
             "event_id",
         ];
     }
-
-    _load_pos_data_dependencies() {
-        return [];
-    }
 }
 
 patch(hootPosModels, [...hootPosModels, EventRegistrationAnswer]);

@@ -7,10 +7,6 @@ export class AccountTaxGroup extends models.ServerModel {
         return ["id", "name", "pos_receipt_label"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

@@ -9,10 +9,6 @@ export class RestaurantTable extends models.ServerModel {
         return ["table_number", "floor_id", "seats", "parent_id", "active"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 2,

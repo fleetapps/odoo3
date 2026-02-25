@@ -926,12 +926,7 @@ class TestPoSBasicConfig(TestPoSCommon):
         self.open_new_session()
 
         # calling load_data should not raise an error
-        self.pos_session.load_data({
-            'models': [],
-            'records': {},
-            'search_params': {},
-            'only_records': False,
-        })
+        self.pos_session.load_data()
 
     def test_load_data_picks_the_company_website_domain(self):
         if self.env['ir.module.module']._get('website').state != 'installed':
@@ -1147,12 +1142,7 @@ class TestPoSBasicConfig(TestPoSCommon):
         self.product3.write({'company_id': False})
 
         def get_top_product_ids(count):
-            data = session.load_data({
-                'models': [],
-                'records': {},
-                'search_params': {},
-                'only_records': False,
-            })
+            data = session.load_data()
             special_product = session.config_id._get_special_products().ids
             available_top_product = [product for product in data['product.template']['records'] if product['product_variant_ids'][0] not in special_product]
             return [p['product_variant_ids'][0] for p in available_top_product[:count]]
@@ -1416,12 +1406,7 @@ class TestPoSBasicConfig(TestPoSCommon):
         })
 
         self.open_new_session()
-        response = self.pos_session.load_data({
-            'models': [],
-            'records': {},
-            'search_params': {},
-            'only_records': False,
-        })
+        response = self.pos_session.load_data()
         product_data = next((item for item in response['product.template']['records'] if item['id'] == product.id), None)
 
         self.assertEqual(len(product_data['_archived_combinations']), 0, "There should be no archived combinations for the product")
@@ -1429,12 +1414,7 @@ class TestPoSBasicConfig(TestPoSCommon):
         first_variant = product.product_variant_ids[0]
         first_variant.write({'active': False})
 
-        response = self.pos_session.load_data({
-            'models': [],
-            'records': {},
-            'search_params': {},
-            'only_records': False,
-        })
+        response = self.pos_session.load_data()
         product_data = next((item for item in response['product.template']['records'] if item['id'] == product.id), None)
 
         self.assertEqual(len(product_data['_archived_combinations']), 1, "There should be one archived combination for the product")

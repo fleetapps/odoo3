@@ -46,6 +46,7 @@ export class PosSession extends models.ServerModel {
             "res.currency",
             "pos.note",
             "product.tag",
+            "ir.ui.view",
         ];
     }
 
@@ -63,10 +64,6 @@ export class PosSession extends models.ServerModel {
             "cash_register_balance_start",
             "access_token",
         ];
-    }
-
-    _load_pos_data_dependencies() {
-        return [];
     }
 
     // These methods are designed to be overridden to customize the POS data loading behavior using the provided `opts`.
@@ -89,7 +86,7 @@ export class PosSession extends models.ServerModel {
     }
 
     getModelDependencies(model) {
-        return model._load_pos_data_dependencies();
+        return model._load_pos_data_dependencies ? model._load_pos_data_dependencies() : [];
     }
 
     processPosReadData(model, records, opts) {
@@ -172,7 +169,6 @@ export class PosSession extends models.ServerModel {
         data[0]["_data_server_date"] = "2025-07-03 12:40:15";
         data[0]["_has_cash_move_perm"] = true;
         data[0]["_has_available_products"] = true;
-        data[0]["_pos_special_products_ids"] = [];
         return data;
     }
 

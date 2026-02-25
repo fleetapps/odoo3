@@ -9,10 +9,6 @@ export class PosCourse extends models.ServerModel {
         return ["name", "sequence", "category_ids"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

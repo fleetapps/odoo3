@@ -141,17 +141,24 @@ class PosSession(models.Model):
             'only_records': False, # if True, only returns the records
         }
         """
+        default_params = {
+            'models': [],
+            'records': {},
+            'search_params': {},
+            'only_records': False
+        }
+        local_data = default_params | local_data
         models = self._load_pos_data_models(self.config_id)
-        metadata = self._load_metadata(models, local_data.get('search_params', {}))
+        metadata = self._load_metadata(models, local_data['search_params'])
         to_read = metadata
         if local_data['models']:
-            to_read = {model: data for model, data in metadata.items() if model in local_data.get('models', [])}
+            to_read = {model: data for model, data in metadata.items() if model in local_data['models']}
         data = self._read_from_metadata(to_read, local_data, self.config_id)
-        if local_data.get('only_records'):
+        if local_data['only_records']:
             return {model: d['records'] for model, d in data.items()}
-        elif local_data.get('records'):
+        elif local_data['records']:
             # Add data to remove from the indexedDB
-            data_to_remove = self.filter_local_data({model: list(d.keys()) for model, d in local_data.get('records', {}).items()})
+            data_to_remove = self.filter_local_data({model: list(d.keys()) for model, d in local_data['records'].items()})
             for model, ids in data_to_remove.items():
                 if model in data:
                     data[model]['to_remove'] = ids
@@ -169,17 +176,23 @@ class PosSession(models.Model):
     def _load_metadata(self, models, search_params={}):
         records = {}
         self._load_pos_metadata(records, search_params.get('pos.session', {'limit': 1}))
+        self.env['pos.config']._load_pos_metadata(records, search_params.get('pos.config', {'limit': 1}))
         for model in models:
-            if model == 'pos.session':
+            if model in ['pos.session', 'pos.config']:
                 continue
             try:
-                self.env[model]._load_pos_metadata(records, search_params.get(model, {}))
+                params = search_params.get(model, {})
+                context = {**self.env.context, **params.get('context', {})}
+                self.env[model].with_context(context)._load_pos_metadata(records, params)
             except AccessError as e:
                 records[model] = {
                     **self.env[model]._load_pos_data_domain_and_dependencies(records),
                     'records': self.env[model],
                 }
-                _logger.info("Could not load model %s due to AccessError: %s", model, e)
+                if model != 'ir.ui.view':
+                    # The model ir.ui.view can rarely be accessed so it will raise a warning
+                    # almost every single time. We load it only to load the templates.
+                    _logger.info("Could not load model %s due to AccessError: %s", model, e)
         return records
 
     @api.model

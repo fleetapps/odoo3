@@ -10,8 +10,10 @@ class IrUiView(models.Model):
     def _load_pos_self_data_read(self, records, config):
         read_records = super()._load_pos_self_data_read(records, config)
 
-        for record in read_records:
-            if record['key'] in self._get_xml_ids_to_load():
-                record['_template'] = self.env['ir.qweb']._get_template(record['key'])[1]
+        for key in self._get_xml_ids_to_load():
+            read_records.append({
+                'key': key,
+                '_template': self.env['ir.qweb']._get_template(key)[1],
+            })
 
         return read_records

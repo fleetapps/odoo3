@@ -7,10 +7,6 @@ export class ResCountry extends webModels.ResCountry {
         return ["id", "name", "code", "vat_label"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         ...webModels.ResCountry._records,
         {

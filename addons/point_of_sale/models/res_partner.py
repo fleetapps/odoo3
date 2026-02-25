@@ -31,22 +31,6 @@ class ResPartner(models.Model):
             data_list[partner.id].append(stat_info)
         return data_list
 
-    @api.model
-    def get_new_partner(self, config_id, domain, offset):
-        config = self.env['pos.config'].browse(config_id)
-        if len(domain) == 0:
-            limited_partner_ids = {partner[0] for partner in config.get_limited_partners_loading(offset)}
-            domain += [('id', 'in', list(limited_partner_ids))]
-            new_partners = self.search(domain)
-        else:
-            # If search domain is not empty, we need to search inside all partners
-            new_partners = self.search(domain, offset=offset, limit=100)
-        fiscal_positions = new_partners.fiscal_position_id
-        return {
-            'res.partner': self._load_pos_data_read(new_partners, config),
-            'account.fiscal.position': self.env['account.fiscal.position']._load_pos_data_read(fiscal_positions, config),
-        }
-
     @api.constrains('barcode')
     def _check_barcode_prefix(self):
         for partner in self:

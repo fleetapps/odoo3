@@ -37,7 +37,8 @@ class PosPreset(models.Model):
 
     @api.model
     def _load_pos_data_domain(self, data):
-        preset_ids = data['pos.config'].available_preset_ids + data['pos.config'].default_preset_id
+        config = data['pos.config']
+        preset_ids = config.available_preset_ids + config.default_preset_id
         return [('id', 'in', preset_ids.ids)]
 
     @api.model

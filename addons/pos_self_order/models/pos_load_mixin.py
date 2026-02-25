@@ -60,7 +60,7 @@ class PosLoadMixin(models.AbstractModel):
                 records = data['records']
                 response[model] = {
                     **data,
-                    'records': records._load_pos_self_data_read(records, config_id) if len(records) > 0 else [],
+                    'records': records._load_pos_self_data_read(records, config_id),
                 }
                 del response[model]['domain']
             except AccessError as e:

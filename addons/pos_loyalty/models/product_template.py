@@ -9,7 +9,7 @@ class ProductTemplate(models.Model):
         domain = search_params.get('domain', False)
         if domain or 'pos.config' not in data:
             return data
-        config = data['pos.config']['records']
+        config = data['pos.config']['records'][0]
         rewards = config._get_program_ids().reward_ids
         reward_products = rewards.discount_line_product_id | rewards.reward_product_ids | rewards.reward_product_id
         trigger_products = config._get_program_ids().trigger_product_ids

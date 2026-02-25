@@ -31,6 +31,9 @@ class ProductTemplate(models.Model):
         products.extend(combo_products_choice)
         self._process_pos_self_ui_products(products)
 
+        for product in products:
+            product['_is_pos_special_product'] = product['id'] in config._get_special_products().ids
+
         return products
 
     def _process_pos_self_ui_products(self, products):

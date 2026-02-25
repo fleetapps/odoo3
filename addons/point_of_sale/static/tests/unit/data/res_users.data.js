@@ -7,10 +7,6 @@ export class ResUsers extends MailResUsers {
         return ["id", "name", "partner_id", "all_group_ids"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         ...MailResUsers.prototype.constructor._records,
         {

@@ -40,45 +40,39 @@ class TestPOSLoyaltyProductLoading(TestPointOfSaleHttpCommon):
         current_session = self.main_pos_config.current_session_id
 
         data = current_session.load_data({
-            'models': ['pos.config', 'product.template'],
-            'records': {},
-            'search_params': {},
+            'models': ['pos.config', 'product.template', 'product.product'],
             'only_records': True,
         })
 
-        self.assertNotIn(new_product.id, data['pos.config'][0]['_pos_special_products_ids'],
-                        "Loyalty product should not be in _pos_special_products_ids when program is inactive.")
+        self.assertIsNone(next((n for n in data['product.product'] if n['id'] == new_product.id and n['_is_pos_special_product']), None),
+                        "Loyalty product should not be a special product when program is inactive.")
 
         # Activate the program to ensure the product is loaded
         program.write({'active': True})
 
         data = current_session.load_data({
-            'models': ['pos.config', 'product.template'],
-            'records': {},
-            'search_params': {},
+            'models': ['pos.config', 'product.template', 'product.product'],
             'only_records': True,
         })
 
         self.assertIn(new_product.product_tmpl_id.id, [product['id'] for product in data['product.template']],
                         "Loyalty product should be loaded in the PoS session when program is active.")
 
-        self.assertNotIn(new_product.id, data['pos.config'][0]['_pos_special_products_ids'],
+        self.assertIsNone(next((n for n in data['product.product'] if n['id'] == new_product.id and n['_is_pos_special_product']), None),
                         "Loyalty product should not be in _pos_special_products_ids since it is loaded.")
 
         # Make the product not available in the PoS
         new_product.write({'available_in_pos': False})
 
         data = current_session.load_data({
-            'models': ['pos.config', 'product.template'],
-            'records': {},
-            'search_params': {},
+            'models': ['pos.config', 'product.template', 'product.product'],
             'only_records': True,
         })
 
         self.assertIn(new_product.product_tmpl_id.id, [product['id'] for product in data['product.template']],
                         "Loyalty product should be loaded in the PoS session when it is used in a program, even if not available in the PoS.")
 
-        self.assertIn(new_product.id, data['pos.config'][0]['_pos_special_products_ids'],
+        self.assertIsNotNone(next((n for n in data['product.product'] if n['id'] == new_product.id and n['_is_pos_special_product']), None),
                         "Loyalty product should be in _pos_special_products_ids since it is loaded but not available in the PoS.")
 
     def test_product_loading_without_gift_card(self):

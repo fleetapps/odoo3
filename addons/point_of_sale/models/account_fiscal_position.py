@@ -11,6 +11,10 @@ class AccountFiscalPosition(models.Model):
         return [('id', 'in', data['pos.config'].fiscal_position_ids.ids + data['pos.preset'].fiscal_position_id.ids + partner_fp_ids)]
 
     @api.model
+    def _load_pos_data_dependencies(self):
+        return ['res.partner', 'pos.preset']
+
+    @api.model
     def _load_pos_data_fields(self, config):
         return ['id', 'name', 'display_name', 'tax_map', 'tax_ids']
 

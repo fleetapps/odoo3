@@ -74,13 +74,14 @@ class ProductTemplate(models.Model):
 
     @api.model
     def _load_pos_data_domain(self, data):
+        config = data['pos.config']
         domain = [
-            *self._check_company_domain(data['pos.config'].company_id),
+            *self._check_company_domain(config.company_id),
             ('available_in_pos', '=', True),
             ('sale_ok', '=', True),
         ]
-        if data['pos.config'].limit_categories:
-            domain += [('pos_categ_ids', 'in', data['pos.config'].iface_available_categ_ids.ids)]
+        if config.limit_categories:
+            domain += [('pos_categ_ids', 'in', config.iface_available_categ_ids.ids)]
         return domain
 
     @api.model
@@ -157,22 +158,22 @@ class ProductTemplate(models.Model):
         products = self._load_product_with_domain([('id', 'in', product_tmpl_ids)])
 
         product_combo = products.filtered(lambda p: p['type'] == 'combo')
-        products += product_combo.combo_ids.combo_item_ids.product_id.product_tmpl_id
-        special_products = config._get_special_products().filtered(
-                    lambda product: not product.sudo().company_id
-                                    or product.sudo().company_id == self.env.company
-                )
-        products += special_products.product_tmpl_id
-        if config.tip_product_id:
-            tip_company_id = config.tip_product_id.sudo().company_id
-            if not tip_company_id or tip_company_id == self.env.company:
-                products += config.tip_product_id.product_tmpl_id
-
+        products |= product_combo.combo_ids.combo_item_ids.product_id.product_tmpl_id
         # Ensure optional products are loaded when configured.
-        products += products.pos_optional_product_ids
-
+        products |= products.pos_optional_product_ids
         # Ensure products from loaded orders are loaded
-        products += data['pos.order.line']['records'].product_id.product_tmpl_id
+        products |= data['pos.order.line']['records'].product_id.product_tmpl_id
+
+        if not search_params.get('domain', False):
+            special_products = config._get_special_products().filtered(
+                        lambda product: not product.sudo().company_id
+                                        or product.sudo().company_id == self.env.company
+                    )
+            products |= special_products.product_tmpl_id
+            if config.tip_product_id:
+                tip_company_id = config.tip_product_id.sudo().company_id
+                if not tip_company_id or tip_company_id == self.env.company:
+                    products |= config.tip_product_id.product_tmpl_id
 
         data['product.template'] = {
             **result,
@@ -188,7 +189,7 @@ class ProductTemplate(models.Model):
         return read_records
 
     def _load_product_with_domain(self, domain, load_archived=False, offset=0, limit=None):
-        context = {**self.env.context, 'display_default_code': False, 'active_test': not load_archived, 'bin_size': True}
+        context = {'display_default_code': False, 'active_test': not load_archived, 'bin_size': True, **self.env.context}
         return self.with_context(context).search(
             domain,
             order='sequence,default_code,name',

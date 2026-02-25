@@ -7,10 +7,6 @@ export class ResCountryState extends models.ServerModel {
         return ["id", "name", "code", "country_id"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 69,

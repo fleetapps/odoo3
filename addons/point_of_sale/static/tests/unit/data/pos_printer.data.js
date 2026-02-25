@@ -7,10 +7,6 @@ export class PosPrinter extends models.ServerModel {
         return ["id", "name", "product_categories_ids", "printer_type"];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         {
             id: 1,

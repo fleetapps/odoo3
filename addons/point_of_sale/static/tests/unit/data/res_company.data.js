@@ -28,10 +28,6 @@ export class ResCompany extends webModels.ResCompany {
         ];
     }
 
-    _load_pos_data_dependencies() {
-        return [];
-    }
-
     _records = [
         ...webModels.ResCompany._records,
         {
