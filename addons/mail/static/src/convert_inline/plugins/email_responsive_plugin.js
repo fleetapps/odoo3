@@ -199,6 +199,7 @@ export class ResponsivePlugin extends BasePlugin {
     }
 
     computeClusterInfos(parent) {
+        // TODO EGGMAIL: filter out clusters with no dimension ?
         const subNodes = childNodes(parent);
         const clusterInfos = subNodes.reduce((accumulator, node) => {
             const isBlock = this.isBlock(node);
@@ -221,7 +222,7 @@ export class ResponsivePlugin extends BasePlugin {
     }
 
     computeBands(clusterInfos) {
-        const bands = [new Band()];
+        let bands = new Set();
         for (const clusterInfo of clusterInfos) {
             const nodes = clusterInfos.nodes;
             clusterInfo.rect = this.getBoundingClientRect(
@@ -229,21 +230,32 @@ export class ResponsivePlugin extends BasePlugin {
                     ? clusterInfo.nodes[0]
                     : this.getNodeClusterRange(nodes.at(0), nodes.at(-1))
             );
-            // go through every band
-            // if a band is empty, fill it
-            // if intersect with a band, mark as candidate
-            // fuse every candidate band as one band
-            // if does not intersect with any band, create a new band and fill it
             const bandCandidates = [];
             for (const band of bands) {
-                if (band.clusterInfos.length === 0) {
-                    band.addClusterInfo(clusterInfo);
-                    continue;
+                if (getOverlapY(band, clusterInfo.rect)) {
+                    bandCandidates.push(band);
                 }
-                const overlapY = Math.max
-                const dy = getDY(band, clusterInfo.rect);
             }
+            let band = bandCandidates.shift();
+            if (!band) {
+               band = new Band();
+               bands.add(band);
+            }
+            bands = bands.difference(new Set(bandCandidates));
+            for (const candidate of bandCandidates) {
+                band.merge(candidate);
+            }
+            band.addClusterInfo(clusterInfo);
         }
+        for (const band of bands) {
+            // TODO EGGMAIL: sorting is not stable (clusters with same center position are "identical")
+            band.clusterInfos.sort((clusterInfo1, clusterInfo2) => {
+                const { left: l1, width: w1 } = clusterInfo1;
+                const { left: l2, width: w2 } = clusterInfo2;
+                return (l1 + w1 / 2) - (l2 + w2 / 2)
+            });
+        }
+        return Array.from(bands).sort((band1, band2) => band1.top - band2.top);
     }
 
     analyzePositioningLayout(layoutType) {
