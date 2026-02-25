@@ -102,7 +102,7 @@ class TestSuggestedProducts(WebsiteSaleCommon, CronMixinCase):
         """_update_suggested_products fills alternative products based on shared categories."""
         tested_products = self.template_desk | self.template_chair | self.template_combo_desk_chair
         # Update suggested products on tested_products
-        tested_products._update_suggested_products(force_update=True)
+        tested_products._update_suggested_products()
         self.assertEqual(self.template_desk.alternative_product_ids, self.template_combo_desk_chair)
         self.assertEqual(
             self.template_chair.alternative_product_ids, self.template_combo_desk_chair
@@ -113,7 +113,7 @@ class TestSuggestedProducts(WebsiteSaleCommon, CronMixinCase):
     def test_update_suggested_products_sets_optional_products(self):
         """Test that _update_suggested_products fills optional products based on sales history."""
         # Update suggested products for template_desk
-        self.template_desk._update_suggested_products(force_update=True)
+        self.template_desk._update_suggested_products()
         self.assertEqual(self.template_desk.optional_product_ids, self.template_chair)
 
     def test_cron_write_preserves_automation(self):
@@ -145,7 +145,7 @@ class TestSuggestedProducts(WebsiteSaleCommon, CronMixinCase):
         self.template_desk.suggest_alternative_products = False
         self.template_desk.suggest_optional_products = False
         # Call from action
-        self.template_desk._update_suggested_products(force_update=True)
+        self.template_desk._update_suggested_products()
         self.assertTrue(self.template_desk.suggest_alternative_products)
         self.assertTrue(self.template_desk.suggest_optional_products)
 

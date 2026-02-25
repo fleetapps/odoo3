@@ -100,18 +100,23 @@ class ProductTemplate(models.Model):
     )
     # Whether a cron should automatically fill optional products.
     suggest_optional_products = fields.Boolean(
-        string="Suggest Optional Products", compute='_compute_suggest_optional_products', store=True
+        string="Suggest Optional Products",
+        compute='_compute_suggest_optional_products',
+        readonly=False,
+        store=True,
     )
     # Whether a cron should automatically fill accessory products.
     suggest_accessory_products = fields.Boolean(
         string="Suggest Accessory Products",
         compute='_compute_suggest_accessory_products',
+        readonly=False,
         store=True,
     )
     # Whether a cron should automatically fill alternative products.
     suggest_alternative_products = fields.Boolean(
         string="Suggest Alternative Products",
         compute='_compute_suggest_alternative_products',
+        readonly=False,
         store=True,
     )
     # Last update date of the optional, accessory and alternative products.
@@ -347,7 +352,7 @@ class ProductTemplate(models.Model):
         domain = self.env['website'].sale_product_domain()
         return self.alternative_product_ids.filtered_domain(domain)
 
-    def _update_suggested_products(self, batch_size=None, force_update=False):
+    def _update_suggested_products(self, batch_size=None):
         """Update the current product templates' optional, accessory, and alternative products.
 
         Only salable and publish product templates are considered. The heuristics to find suggested
@@ -360,8 +365,6 @@ class ProductTemplate(models.Model):
         This method can be called by either the update suggested products cron or by a sever action.
 
         :param int batch_size: The maximum number of products to process at once (for the cron).
-        :param bool force_update: Whether the suggested products should be updated even if they
-                                  were previously manually set.
         :rtype: None
         """
         if not self._is_automate_suggested_product_feature_enabled():
@@ -369,9 +372,15 @@ class ProductTemplate(models.Model):
 
         now = fields.Datetime.now()
         products_domain = Domain([('sale_ok', '=', True), ('is_published', '=', True)])
-        if self:  # Called from a server action
+        if self:  # Called from the server action
             products_to_update = self
             in_cron = False
+            # Reset the suggest_ fields
+            self.write({
+                'suggest_optional_products': True,
+                'suggest_accessory_products': True,
+                'suggest_alternative_products': True,
+            })
         else:  # Called from the cron
             last_12_hours = now - relativedelta(hours=12)
             cron_domain = products_domain & (
@@ -387,25 +396,19 @@ class ProductTemplate(models.Model):
 
         if in_cron:
             self.env['ir.cron']._commit_progress(remaining=len(self))
-        if force_update:
-            # Reset the suggest_ fields with the server action
-            self.write({
-                'suggest_optional_products': True,
-                'suggest_accessory_products': True,
-                'suggest_alternative_products': True,
-            })
         for company, products in products_to_update.grouped('company_id').items():
-            other_products_by_categories = dict(
+            products_by_categories = dict(
                 self._read_group(
                     products_domain & Domain('company_id', '=', company.id),
                     groupby=['public_categ_ids'],
                     aggregates=['id:recordset'],
                 )
             )
+            products_by_sales = products._get_products_by_sales(max_products=3)
             for product in products:
                 if product.suggest_optional_products or product.suggest_accessory_products:
                     optionals, accessories = product._get_suggested_optionals_and_accessories(
-                        max_optionals=2, max_accessories=1
+                        products_by_sales, max_optionals=2
                     )
                     if product.suggest_optional_products:
                         # Don't trigger compute from the _update_suggested_products method
@@ -425,7 +428,7 @@ class ProductTemplate(models.Model):
                         [product._fields['suggest_alternative_products']], product
                     ):
                         product.alternative_product_ids = product._get_suggested_alternatives(
-                            other_products_by_categories, max_products=4
+                            products_by_categories, max_products=4
                         )
             products.suggested_products_last_update = now
         if in_cron:
@@ -437,42 +440,57 @@ class ProductTemplate(models.Model):
             'website_sale.group_automate_suggested_products'
         )
 
-    def _get_suggested_optionals_and_accessories(self, max_optionals, max_accessories):
-        """Get products that are bought together with the main product (self).
-        Products bought together in at least 2 sale orders dated within 5 years."""
-        max_products = max_optionals + max_accessories
-        # Return the list of matching template pt2, any product.template sharing the conditions:
+    def _get_products_by_sales(self, max_products):
+        """Get products that are bought together with the main product, in at least 2 sale orders dated within 5 years.
+
+        rtype: dict[int, list[int]]
+        """
+
+        # Return the list of tuples (main_pt_id, recommended_pt_id) for any product.template sharing the conditions:
         # - same order, dated from less than 5 years
         # - active product, cheaper than the main product, not a combo item, not himself
         result = self.env.execute_query(
             SQL(
                 """
-            SELECT pt2.id
-              FROM sale_order_line sol
-              JOIN sale_order so ON so.id = sol.order_id
-              JOIN product_product pp ON pp.id = sol.product_id
-              JOIN product_template pt ON pt.id = pp.product_tmpl_id
-              JOIN sale_order_line sol2 ON sol2.order_id = so.id AND sol2.id != sol.id
-              JOIN product_product pp2 ON pp2.id = sol2.product_id
-              JOIN product_template pt2 ON pt2.id = pp2.product_tmpl_id
-             WHERE pt.id = %(pt_id)s
-               AND so.state = 'sale'
-               AND so.date_order >= NOW() - INTERVAL '5 years'
-               AND pt2.active = TRUE
-               AND pt2.list_price < pt.list_price
-               AND sol2.combo_item_id IS NULL
-               AND pt2.id != %(pt_id)s
-             GROUP BY pt2.id
-             ORDER BY COUNT(DISTINCT so.id) DESC, RANDOM()
-             LIMIT %(max_products)s
-            """,
-                pt_id=self.id,
+                SELECT main_pt_id, recommended_pt_id
+                  FROM (SELECT pt.id  AS main_pt_id,
+                               pt2.id AS recommended_pt_id,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY pt.id
+                                       ORDER BY COUNT(DISTINCT so.id) DESC, RANDOM()
+                               )      AS rn
+                          FROM sale_order_line sol
+                          JOIN sale_order        so  ON so.id  = sol.order_id
+                          JOIN product_product   pp  ON pp.id  = sol.product_id
+                          JOIN product_template  pt  ON pt.id  = pp.product_tmpl_id
+                          JOIN sale_order_line   sol2 ON sol2.order_id = so.id AND sol2.id != sol.id
+                          JOIN product_product   pp2  ON pp2.id  = sol2.product_id
+                          JOIN product_template  pt2  ON pt2.id  = pp2.product_tmpl_id
+                         WHERE pt.id = ANY(%(pt_ids)s)
+                           AND so.state      = 'sale'
+                           AND so.date_order >= NOW() - INTERVAL '5 years'
+                           AND pt2.active    = TRUE
+                           AND pt2.list_price < pt.list_price
+                           AND sol2.combo_item_id IS NULL
+                           AND pt2.id        != pt.id
+                         GROUP BY pt.id, pt2.id) ranked
+                 WHERE rn <= %(max_products)s
+                """,
+                pt_ids=list(self.ids),
                 max_products=max_products,
             )
         )
-        sold_together_ids = [id[0] for id in result]
-        optional_products_ids = sold_together_ids[:max_optionals]
-        accessory_products_ids = sold_together_ids[max_optionals:]  # last ones
+        products_by_sales = defaultdict(list)
+        for main_id, recommended_id in result:
+            products_by_sales[main_id].append(recommended_id)
+
+        return products_by_sales
+
+    def _get_suggested_optionals_and_accessories(self, products_by_sales, max_optionals):
+        """Get the records recommended as optional and accessory products for self."""
+        recommended_ids = products_by_sales.get(self.id, [])
+        optional_products_ids = recommended_ids[:max_optionals]
+        accessory_products_ids = recommended_ids[max_optionals:]  # last ones
         optional_products = self.env['product.template'].browse(optional_products_ids)
         accessory_products = (
             self.env['product.template'].browse(accessory_products_ids).product_variant_ids
@@ -481,7 +499,7 @@ class ProductTemplate(models.Model):
         accessory_product = random.choice(accessory_products) if accessory_products else None
         return optional_products, accessory_product
 
-    def _get_suggested_alternatives(self, other_templates_by_categories, max_products):
+    def _get_suggested_alternatives(self, products_by_categories, max_products):
         """Get similar products based on the categories and attributes shared with self.
         - Categories weight = 0.8, at least one category in common
         - Attributes weight = 0.2.
@@ -492,7 +510,7 @@ class ProductTemplate(models.Model):
         # Limit to 1000 other products with at least one category in common (random order)
         other_products_sharing_categories = self.env['product.template']
         for categ in self.public_categ_ids:
-            other_products_sharing_categories |= other_templates_by_categories.get(categ)
+            other_products_sharing_categories |= products_by_categories.get(categ)
         other_products_sharing_categories = list(other_products_sharing_categories - self)
         random.shuffle(other_products_sharing_categories)
 
@@ -1258,7 +1276,7 @@ class ProductTemplate(models.Model):
         return price, pricelist_rule_id
 
     def _to_markup_data(self, website):
-        """Generate JSON-LD markup data for the current product template.
+        """ Generate JSON-LD markup data for the current product template.
 
         If the template has multiple variants, the https://schema.org/ProductGroup schema is used.
         Otherwise, the markup data generation is delegated to the variant to use the

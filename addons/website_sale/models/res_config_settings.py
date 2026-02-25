@@ -145,7 +145,7 @@ class ResConfigSettings(models.TransientModel):
         if self.group_automate_suggested_products and not had_group_asp:  # Enable the feature
             suggested_products_cron_sudo.active = True
             suggested_products_cron_sudo._trigger()
-        elif not self.group_automate_suggested_products:  # Disable the feature
+        elif not self.group_automate_suggested_products and had_group_asp:  # Disable the feature
             suggested_products_cron_sudo.active = False
 
     # === ACTION METHODS === #
