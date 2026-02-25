@@ -805,7 +805,10 @@ test("update existing chart to cumulate past data", async () => {
         definition: {
             ...cumulativeChartDefinition,
             cumulative: true,
-            cumulatedStart: false,
+            dataSource: {
+                ...cumulativeChartDefinition.dataSource,
+                cumulatedStart: false,
+            },
         },
     });
     const sheetId = model.getters.getActiveSheetId();
@@ -816,12 +819,15 @@ test("update existing chart to cumulate past data", async () => {
     ]);
     const figure = model.exportData().sheets[0].figures[0];
     expect(figure.data.cumulative).toBe(true);
-    expect(figure.data.cumulatedStart).toBe(false);
+    expect(figure.data.dataSource.cumulatedStart).toBe(false);
 
     model.dispatch("UPDATE_CHART", {
         definition: {
             ...cumulativeChartDefinition,
-            cumulatedStart: true,
+            dataSource: {
+                ...cumulativeChartDefinition.dataSource,
+                cumulatedStart: true,
+            },
         },
         chartId,
         figureId: model.getters.getFigureIdFromChartId(chartId),

@@ -10,7 +10,14 @@ export class ChartDataSource extends OdooViewsDataSource {
      * @param {Object} services Services (see DataSource)
      */
     constructor(services, params) {
-        super(services, params);
+        super(services, {
+            searchParams: params.searchParams,
+            metaData: {
+                ...params.metaData,
+                cumulatedStart: params.cumulatedStart,
+                // mode: chartTypeToDataSourceMode(this.type),
+            },
+        });
     }
 
     /**

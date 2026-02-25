@@ -19,6 +19,11 @@ chartDataSourceRegistry.add("odoo", {
         const sheetId = getters.getActiveSheetId();
         const [chartId] = getters.getChartIds(sheetId);
         const { datasets, labels } = getters.getChartDataSource(chartId).getData();
+        for (const ds of datasets) {
+            if (ds.cumulatedStart) {
+                ds.data[0] += ds.cumulatedStart;
+            }
+        }
         return {
             dataSetsValues: datasets.map((ds, i) => {
                 const identifiers = JSON.parse([...ds.identifiers][0]);
