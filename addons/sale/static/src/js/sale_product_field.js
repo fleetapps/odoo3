@@ -195,12 +195,12 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
             'get_single_product_variant',
             [this.props.record.data.product_template_id.id],
             {
-                quantity: saleOrderLine.product_uom_qty,
-                currency_id: saleOrderLine.currency_id.id,
-                so_date: serializeDateTime(saleOrderRecord.data.date_order),
-                product_uom_id: saleOrderLine.product_uom_id.id,
-                company_id: saleOrderRecord.data.company_id.id,
-                pricelist_id: saleOrderRecord.data.pricelist_id.id,
+                quantity: saleOrderLine.product_uom_qty || 1,
+                currency_id: saleOrderLine.currency_id?.id,
+                so_date: saleOrderRecord.data.date_order ? serializeDateTime(saleOrderRecord.data.date_order) : undefined,
+                product_uom_id: saleOrderLine.product_uom_id?.id,
+                company_id: saleOrderRecord.data.company_id?.id,
+                pricelist_id: saleOrderRecord.data.pricelist_id?.id,
                 ptav_ids: ptavIds,
                 ...this._getAdditionalRpcParams(),
             }

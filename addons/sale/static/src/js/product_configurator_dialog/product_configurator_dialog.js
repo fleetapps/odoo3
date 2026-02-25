@@ -134,7 +134,6 @@ export class ProductConfiguratorDialog extends Component {
     }
 
     async _loadData(onlyMainProduct) {
-        debugger;
         if (this.getValuesUrl == '/website_sale/product_configurator/get_values'){
             return rpc(this.getValuesUrl, {
                 product_template_id: this.props.productTemplateId,
