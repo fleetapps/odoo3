@@ -3,7 +3,7 @@
 
     <t t-name="web.StatusBarDropdownItems">
         <t t-foreach="visibleSlotNames" t-as="slot" t-key="slot">
-            <DropdownItem class="'o-dropdown-item-unstyled-button'">
+            <DropdownItem class="'o-dropdown-item-unstyled-button'" closingMode="props.slots[slot].closingMode">
                 <t t-slot="{{ slot }}" />
             </DropdownItem>
         </t>

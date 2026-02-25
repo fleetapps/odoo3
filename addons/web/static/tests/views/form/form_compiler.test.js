@@ -3,6 +3,8 @@ import { patchWithCleanup } from "@web/../tests/web_test_helpers";
 
 import { createElement } from "@web/core/utils/xml";
 import { FormCompiler } from "@web/views/form/form_compiler";
+import { Component, xml } from '@odoo/owl';
+import { registry } from '@web/core/registry';
 
 describe.current.tags("headless");
 
@@ -294,6 +296,37 @@ test("properly compile status bar with content", () => {
                     <StatusBarButtons t-if="!__comp__.env.isSmall or __comp__.env.inDialog">
                         <t t-set-slot="button_0" isVisible="true">
                             <div>someDiv</div>
+                        </t>
+                    </StatusBarButtons>
+                </div>
+            </div>
+        </t>
+    `;
+    expect(compileTemplate(arch)).toHaveOuterHTML(expected);
+});
+
+test("properly compile status bar with widget", () => {
+    class MyWidget extends Component {
+        static props = ["*"];
+        static template = xml`
+                <div class="test_widget">
+                    <button>MyButton</button>
+                </div>`;
+    }
+    registry.category("view_widgets").add("test_widget", { component: MyWidget });
+
+    const arch = /*xml*/ `
+        <form>
+            <header><widget name="test_widget"/></header>
+        </form>
+    `;
+    const expected = /*xml*/ `
+        <t t-translation="off">
+            <div class="o_form_renderer o_form_nosheet" t-att-class="__comp__.props.class" t-attf-class="{{__comp__.props.record.isInEdition ? 'o_form_editable' : 'o_form_readonly'}} d-block {{ __comp__.props.record.dirty ? 'o_form_dirty' : !__comp__.props.record.isNew ? 'o_form_saved' : '' }}" t-ref="compiled_view_root">
+                <div class="o_form_statusbar position-relative d-flex justify-content-between mb-0 mb-md-2 pb-2 pb-md-0">
+                    <StatusBarButtons t-if="!__comp__.env.isSmall or __comp__.env.inDialog">
+                        <t t-set-slot="button_0" isVisible="true" closingMode="'none'">
+                            <Widget record="__comp__.props.record" name="'test_widget'" widgetInfo="__comp__.props.archInfo.widgetNodes['null']"></Widget>
                         </t>
                     </StatusBarButtons>
                 </div>
