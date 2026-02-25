@@ -36,7 +36,8 @@ export class BuilderRow extends Component {
         this.state = useState({
             expanded: this.props.expand,
         });
-        this.hasTooltip = this.props.tooltip ? true : undefined;
+        this.hasTooltip = undefined;
+        this.tooltipContent = "";
         this.isBackendRTL = localization.direction === "rtl";
 
         if (this.props.slots.collapse) {
@@ -132,11 +133,20 @@ export class BuilderRow extends Component {
     openTooltip() {
         if (this.hasTooltip === undefined) {
             const labelEl = this.labelRef.el;
-            this.hasTooltip = labelEl && labelEl.clientWidth < labelEl.scrollWidth;
+            const isLabelTooLong = labelEl.offsetWidth < labelEl.scrollWidth;
+            this.hasTooltip = this.props.tooltip || isLabelTooLong;
+            if (isLabelTooLong) {
+                this.tooltipContent = this.props.tooltip
+                    ? `${this.props.label}\u00A0: ${this.props.tooltip}`
+                    : this.props.label;
+            } else if (this.props.tooltip) {
+                this.tooltipContent = this.props.tooltip;
+            }
         }
         if (this.hasTooltip) {
-            const tooltip = this.props.tooltip || this.props.label;
-            this.removeTooltip = this.tooltip.add(this.labelRef.el, { tooltip });
+            this.removeTooltip = this.tooltip.add(this.labelRef.el, {
+                tooltip: this.tooltipContent,
+            });
         }
     }
 
