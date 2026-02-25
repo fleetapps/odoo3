@@ -3,7 +3,7 @@
 
     <t t-inherit="website_sale.CartTotal" t-inherit-mode="extension">
         <t t-set="showTaxLines" position="after">
-            <t t-if="state.country_code == 'BR'" t-set="showTaxLines" t-value="False"/>
+            <t t-if="state.country_code == 'BR'" t-set="showTaxLines" t-value="false"/>
         </t>
         <tr name="o_order_total_untaxed" position="attributes">
             <attribute

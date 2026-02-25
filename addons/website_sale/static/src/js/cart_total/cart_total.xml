@@ -2,7 +2,7 @@
 <templates>
 
     <t t-name="website_sale.CartTotal">
-        <t t-set="showTaxLines" t-value="True"/>
+        <t t-set="showTaxLines" t-value="true"/>
         <table class="table mb-0">
             <tr
                 t-if="state.has_deliverable_products"

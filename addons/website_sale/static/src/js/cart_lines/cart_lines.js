@@ -1,6 +1,5 @@
 import { Component, onWillStart, useState } from '@odoo/owl';
 import { useService, useBus } from '@web/core/utils/hooks';
-import { redirect } from '@web/core/utils/urls';
 import { rpc } from '@web/core/network/rpc';
 import { CartLine } from './cart_line/cart_line';
 import wishlistUtils from '@website_sale/js/wishlist_utils';
