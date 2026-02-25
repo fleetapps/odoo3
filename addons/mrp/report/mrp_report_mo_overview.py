@@ -71,10 +71,15 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
             'show_uom': self.env.user.has_group('uom.group_uom'),
         }
 
+    def _contextualized_production(self, production):
+        # Needed to fetch the right quantities for multi-warehouse
+        # warehouse_id for free_qty : _get_domain_locations
+        # and for this report to handle also subcontracted productions (not linked to a warehouse)
+        return production.with_context(warehouse_id=production.warehouse_id.id)
+
     def _get_report_data(self, production_id):
         production = self.env['mrp.production'].browse(production_id)
-        # Necessary to fetch the right quantities for multi-warehouse
-        production = production.with_context(warehouse_id=production.warehouse_id.id)
+        production = self._contextualized_production(production)
 
         components = self._get_components_data(production, level=1, current_index='')
         operations = self._get_operations_data(production, level=1, current_index='')
@@ -93,7 +98,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 initial_bom_cost += currency.round(line_cost * production.product_uom_qty / production.bom_id.product_qty)
             for operation in missing_operations:
                 cost = operation.with_context(product=production.product_id, quantity=production.product_qty, unit=production.uom_id).cost
-                bom_cost = self.env.company.currency_id.round(cost)
+                bom_cost = currency.round(cost)
                 initial_bom_cost += currency.round(bom_cost * production.product_uom_qty / production.bom_id.product_qty)
 
         remaining_cost_share, byproducts = self._get_byproducts_data(production, initial_mo_cost, initial_bom_cost, initial_real_cost, level=1, current_index='')
@@ -214,7 +219,6 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
             'real_cost_decorator': real_cost_decorator if not mo_cost_decorator else False,
             'bom_cost': currency.round(bom_cost),
             'real_cost': currency.round(real_cost),
-            'currency_id': currency.id,
             'currency': currency,
         }
 
@@ -330,12 +334,11 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 'bom_cost': bom_cost,
                 'real_cost': real_cost,
                 'real_cost_decorator': real_cost_decorator,
-                'currency_id': currency.id,
                 'currency': currency,
             })
             total_expected_time += workorder.duration_expected
             total_current_time += wo_duration if is_workorder_started else workorder.duration_expected
-            total_expected_cost += production.company_id.currency_id.round(mo_cost)
+            total_expected_cost += currency.round(mo_cost)
             total_bom_cost = self._sum_bom_cost(total_bom_cost, bom_cost)
             total_real_cost += real_cost
 
@@ -353,7 +356,6 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 'real_cost': total_real_cost,
                 'real_cost_decorator': self._get_comparison_decorator(total_expected_cost, total_real_cost, 0.01) if self._is_production_started(production) else False,
                 'uom_name': operation_uom,
-                'currency_id': currency.id,
                 'currency': currency,
             },
             'details': operations,
@@ -405,7 +407,6 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 'bom_cost': currency.round(bom_cost) if bom_cost else False,
                 'real_cost': currency.round(operation_cost),
                 'real_cost_decorator': self._get_comparison_decorator(mo_cost, operation_cost, currency.rounding),
-                'currency_id': currency.id,
                 'currency': currency,
             })
         return {
@@ -419,7 +420,6 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 'real_cost': total_cost,
                 'real_cost_decorator': self._get_comparison_decorator(total_mo_cost, total_cost, currency.rounding),
                 'uom_name': done_operation_uom,
-                'currency_id': currency.id,
                 'currency': currency,
             },
             'details': operations,
@@ -460,7 +460,6 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 'mo_cost_decorator': mo_cost_decorator,
                 'bom_cost': currency.round(bom_cost),
                 'real_cost': currency.round(real_cost),
-                'currency_id': currency.id,
                 'currency': currency,
             })
 
@@ -475,7 +474,6 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 'mo_cost_decorator': mo_cost_decorator,
                 'bom_cost': currency.round(total_bom_cost),
                 'real_cost': currency.round(total_real_cost),
-                'currency_id': currency.id,
                 'currency': currency,
             },
             'details': byproducts,
@@ -546,6 +544,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
         else:
             cost_to_compare = real_cost if production.state != 'confirmed' else bom_cost
             mo_cost_decorator = self._get_comparison_decorator(cost_to_compare, mo_cost, currency.rounding)
+        warehouse = self.env['stock.warehouse'].browse(production.env.context.get('warehouse_id'))
         component = {
             'level': level,
             'index': index,
@@ -561,15 +560,14 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
             'uom_precision': self._get_uom_precision(),
             'quantity_free': product.uom_id._compute_quantity(max(product.free_qty, 0), move_raw.uom_id) if product.is_storable else False,
             'quantity_on_hand': product.uom_id._compute_quantity(product.qty_available, move_raw.uom_id) if product.is_storable else False,
-            'quantity_reserved': self._get_reserved_qty(move_raw, production.warehouse_id, replenish_data),
-            'receipt': self._check_planned_start(production.date_start, self._get_component_receipt(product, move_raw, production.warehouse_id, replenishments, replenish_data)),
+            'quantity_reserved': self._get_reserved_qty(move_raw, warehouse, replenish_data),
+            'receipt': self._check_planned_start(production.date_start, self._get_component_receipt(product, move_raw, warehouse, replenishments, replenish_data)),
             'unit_cost': self._get_unit_cost(move_raw),
             'mo_cost': mo_cost,
             'mo_cost_decorator': 'danger' if isinstance(bom_cost, bool) and not bom_cost and not self._is_production_started(production) else mo_cost_decorator,
             'bom_cost': bom_cost,
             'real_cost': real_cost,
             'real_cost_decorator': False,
-            'currency_id': currency.id,
             'currency': currency,
         }
         if not product.is_storable:
@@ -585,6 +583,9 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
         if move_raw.uom_id.is_zero(quantity):
             return 0
         return self._get_unit_cost(move_raw) * quantity
+
+    def _get_component_bom_cost(self, move_raw, quantity, doc_in=False):
+        return self._get_component_real_cost(move_raw, quantity)
 
     def _check_planned_start(self, mo_planned_start, receipt):
         if mo_planned_start and receipt.get('date', False) and receipt['date'] > mo_planned_start:
@@ -620,13 +621,17 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
             return self._format_receipt_date('expected', max_date)
 
     def _get_replenishment_lines(self, production, move_raw, replenish_data, level, current_index):
+        warehouse = self.env['stock.warehouse'].browse(production.env.context.get('warehouse_id'))
         product = move_raw.product_id
         quantity = move_raw.product_uom_qty if move_raw.state != 'done' else move_raw.quantity
-        reserved_quantity = self._get_reserved_qty(move_raw, production.warehouse_id, replenish_data)
+        reserved_quantity = self._get_reserved_qty(move_raw, warehouse, replenish_data)
         currency = (production.company_id or self.env.company).currency_id
         forecast = replenish_data['products'][product.id].get('forecast', [])
+        documents = production.env.context.get('documents') or []
+        documents.append((production._name, production.id))
         current_lines = filter(lambda line: line.get('document_in', False) and line.get('document_out', False)
-                               and line['document_out'].get('id', False) == production.id and not line.get('already_used'), forecast)
+                               and (line['document_out'].get('_name', False), line['document_out'].get('id', False)) in documents
+                               and not line.get('already_used'), forecast)
         total_ordered = 0
         replenishments = []
         for count, forecast_line in enumerate(current_lines):
@@ -653,13 +658,13 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 'uom_precision': self._get_uom_precision(),
                 'unit_cost': self._get_unit_cost(move_raw),
                 'mo_cost': forecast_line.get('cost', self._get_replenishment_mo_cost(product, line_quantity, move_raw.uom_id, currency, forecast_line.get('move_in'))),
-                'bom_cost': currency.round(self._get_component_real_cost(move_raw, bom_quantity)) if bom_quantity else False,
+                'bom_cost': currency.round(self._get_component_bom_cost(move_raw, bom_quantity, doc_in)) if bom_quantity else False,
                 'real_cost': currency.round(self._get_component_real_cost(move_raw, line_quantity)),
-                'currency_id': currency.id,
                 'currency': currency,
             }
             forecast_line['already_used'] = True
             if doc_in._name == 'mrp.production':
+                doc_in = self._contextualized_production(doc_in)
                 replenishment['components'] = self._get_components_data(doc_in, replenish_data, level + 2, replenishment_index)
                 replenishment['operations'] = self._get_operations_data(doc_in, level + 2, replenishment_index)
                 initial_mo_cost, initial_bom_cost, initial_real_cost = self._compute_cost_sums(replenishment['components'], replenishment['operations'])
@@ -714,7 +719,6 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
                 'uom_name': move_raw.uom_id.display_name,
                 'uom_precision': self._get_uom_precision(),
                 'real_cost': currency.round(product.standard_price * move_raw.uom_id._compute_quantity(available_qty, product.uom_id)),
-                'currency_id': currency.id,
                 'currency': currency,
             }}
             if resupply_data:
@@ -774,7 +778,6 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
             'bom_cost': bom_cost,
             'real_cost': currency.round(real_cost),
             'receipt': self._check_planned_start(production.date_start, self._format_receipt_date('expected', receipt_date)),
-            'currency_id': currency.id,
             'currency': currency,
         }}
 
@@ -829,7 +832,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
         products = production.move_raw_ids.product_id
         unknown_products = products.filtered(lambda product: product.id not in replenish_data.get('products', {}))
         if unknown_products:
-            warehouse = production.warehouse_id
+            warehouse = self.env['stock.warehouse'].browse(production.env.context.get('warehouse_id'))
             wh_location_ids = self._get_warehouse_locations(warehouse, replenish_data)
             forecast_lines = self.env['stock.forecasted_product_product']._get_report_lines(False, unknown_products.ids, wh_location_ids, warehouse.lot_stock_id, read=False)
             forecast_lines = self._add_origins_to_forecast(forecast_lines)
@@ -878,7 +881,8 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
 
     def _get_resupply_rules(self, production, product, replenish_data):
         if not replenish_data['products'][product.id].get('resupply_rules'):
-            replenish_data['products'][product.id]['resupply_rules'] = product._get_rules_from_location(production.warehouse_id.lot_stock_id)
+            warehouse = self.env['stock.warehouse'].browse(production.env.context.get('warehouse_id'))
+            replenish_data['products'][product.id]['resupply_rules'] = product._get_rules_from_location(warehouse.lot_stock_id)
         return replenish_data['products'][product.id]['resupply_rules']
 
     def _add_origins_to_forecast(self, forecast_lines):
@@ -973,7 +977,8 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
         manufacture_rules = [rule for rule in rules if rule.action == 'manufacture']
         if manufacture_rules:
             # Need to get rules from Production location to get delays before production
-            wh_manufacture_rules = product._get_rules_from_location(product.property_stock_production, route_ids=production.warehouse_id.route_ids)
+            warehouse = self.env['stock.warehouse'].browse(production.env.context.get('warehouse_id'))
+            wh_manufacture_rules = product._get_rules_from_location(product.property_stock_production, route_ids=warehouse.route_ids)
             wh_manufacture_rules -= rules
             rules_delay += sum(rule.delay for rule in wh_manufacture_rules)
             related_bom = self.env['mrp.bom']._bom_find(product)[product]
