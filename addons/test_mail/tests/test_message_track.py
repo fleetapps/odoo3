@@ -1140,3 +1140,35 @@ class TestTrackingInternals(MailCommon):
                 for tracking, field_info, values in zip(trackings_all_sorted, fields_info, values_info)
             ]
         )
+
+    @users('employee')
+    def test_mail_track_properties_ignore_signature(self):
+        """Signature properties must be ignored while normal properties (char) are tracked."""
+        parent_with_sig = self.env['mail.test.track.all.properties.parent'].sudo().create({
+            'definition_properties': [
+                {'name': 'property_char', 'string': 'Property Char', 'type': 'char', 'default': 'old_val'},
+                {'name': 'property_signature', 'string': 'Property Signature', 'type': 'signature'},
+            ],
+        })
+        # Dummy base64 image data to simulate a signature drawing
+        rec = self.env['mail.test.track.all'].create({
+            'properties_parent_id': parent_with_sig.id,
+            'properties': {
+                'property_signature': (
+                    'R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='
+                ),
+            },
+        })
+        self.flush_tracking()
+
+        with self.mock_mail_gateway(), self.mock_mail_app():
+            rec.properties_parent_id = self.properties_parent_1
+            self.flush_tracking()
+
+        trackings = self._new_msgs.sudo().tracking_value_ids
+
+        # 1. Signature property must NOT be tracked
+        self.assertFalse(
+            any((t.field_info or {}).get('type') == 'signature' for t in trackings),
+            "Signature property must be ignored in tracking",
+        )
