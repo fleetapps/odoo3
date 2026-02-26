@@ -18,6 +18,10 @@
     'assets': {
         'web.assets_frontend': [
             'payment_custom/static/src/interactions/post_processing.js',
+            'payment_custom/static/src/scss/payment_custom.scss',
+        ],
+        'web.assets_backend': [
+            'payment_custom/static/src/scss/payment_custom.scss',
         ],
     },
     'post_init_hook': 'post_init_hook',
