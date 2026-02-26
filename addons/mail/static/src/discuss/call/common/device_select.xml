@@ -8,7 +8,7 @@
         >
             <button
                 t-if="isPermissionGranted(props.kind)"
-                t-attf-class="o-mail-DeviceSelect-button btn btn-secondary o-dropdown-caret {{ env.inDialog ? 'w-50' : 'w-100' }}"
+                t-attf-class="o-mail-DeviceSelect-button btn btn-secondary o-dropdown-caret w-100"
                 t-att-data-kind="props.kind"
              >
                 <i t-if="props.icon" t-att-class="props.icon"/>
@@ -19,7 +19,7 @@
             </button>
             <button
                 t-else=""
-                t-attf-class="o-mail-DeviceSelect-button btn btn-secondary {{ env.inDialog ? 'w-50' : 'w-100' }}"
+                t-attf-class="o-mail-DeviceSelect-button btn btn-secondary w-100"
                 t-att-data-kind="props.kind"
                 t-on-pointerdown.prevent="() => this.showPermissionDialog(props.kind)"
                 t-on-keydown.prevent="() => this.showPermissionDialog(props.kind)"
