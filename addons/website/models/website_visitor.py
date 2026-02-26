@@ -23,6 +23,8 @@ class WebsiteTrack(models.Model):
     page_id = fields.Many2one('website.page', index=True, ondelete='cascade', readonly=True)
     url = fields.Text('Url', index=True)
     visit_datetime = fields.Datetime('Visit Date', default=fields.Datetime.now, required=True, readonly=True)
+    res_model = fields.Char()
+    res_id = fields.Many2oneReference(model_field='res_model')
 
 
 class WebsiteVisitor(models.Model):
@@ -136,6 +138,39 @@ class WebsiteVisitor(models.Model):
             visitor.sudo().page_ids = [(6, 0, visitor_info['page_ids'])]
             visitor.visitor_page_count = visitor_info['visitor_page_count']
             visitor.page_count = visitor_info['page_count']
+
+    def _aggregate_visitor_tracks(self, field_name, model_name, count_field):
+        """
+        Generic aggregator for website.track statistics.
+
+        :param field_name: m2m field to write on visitor
+        :param model_name: model to filter on (e.g. 'blog.post')
+        :param count_field: integer field to store count
+        :param extra_domain: optional additional domain
+        """
+        domain = [
+            ('visitor_id', 'in', self.ids),
+            ('res_model', '=', model_name),
+        ]
+
+        results = self.env['website.track']._read_group(
+            domain,
+            ['visitor_id'],
+            ['res_id:array_agg', '__count'],
+        )
+
+        mapped_data = {
+            visitor.id: {
+                'ids': ids or [],
+                'count': count or 0,
+            }
+            for visitor, ids, count in results
+        }
+
+        for visitor in self:
+            data = mapped_data.get(visitor.id, {'ids': [], 'count': 0})
+            visitor[field_name] = [(6, 0, data['ids'])]
+            visitor[count_field] = data['count']
 
     def _search_page_ids(self, operator, value):
         return [('website_track_ids.page_id.name', operator, value)]
@@ -306,7 +341,11 @@ class WebsiteVisitor(models.Model):
         domain = Domain.AND([domain, Domain('visitor_id', '=', self.id)])
         last_view = self.env['website.track'].sudo().search(domain, limit=1)
         if not last_view or last_view.visit_datetime < datetime.now() - timedelta(minutes=30):
-            website_track_values['visitor_id'] = self.id
+            url = request.httprequest.url
+            website_track_values.update({
+                'url': url,
+                'visitor_id': self.id,
+            })
             self.env['website.track'].create(website_track_values)
         self._update_visitor_last_visit()
 
