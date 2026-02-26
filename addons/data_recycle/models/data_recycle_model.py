@@ -9,6 +9,8 @@ from odoo import api, fields, models, modules
 from odoo.exceptions import UserError
 from odoo.fields import Domain
 from odoo.tools import _, split_every
+from odoo.tools.safe_eval import safe_eval
+
 
 # When recycle_mode = automatic, _recycle_records calls action_validate.
 # This is quite slow so requires smaller batch size.
@@ -139,7 +141,7 @@ class Data_RecycleModel(models.Model):
             if ids_to_remove:
                 self.env['data_recycle.record'].search([
                     ('recycle_model_id', '=', recycle_model.id),
-                    ('res_id', 'in', list(ids_to_remove))
+                    ('res_id', 'in', ids_to_remove)
                 ]).unlink()
 
             records_to_create = [{
@@ -226,6 +228,11 @@ class Data_RecycleModel(models.Model):
         self.search([])._recycle_records(batch_commits=True)
         recycle_model_id = self.env.context.get('recycle_model_id')
         action = self.env["ir.actions.actions"]._for_xml_id("data_recycle.action_data_recycle_record")
-        action['context'] = dict(ast.literal_eval(action.get('context')), searchpanel_default_recycle_model_id=recycle_model_id)
+        context = action.get('context', {})
+        if isinstance(context, str):
+            context = safe_eval(context)
+        if recycle_model_id:
+            context['searchpanel_default_recycle_model_id'] = recycle_model_id
+        action['context'] = context
         action['target'] = 'main'
         return action

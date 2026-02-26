@@ -15,27 +15,22 @@ export class DataRefreshCogMenu extends Component {
     }
 
     async refreshData() {
-        const model = this.action.currentController?.props?.resModel;
         const searchModel = this.env.searchModel;
 
-        if (model === "data_recycle.record") {
-            // The searchpanel adds the selected rule to the domain as
-            // ['recycle_model_id', '=', <id>]. We extract that id from the
-            // current domain and pass it in the action context so that,
-            // after refresh, the same rule remains selected in seachpanel.
-            const rule_id = searchModel.domain.filter(Array.isArray).find(
-                ([field, operator]) => field === "recycle_model_id" && operator === "="
-            )?.[2] ?? null;
+        // The searchpanel adds the selected rule to the domain as
+        // ['recycle_model_id', '=', <id>]. We extract that id from the
+        // current domain and pass it in the action context so that,
+        // after refresh, the same rule remains selected in seachpanel.
+        const ruleId = searchModel.domain.find((d) => Array.isArray(d) && d[0] === "recycle_model_id" && d[1] === "=")?.[2];
 
-            await this.action.doActionButton({
-                type: "object",
-                resModel: "data_recycle.model",
-                name: "refresh_recycle_records",
-                context: {
-                    recycle_model_id: rule_id,
-                }
-            });
-        }
+        return await this.action.doActionButton({
+            type: "object",
+            resModel: "data_recycle.model",
+            name: "refresh_recycle_records",
+            context: {
+                recycle_model_id: ruleId,
+            }
+        });
     }
 }
 
