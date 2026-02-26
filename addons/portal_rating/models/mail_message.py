@@ -64,5 +64,5 @@ class MailMessage(models.Model):
         rating_values['publisher_comment'] = rating_values['publisher_comment'] or ''
         rating_values['publisher_datetime'] = format_datetime(self.env, rating_values['publisher_datetime'])
         rating_values['publisher_id'] = publisher_id
-        rating_values['publisher_name'] = publisher_name
+        rating_values['publisher_name'] = self._pseudonymize_name(publisher_name)
         return rating_values
