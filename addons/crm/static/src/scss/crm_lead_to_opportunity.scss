@@ -1,0 +1,4 @@
+// Hide an empty "Add a line" row
+tr:has(.o_field_x2many_list_row_add):not(:has(.btn)) {
+    display: none;
+}

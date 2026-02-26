@@ -11,6 +11,7 @@ export class BadgeSelectionField extends Component {
     static props = {
         ...standardFieldProps,
         domain: { type: [Array, Function], optional: true },
+        excludedOptions: { type: Array, optional: true },
         size: {
             type: String,
             optional: true,
@@ -42,7 +43,8 @@ export class BadgeSelectionField extends Component {
             case "many2one":
                 return this.specialData.data;
             case "selection":
-                return this.props.record.fields[this.props.name].selection;
+                return this.props.record.fields[this.props.name].selection
+                    .filter(s => !this.props.excludedOptions?.includes(s[0]));
             default:
                 return [];
         }
@@ -116,11 +118,17 @@ export const badgeSelectionField = {
             ],
             default: "md",
         },
+        {
+            label: "Excluded options",
+            name: "excludedOptions",
+            type: "array",
+        }
     ],
     isEmpty: (record, fieldName) => record.data[fieldName] === false,
     extractProps: (fieldInfo, dynamicInfo) => ({
         domain: dynamicInfo.domain,
         size: fieldInfo.options.size,
+        excludedOptions: fieldInfo.options.excludedOptions,
     }),
 };
 
