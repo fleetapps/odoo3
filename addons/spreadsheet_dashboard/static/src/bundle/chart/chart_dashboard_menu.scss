@@ -1,5 +1,8 @@
 .o-spreadsheet .o-figure {
     select {
+        display: flex;
+        align-items: center;
+
         // Firefox does not support custom select styles, it uses a native picker.
         // reset a few things to un-break it with Firefox
         appearance: none;
@@ -42,12 +45,15 @@
     }
 
     select::picker-icon {
-        content: $o-caret-down;
+        width: 7px;
+        height: 4px;
+        background-color: currentColor;
+        mask: $o-caret-down center / contain no-repeat;
         opacity: 0.6;
-        transform: translateY(-12%);
+        transition: rotate 0.4s;
     }
 
     select:open::picker-icon {
-        transform: rotate(180deg);
+        rotate: 180deg;
     }
 }
