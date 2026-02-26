@@ -220,7 +220,7 @@ class ProductTemplate(models.Model):
                 'is_combo': self.type == 'combo',
             })
 
-        if not res.get('product_id') or res.get('has_optional_products'):
+        if (not res.get('product_id') or res.get('has_optional_products')) and not self.env.context.get('website_id'):
 
             preloaded_data = self.sale_product_configurator_get_values(
                 product_template_id=self.id,

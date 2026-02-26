@@ -203,16 +203,15 @@ export class CartService {
                 ...rest
             });
         }
-        const result = await this.rpc(
+        const shouldShowProductConfigurator = await this.rpc(
             '/website_sale/should_show_product_configurator',
             {
                 product_template_id: productTemplateId,
-                ptav_ids: ptavs.concat(noVariantAttributeValues),
+                ptav_ids: ptavs,
                 is_product_configured: isConfigured,
-                quantity: quantity,
             }
         );
-        if (result) {
+        if (shouldShowProductConfigurator) {
             return this._openProductConfigurator(
                 productTemplateId,
                 quantity,
