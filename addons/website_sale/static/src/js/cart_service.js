@@ -217,7 +217,7 @@ export class CartService {
                 productTemplateId,
                 quantity,
                 uomId,
-                ptavs,
+                ptavs.concat(noVariantAttributeValues),
                 productCustomAttributeValues,
                 {
                     isBuyNow: isBuyNow,

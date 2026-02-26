@@ -96,7 +96,7 @@ export class ProductConfiguratorDialog extends Component {
 
         onWillStart(async () => {
             let data;
-            if(this.props.preloadedData) {
+            if(this.props.preloadedData?.products) {
                 data = this.props.preloadedData;
             }
             else {
