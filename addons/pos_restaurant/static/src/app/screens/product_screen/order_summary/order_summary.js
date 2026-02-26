@@ -36,10 +36,12 @@ patch(OrderSummary.prototype, {
         this.env.services.ui.block();
         try {
             const order = this.pos.getOrder();
+            this.pos.data.requestAdditionalContext.last_order_date = order.raw.write_date;
             await this.pos.deleteOrders([order]);
             this.pos.showDefault();
         } finally {
             this.env.services.ui.unblock();
+            delete this.pos.data.requestAdditionalContext.action;
         }
     },
     showUnbookButton() {
