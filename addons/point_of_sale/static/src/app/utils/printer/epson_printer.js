@@ -2,6 +2,7 @@ import { BasePrinter } from "@point_of_sale/app/utils/printer/base_printer";
 import { _t } from "@web/core/l10n/translation";
 import { getTemplate } from "@web/core/templates";
 import { createElement, append, createTextNode } from "@web/core/utils/xml";
+import { getLNATargetAddressSpace } from "../init_lna";
 
 const STATUS_ROLL_PAPER_HAS_RUN_OUT = 0x00080000;
 const STATUS_ROLL_PAPER_HAS_ALMOST_RUN_OUT = 0x00020000;
@@ -120,7 +121,28 @@ function processCanvas(canvas) {
 export class EpsonPrinter extends BasePrinter {
     setup({ printer }) {
         super.setup(...arguments);
+<<<<<<< 725a169249014794bedeb7820dcdca21bbbaf3f6
         this.printer_ip = printer.printer_ip;
+||||||| 2a1ae69096a5740deb0f4fd14b10b679f0446e59
+
+        const protocol = printer.use_lna ? "http:" : window.location.protocol;
+        this.url = protocol + "//" + printer.epson_printer_ip;
+        this.address = this.url + "/cgi-bin/epos/service.cgi?devid=local_printer";
+        this.id = printer.id;
+        this.name = printer.name;
+        this.use_lna = printer.use_lna;
+=======
+
+        const protocol = printer.use_lna ? "http:" : window.location.protocol;
+        this.url = protocol + "//" + printer.epson_printer_ip;
+        this.address = this.url + "/cgi-bin/epos/service.cgi?devid=local_printer";
+        this.id = printer.id;
+        this.name = printer.name;
+        this.use_lna = printer.use_lna;
+        if (this.use_lna) {
+            this.lnaTargetAddressSpace = getLNATargetAddressSpace(this.url);
+        }
+>>>>>>> 81d551d24423d8a95197d5998f4757985159797e
     }
 
     get address() {
@@ -152,7 +174,7 @@ export class EpsonPrinter extends BasePrinter {
         };
 
         if (this.use_lna) {
-            params.targetAddressSpace = "local";
+            params.targetAddressSpace = this.lnaTargetAddressSpace;
         }
 
         try {
