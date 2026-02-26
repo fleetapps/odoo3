@@ -4,7 +4,7 @@ import { EMAIL_DESKTOP_DIMENSIONS, EMAIL_MOBILE_DIMENSIONS } from "../hooks";
 import { childNodes } from "@html_editor/utils/dom_traversal";
 import { memoize } from "@web/core/utils/functions";
 import { useShorthands } from "./hooks";
-import { Band } from "./responsive_utils";
+import { Band, getOverlapY } from "./responsive_utils";
 
 const BLOCK_TAG_NAMES = [
     "ADDRESS",
@@ -53,60 +53,6 @@ const DIMENSIONS = {
     mobile: EMAIL_MOBILE_DIMENSIONS,
 };
 
-function getDX({ left: l1, right: r1 }, { left: l2, right: r2 }) {
-    return Math.max(l1, l2) - Math.min(r1, r2);
-}
-
-function getDY({ top: t1, bottom: b1 }, { top: t2, bottom: b2 }) {
-    return Math.max(t1, t2) - Math.min(b1, b2);
-}
-
-function getOverlapX(rect1, rect2) {
-    const dx = getDX(rect1, rect2);
-    return Math.max(0, -dx);
-}
-
-function getOverlapY(rect1, rect2) {
-    const dy = getDY(rect1, rect2);
-    return Math.max(0, -dy);
-}
-
-function getGapX(rect1, rect2) {
-    const dx = getDX(rect1, rect2);
-    return Math.max(0, dx);
-}
-
-function getGapY(rect1, rect2) {
-    const dy = getDY(rect1, rect2);
-    return Math.max(0, dy);
-}
-
-function getSiblingSpacing(siblingRect1, siblingRect2) {
-    // TODO EGGMAIL: reconsider the 4x4 quadrant with 2 empty space cells,
-    // sometimes it may be better to approximate to a row/column if the
-    // spaces are not meaningful. And the reverse is also true, sometimes
-    // it may be useful to handle a double overlap as rows/columns.
-    return {
-        row: !getOverlapX(siblingRect1, siblingRect2),
-        column: !getOverlapY(siblingRect1, siblingRect2),
-        gapX: getGapX(siblingRect1, siblingRect2),
-        gapY: getGapY(siblingRect1, siblingRect2),
-    };
-}
-
-// Idea here is to compare the spacing desktop vs mobile, to split into
-// fixed value, variable value, and define the best fitted layout strategy
-function getContainerSpacing(innerRect, outerRect) {
-    const { left: l1, right: r1, top: t1, bottom: b1 } = innerRect;
-    const { left: l2, right: r2, top: t2, bottom: b2 } = outerRect;
-    return {
-        spacingTop: Math.abs(t1 - t2),
-        spacingLeft: Math.abs(l1 - l2),
-        spacingBottom: Math.abs(b2 - b1),
-        spacingRight: Math.abs(r2 - r1),
-    };
-}
-
 export class ResponsivePlugin extends BasePlugin {
     static id = "ResponsivePlugin";
     static dependencies = ["layoutSnapshotCache"];
@@ -123,6 +69,7 @@ export class ResponsivePlugin extends BasePlugin {
         ]);
         this.layoutDimensions = { width: 0, height: 0 };
         this.layoutToBands = new Map(); // layoutName (desktop/mobile) -> map: node -> bands
+        this.layoutStrategies = new WeakMap(); // node -> strategy
         this.ignoredInlineNodes = new WeakSet();
         this.filterInlineNodes = memoize((node) => {
             // TODO EGGMAIL: evaluate if memoize makes sense here or if we should
@@ -190,6 +137,31 @@ export class ResponsivePlugin extends BasePlugin {
         this.parseWithLayout("mobile");
         this.applyLayoutStrategies();
         // TODO EGGMAIL: create final layout based on measured layouts
+    }
+
+    applyDefaultStrategy({ parent, layoutToBands }) {
+        const strategy = undefined;
+        return strategy;
+    }
+
+    applyLayoutStrategies() {
+        const treeWalker = this.createLayoutTreeWalker();
+        let el = treeWalker.root;
+        do {
+            const layoutToBands = new Map(); // map layout to bands for this el
+            for (const layout of this.layoutToBands.keys()) {
+                layoutToBands.set(layout, this.layoutToBands.get(layout).get(el));
+            }
+            let strategy;
+            const output = { strategy };
+            const args = { parent: el, layoutToBands };
+            if (this.delegateTo("choose_layout_strategy_overrides", args, output)) {
+                ({ strategy } = output);
+            } else {
+                strategy = this.applyDefaultStrategy(args);
+            }
+            this.layoutStrategies.set(el, strategy);
+        } while ((el = treeWalker.nextNode()));
     }
 
     parseWithLayout(layoutType) {
