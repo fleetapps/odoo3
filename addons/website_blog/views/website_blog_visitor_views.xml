@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
             <list string="Visitor Blog Views History" create="0" sample="1">
                 <field name="visitor_id"/>
-                <field name="blog_post_id"/>
+                <field name="res_id" string="Blog Post" />
                 <field name="visit_datetime"/>
             </list>
         </field>
@@ -19,7 +19,7 @@
         <field name="model">website.track</field>
         <field name="arch" type="xml">
             <graph string="Visitor Blog Views" sample="1">
-                <field name="blog_post_id"/>
+                <field name="res_id" string="Blog Post" />
             </graph>
         </field>
     </record>
@@ -31,7 +31,7 @@
             (0, 0, {'view_mode': 'list', 'view_id': ref('website_blog_visitor_page_view_tree')}),
             (0, 0, {'view_mode': 'graph', 'view_id': ref('website_blog_visitor_page_view_graph')}),
         ]"/>
-        <field name="domain">[('visitor_id', '=', active_id), ('blog_post_id', '!=', False)]</field>
+        <field name="domain">[('visitor_id', '=', active_id), ('res_model', '=', 'blog.post')]</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_empty_folder">
                 No blog views yet for this visitor

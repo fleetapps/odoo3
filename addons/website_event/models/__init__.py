@@ -11,5 +11,4 @@ from . import website
 from . import website_event_menu
 from . import website_menu
 from . import website_snippet_filter
-from . import website_track
 from . import website_visitor

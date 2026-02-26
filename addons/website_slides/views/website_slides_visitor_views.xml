@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
             <list string="Visitor Slide Views History" create="0" sample="1">
                 <field name="visitor_id"/>
-                <field name="slide_channel_id"/>
+                <field name="res_id" string="Slide Channel"/>
                 <field name="visit_datetime"/>
             </list>
         </field>
@@ -19,7 +19,7 @@
         <field name="model">website.track</field>
         <field name="arch" type="xml">
             <graph string="Visitor Slide Views" sample="1">
-                <field name="slide_channel_id"/>
+                <field name="res_id" string="Slide Channel"/>
             </graph>
         </field>
     </record>
@@ -32,7 +32,7 @@
             (0, 0, {'view_mode': 'list', 'view_id': ref('website_slide_visitor_page_view_tree')}),
             (0, 0, {'view_mode': 'graph', 'view_id': ref('website_slide_visitor_page_view_graph')}),
         ]"/>
-        <field name="domain">[('visitor_id', '=', active_id), ('slide_channel_id', '!=', False)]</field>
+        <field name="domain">[('visitor_id', '=', active_id), ('res_model', '=', 'slide.channel')]</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_empty_folder">
                 No slide views yet for this visitor

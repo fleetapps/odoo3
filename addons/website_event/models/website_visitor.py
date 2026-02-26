@@ -31,14 +31,17 @@ class WebsiteVisitor(models.Model):
     )
 
     def _compute_event_statistics(self):
-        self._compute_visitor_agg(field_name='event_ids', rel_field='event_id', count_field='visitor_event_count')
+        self._aggregate_visitor_tracks(field_name='event_ids', model_name='event.event', count_field='visitor_event_count')
 
     def _add_viewed_event(self, event_id):
         """ add a website_track with a page marked as viewed"""
         self.ensure_one()
         if event_id:
-            domain = [('event_id', '=', event_id)]
-            website_track_values = {'event_id': event_id}
+            domain = [('res_model', '=', 'event.event'), ('res_id', '=', event_id)]
+            website_track_values = {
+                'res_model': 'event.event',
+                'res_id': event_id,
+            }
             self._add_tracking(domain, website_track_values)
 
     @api.depends('partner_id', 'event_registration_ids.name')

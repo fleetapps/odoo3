@@ -15,12 +15,15 @@ class WebsiteVisitor(models.Model):
     )
 
     def _compute_blog_statistics(self):
-        self._compute_visitor_agg(field_name='blog_post_ids', rel_field='blog_post_id', count_field='visitor_blog_count')
+        self._aggregate_visitor_tracks(field_name='blog_post_ids', model_name='blog.post', count_field='visitor_blog_count')
 
     def _add_viewed_blog(self, blog_post_id):
         """ add a website_track with a page marked as viewed"""
         self.ensure_one()
         if blog_post_id:
-            domain = [('blog_post_id', '=', blog_post_id)]
-            website_track_values = {'blog_post_id': blog_post_id}
+            domain = [('res_model', '=', 'blog.post'), ('res_id', '=', blog_post_id)]
+            website_track_values = {
+                'res_model': 'blog.post',
+                'res_id': blog_post_id,
+            }
             self._add_tracking(domain, website_track_values)

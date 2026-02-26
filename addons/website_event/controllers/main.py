@@ -258,7 +258,10 @@ class WebsiteEventController(http.Controller):
             target_url += '?enable_editor=1'
         return request.redirect(target_url)
 
-    @http.route(['''/event/<model("event.event"):event>/register'''], type='http', auth="public", website=True, sitemap=False, readonly=True)
+    # Registration page may write tracking entries, so it must not be a read-only
+    # transaction. Removing `readonly=True` prevents the "cannot execute INSERT"
+    # errors when creating website.track records.
+    @http.route(['''/event/<model("event.event"):event>/register'''], type='http', auth="public", website=True, sitemap=False)
     def event_register(self, event, **post):
         values = self._prepare_event_register_values(event, **post)
         visitor = request.env['website.visitor']._get_visitor_from_request()

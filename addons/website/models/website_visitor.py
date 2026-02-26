@@ -23,6 +23,8 @@ class WebsiteTrack(models.Model):
     page_id = fields.Many2one('website.page', index=True, ondelete='cascade', readonly=True)
     url = fields.Text('Url', index=True)
     visit_datetime = fields.Datetime('Visit Date', default=fields.Datetime.now, required=True, readonly=True)
+    res_model = fields.Char()
+    res_id = fields.Many2oneReference(model_field='res_model')
 
 
 class WebsiteVisitor(models.Model):
@@ -137,31 +139,37 @@ class WebsiteVisitor(models.Model):
             visitor.visitor_page_count = visitor_info['visitor_page_count']
             visitor.page_count = visitor_info['page_count']
 
-    def _compute_visitor_agg(self, field_name, rel_field, count_field):
+    def _aggregate_visitor_tracks(self, field_name, model_name, count_field):
         """
         Generic aggregator for website.track statistics.
 
         :param field_name: m2m field to write on visitor
-        :param rel_field: field on website.track
+        :param model_name: model to filter on (e.g. 'blog.post')
         :param count_field: integer field to store count
+        :param extra_domain: optional additional domain
         """
         domain = [
             ('visitor_id', 'in', self.ids),
-            (rel_field, '!=', False),
+            ('res_model', '=', model_name),
         ]
+
         results = self.env['website.track']._read_group(
-            domain, ['visitor_id'], [f'{rel_field}:array_agg', '__count'],
+            domain,
+            ['visitor_id'],
+            ['res_id:array_agg', '__count'],
         )
+
         mapped_data = {
             visitor.id: {
-                'count': count,
-                'ids': ids,
+                'ids': ids or [],
+                'count': count or 0,
             }
             for visitor, ids, count in results
         }
+
         for visitor in self:
             data = mapped_data.get(visitor.id, {'ids': [], 'count': 0})
-            visitor[field_name] = data['ids']
+            visitor[field_name] = [(6, 0, data['ids'])]
             visitor[count_field] = data['count']
 
     def _search_page_ids(self, operator, value):

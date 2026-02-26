@@ -18,5 +18,4 @@ from . import res_users
 from . import res_groups
 from . import res_partner
 from . import mail_activity
-from . import website_track
 from . import website_visitor
