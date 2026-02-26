@@ -793,6 +793,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
     def _prepare_product_values(self, product, category, **kwargs):
         ProductCategory = request.env['product.public.category']
         product_markup_data = [product._to_markup_data(request.website)]
+        keep_category = category
         category = (
             (category and ProductCategory.browse(int(category)).exists())
             or product.public_categ_ids[:1]
@@ -805,11 +806,11 @@ class WebsiteSale(payment_portal.PaymentPortal):
 
         if (last_attributes_search := request.session.get('attribute_values', [])):
             keep = QueryURL(
-                self._get_shop_path(category),
+                self._get_shop_path(keep_category),
                 attribute_values=last_attributes_search
             )
         else:
-            keep = QueryURL(self._get_shop_path(category))
+            keep = QueryURL(self._get_shop_path(keep_category))
 
         if attribute_values := kwargs.get('attribute_values', ''):
             attribute_value_ids = {int(i) for i in attribute_values.split(',')}

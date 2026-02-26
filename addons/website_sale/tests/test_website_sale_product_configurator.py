@@ -486,3 +486,35 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
         combination_product_id = product_values['combination_info']['product_id']
         self.assertTrue(is_combination_possible)
         self.assertTrue(self.env['product.product'].browse(combination_product_id).active)
+
+    def test_product_page_search_scope_respects_navigation_context(self):
+        """
+        Ensure that search scope depends on how the user accessed the product page.
+
+        - Direct access to a product → search must be global (/shop)
+        - Access via category → search must be category-scoped
+        """
+        product_tmpl = self.product.product_tmpl_id
+        public_category = self.env['product.public.category'].create({
+            'name': 'Test Public Category',
+        })
+        product_tmpl.public_categ_ids = [(6, 0, [public_category.id])]
+
+        # Case 1: Direct navigation
+        with MockRequest(self.env, website=self.website):
+            values = self.pc_controller._prepare_product_values(
+                product_tmpl,
+                category=None,
+            )
+        keep = values.get('keep')
+        self.assertIn('/shop', keep.path)
+        self.assertNotIn('/category', keep.path)
+
+        # Case 2: Navigation via category
+        with MockRequest(self.env, website=self.website):
+            values = self.pc_controller._prepare_product_values(
+                product_tmpl,
+                category=public_category,
+            )
+        keep = values.get('keep')
+        self.assertIn('/shop/category', keep.path)
