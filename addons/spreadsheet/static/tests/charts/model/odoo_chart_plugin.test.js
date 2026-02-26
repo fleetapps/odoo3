@@ -30,7 +30,7 @@ import {
 import { waitForDataLoaded } from "@spreadsheet/helpers/model";
 import { setGlobalFilterValue } from "../../helpers/commands";
 
-const { chartRegistry } = spreadsheet.registries;
+const { chartDataSourceRegistry } = spreadsheet.registries;
 const { toZone } = spreadsheet.helpers;
 
 const cumulativeDateServerData = getBasicServerData();
@@ -1931,8 +1931,7 @@ test("Odoo charts can have a background color", async () => {
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
 
-    // only the ones supported.
-    const chartTypes = chartRegistry.getKeys();
+    const chartTypes = chartDataSourceRegistry.get("odoo").supportedChartTypes;
 
     for (const type of chartTypes) {
         model.dispatch("UPDATE_CHART", {

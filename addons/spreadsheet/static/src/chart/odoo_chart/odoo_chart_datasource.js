@@ -16,7 +16,7 @@ const { CHART_TYPES } = constants;
 const EXCLUDED_CHART_TYPES = ["scorecard", "gauge", "calendar"];
 
 chartDataSourceRegistry.add("odoo", {
-    supportedChartTypes: Array.from(new Set(CHART_TYPES).difference(EXCLUDED_CHART_TYPES)),
+    supportedChartTypes: Array.from(new Set(CHART_TYPES).difference(new Set(EXCLUDED_CHART_TYPES))),
     fromRangeStr: (definition) => definition,
     validate: (definition) => CommandResult.Success,
     transform: (definition) => definition,
@@ -32,20 +32,21 @@ chartDataSourceRegistry.add("odoo", {
         return {
             dataSetsValues: datasets.map((ds, i) => {
                 const identifiers = JSON.parse([...ds.identifiers][0]);
+                const mainAxis = definition.metaData.groupBy[0];
                 const dataSetId = identifiers
                     .slice(1) // first groupBy is the horizontal axis
                     .map((id) => {
                         const [[fieldName, value]] = Object.entries(id);
                         if (Array.isArray(value)) {
-                            return `${fieldName}:${value[0]}`; // [id, display_name]
+                            return `{"${fieldName}":${value[0]}}`; // [id, display_name]
                         }
-                        return `${fieldName}:${value}`;
+                        return `{"${fieldName}":${value}}`;
                     })
-                    .join("/");
+                    .join(",");
                 return {
                     ...ds,
                     data: ds.data.map((d) => ({ value: d })),
-                    dataSetId: dataSetId, // FIXME it should be the country id
+                    dataSetId: mainAxis + dataSetId,
                 };
             }),
             labelValues: labels.map((l) => ({ value: l })),
