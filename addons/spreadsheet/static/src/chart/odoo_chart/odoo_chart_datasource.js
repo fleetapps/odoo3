@@ -1,4 +1,4 @@
-import { registries } from "@odoo/o-spreadsheet";
+import { registries, constants } from "@odoo/o-spreadsheet";
 import { navigateTo } from "@spreadsheet/actions/helpers";
 import { CommandResult } from "../../o_spreadsheet/cancelled_reason";
 import {
@@ -10,8 +10,13 @@ import {
 } from "./odoo_chart_helpers";
 
 const { chartDataSourceRegistry } = registries;
+const { CHART_TYPES } = constants;
+
+// Types not supported by odoo charts (at least for now)
+const EXCLUDED_CHART_TYPES = ["scorecard", "gauge", "calendar"];
 
 chartDataSourceRegistry.add("odoo", {
+    supportedChartTypes: Array.from(new Set(CHART_TYPES).difference(EXCLUDED_CHART_TYPES)),
     fromRangeStr: (definition) => definition,
     validate: (definition) => CommandResult.Success,
     transform: (definition) => definition,
