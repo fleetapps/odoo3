@@ -185,7 +185,7 @@ export class ForecastedDetails extends Component {
         }
         const hasFreeStock = this.props.docs.product[line.product.id].free_qty > 0;
         return this.props.docs.user_can_edit_pickings && !line.in_transit && this.canReserveOperation(line) &&
-            (this.isOnHand(line) || (hasFreeStock && !splittedLine));
+            (this.isOnHand(line) || (hasFreeStock && !line.move_in && !splittedLine));
     }
 
     canReserveOperation(line){
