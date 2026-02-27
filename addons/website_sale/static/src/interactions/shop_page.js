@@ -54,6 +54,7 @@ export class ShopPage extends Interaction {
         const filters = form.querySelectorAll('input:checked, select');
         const attributeValues = new Map();
         const tags = new Set();
+        const ribbons = new Set();
         for (const filter of filters) {
             if (filter.value) {
                 if (filter.name === 'attribute_value') {
@@ -64,6 +65,8 @@ export class ShopPage extends Interaction {
                     attributeValues.set(attributeId, valueIds);
                 } else if (filter.name === 'tags') {
                     tags.add(filter.value);
+                } else if (filter.name === 'ribbons') {
+                    ribbons.add(filter.value);
                 }
             }
         }
@@ -77,6 +80,9 @@ export class ShopPage extends Interaction {
         // Aggregate all tags into a single `tags` search param.
         if (tags.size) {
             searchParams.set('tags', [...tags].join(','));
+        }
+        if (ribbons.size) {
+            searchParams.set('ribbons', [...ribbons].join(','));
         }
         redirect(`${url.pathname}?${searchParams.toString()}`);
     }
