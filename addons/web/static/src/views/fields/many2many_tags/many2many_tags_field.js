@@ -60,11 +60,13 @@ export class Many2ManyTagsField extends Component {
         createExpression: { type: String, optional: true },
         domain: { type: [Array, Function], optional: true },
         context: { type: Object, optional: true },
+        visibleItemsLimit: { type: Number, optional: true },
         placeholder: { type: String, optional: true },
         nameCreateField: { type: String, optional: true },
         searchThreshold: { type: Number, optional: true },
         string: { type: String, optional: true },
     };
+
     static defaultProps = {
         canCreate: true,
         canQuickCreate: true,
@@ -74,8 +76,7 @@ export class Many2ManyTagsField extends Component {
     };
 
     static RECORD_COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-
-    visibleItemsLimit = Number.POSITIVE_INFINITY;
+    static DEFAULT_LIMIT = 8; // Maximum number of tags to display, override with options
 
     setup() {
         this.orm = useService("orm");
@@ -155,10 +156,11 @@ export class Many2ManyTagsField extends Component {
     }
 
     get tagsListProps() {
+        const limit = this.props.visibleItemsLimit ?? this.constructor.DEFAULT_LIMIT;
         return {
             mapTooltip: (tag) => tag.props.tooltip,
             tags: this.tags,
-            visibleItemsLimit: this.visibleItemsLimit,
+            visibleItemsLimit: limit === 0 ? Number.POSITIVE_INFINITY : limit,
         };
     }
 
@@ -321,6 +323,15 @@ export const many2ManyTagsField = {
             availableTypes: ["char"],
         },
         {
+            label: _t("Maximum Visible Tags"),
+            name: "visibleItemsLimit",
+            type: "number",
+            default: Many2ManyTagsField.DEFAULT_LIMIT,
+            help: _t(
+                "Maximum number of tags to display before showing a counter. Set to 0 to always show all tags."
+            ),
+        },
+        {
             label: _t("On tag click"),
             name: "on_tag_click",
             type: "selection",
@@ -357,6 +368,7 @@ export const many2ManyTagsField = {
             createExpression: attrs.create,
             context: dynamicInfo.context,
             domain: dynamicInfo.domain,
+            visibleItemsLimit: options.visibleItemsLimit,
             placeholder,
             searchThreshold: options.search_threshold,
             string,
