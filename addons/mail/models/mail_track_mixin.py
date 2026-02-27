@@ -61,6 +61,22 @@ class MailTrackMixin(models.AbstractModel):
         # ease overrides by returning initial values
         return initial_values
 
+    def _track_clear(self, field_names: Iterable[str] | None = None):
+        """ Clear tracking data, without preventing further other tracking. """
+        initial_values = self.env.cr.precommit.data.setdefault(f'mail.tracking.{self._name}', {})
+        # disable tracking by setting initial values to None
+        for id_ in self.ids:
+            if id_ not in initial_values:
+                continue
+            if not field_names:
+                initial_values.pop(id_, None)
+            else:
+                for fname in field_names:
+                    initial_values.pop(fname, None)
+        # clear post info
+        self.env.cr.precommit.data.pop(f'mail.tracking.message.{self._name}', {})
+        self.env.cr.precommit.data.pop(f'mail.tracking.author.{self._name}', {})
+
     def _track_discard(self):
         """ Prevent any tracking of fields on `self`. """
         if not self or not self._track_get_fields():
