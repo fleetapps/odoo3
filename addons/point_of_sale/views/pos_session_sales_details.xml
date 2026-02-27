@@ -21,6 +21,11 @@
                             <t t-if="session_name">
                                 Session ID: <span t-out="session_name">987657</span>
                             </t>
+                            <t t-if="state == 'opened'">
+                                <div>
+                                    Opening Date: <span t-out="date_start" t-options="{'widget': 'date'}">2/03/2000</span>
+                                </div>
+                            </t>
                         </div>
                     </div>
                 </div>
