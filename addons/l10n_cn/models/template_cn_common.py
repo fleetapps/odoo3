@@ -11,7 +11,7 @@ class AccountChartTemplate(models.AbstractModel):
         return {
             'name': _('Common'),
             'visible': 0,
-            'code_digits': 6,
+            'code_digits': 4,
             'use_storno_accounting': True,
             'property_account_receivable_id': 'l10n_cn_common_account_1122',
             'property_account_payable_id': 'l10n_cn_common_account_2202',
@@ -28,7 +28,7 @@ class AccountChartTemplate(models.AbstractModel):
                 'cash_account_code_prefix': '1001',
                 'deferred_expense_account_id': 'l10n_cn_common_account_1801',
                 'deferred_revenue_account_id': 'l10n_cn_common_account_2401',
-                'account_default_pos_receivable_account_id': 'l10n_cn_common_account_112201',
+                'account_default_pos_receivable_account_id': 'l10n_cn_common_account_1122.01',
             },
         }
 
