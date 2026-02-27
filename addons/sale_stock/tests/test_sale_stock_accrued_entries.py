@@ -374,6 +374,78 @@ class TestAccruedStockSaleOrders(TestSaleCommon):
             {'account_id': self.account_expense.id, 'debit': 440, 'credit': 0},
         ])
 
+    def test_accrued_order_in_anglo_saxon_standard_perpetual_multiple_invoices(self):
+        """ Ensure the accrual lines are correctly computed even when there is
+        multiple invoices by SO line."""
+        stock_price_diff_acc_id = self.env['account.account'].create({
+            'name': 'default_account_stock_price_diff',
+            'code': 'STOCKDIFF',
+            'reconcile': True,
+            'account_type': 'asset_current',
+        })
+        product_category = self.env['product.category'].create({
+            'name': 'Test Category',
+            'property_account_income_categ_id': self.account_revenue.id,
+            'property_account_expense_categ_id': self.account_expense.id,
+            'property_price_difference_account_id': stock_price_diff_acc_id.id,
+            'property_valuation': 'real_time',
+        })
+        account_variation = product_category.property_stock_valuation_account_id.account_stock_variation_id
+        product = self.env['product.product'].create({
+            'name': 'Product 1',
+            'categ_id': product_category.id,
+            'invoice_policy': 'order',
+            'is_storable': True,
+            'list_price': 50,
+            'standard_price': 30,
+            'uom_id': self.uom_unit.id,
+        })
+
+        # Create a SO with three lines (2 of them are for the same product.)
+        sale_order = self.env['sale.order'].with_context(tracking_disable=True).create({
+            'partner_id': self.partner_a.id,
+            'order_line': [
+                Command.create({
+                    'product_id': product.id,
+                    'product_uom_qty': 10,
+                    'tax_ids': False,
+                }),
+            ]
+        })
+        sale_order.action_confirm()
+
+        # Partially invoice the quantity.
+        invoice_1 = sale_order._create_invoices()
+        invoice_1.line_ids.quantity = 1
+        invoice_1.line_ids.price_unit = 55
+        invoice_1.action_post()
+        invoice_2 = sale_order._create_invoices()
+        invoice_2.line_ids.quantity = 9
+        invoice_2.action_post()
+
+        # Use accrued order wizard and check generated values.
+        wizard = self.env['account.accrued.orders.wizard'].with_context({
+            'active_model': 'sale.order.line',
+            'active_ids': sale_order.order_line.ids,
+        }).create({
+            'account_id': self.account_expense.id,
+            'date': fields.Date.today(),
+        })
+        account_move_domain = wizard.create_entries()['domain']
+        account_move = self.env['account.move'].search(account_move_domain)
+        self.assertRecordValues(account_move.line_ids.sorted('id'), [
+            # Accrued revenues entries.
+            {'account_id': self.account_revenue.id, 'debit': 505, 'credit': 0},
+            {'account_id': self.account_expense.id, 'debit': 0, 'credit': 505},
+            {'account_id': account_variation.id, 'debit': 300, 'credit': 0},
+            {'account_id': self.account_expense.id, 'debit': 0, 'credit': 300},
+            # Reversal of accrued revenues entries.
+            {'account_id': self.account_revenue.id, 'debit': 0, 'credit': 505},
+            {'account_id': self.account_expense.id, 'debit': 505, 'credit': 0},
+            {'account_id': account_variation.id, 'debit': 0, 'credit': 300},
+            {'account_id': self.account_expense.id, 'debit': 300, 'credit': 0},
+        ])
+
     def test_accrued_order_in_anglo_saxon_avco_perpetual(self):
         """ Ensure the COGS accrual lines are correctly computed for AVCO costing method product."""
         # Create a product using anglox-saxon valuation.

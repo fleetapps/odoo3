@@ -254,10 +254,14 @@ class AccountAccruedOrdersWizard(models.TransientModel):
                             amount = order.currency_id._convert(amount_currency, self.company_id.currency_id, self.company_id)
                         elif qty_to_invoice < 0:
                             # Invoiced not delivered.
-                            posted_invoice_line = order_line.invoice_lines.filtered(lambda ivl: ivl.move_id.state == 'posted')[0]
-                            price_unit = posted_invoice_line.price_unit
-                            amount_currency = qty_to_invoice * price_unit
-                            amount = order.currency_id._convert(amount_currency, self.company_id.currency_id, self.company_id)
+                            amount_currency, amount, processed_qty = 0, 0, 0
+                            for inv_line in order_line.invoice_lines.filtered(lambda ivl: ivl.move_id.state == 'posted').sorted(reverse=True):
+                                amount_currency -= inv_line.price_subtotal
+                                amount -= order.currency_id._convert(inv_line.price_subtotal, self.company_id.currency_id, self.company_id)
+                                processed_qty += inv_line.quantity
+                                if processed_qty >= abs(qty_to_invoice):
+                                    break
+                            price_unit = abs(amount / processed_qty)
                         label = _(
                             '%(order)s - %(order_line)s; %(quantity_invoiced)s Invoiced, %(quantity_delivered)s Delivered at %(unit_price)s each',
                             order=order.name,
@@ -269,13 +273,17 @@ class AccountAccruedOrdersWizard(models.TransientModel):
                         if expense_account and stock_variation_account:
                             posted_invoice_lines = order_line.invoice_lines.filtered(lambda inv_line:
                                 inv_line.move_id.state == 'posted' and inv_line.quantity)
-                            expense_invoice_line = posted_invoice_lines.move_id.line_ids.filtered(lambda inv_line:
-                                inv_line.move_id.state == 'posted' and
-                                inv_line.account_id == expense_account and
-                                inv_line.product_id == order_line.product_id and
-                                inv_line not in already_visited_invoice_lines
-                            )[:1]
-                            already_visited_invoice_lines += expense_invoice_line
+                            expense_invoice_lines = self.env['account.move.line']
+                            for account_move in posted_invoice_lines.move_id:
+                                expense_invoice_line = account_move.line_ids.filtered(lambda inv_line:
+                                    inv_line.move_id.state == 'posted' and
+                                    inv_line.account_id == expense_account and
+                                    inv_line.product_id == order_line.product_id and
+                                    inv_line not in already_visited_invoice_lines
+                                )[:1]
+                                already_visited_invoice_lines += expense_invoice_line
+                                expense_invoice_lines += expense_invoice_line
+
                             # Evaluate if there are more invoiced or more delivered.
                             if qty_to_invoice > 0:
                                 # Invoices to be issued.
@@ -283,17 +291,16 @@ class AccountAccruedOrdersWizard(models.TransientModel):
                                 stock_moves = order_line.move_ids.filtered(lambda m: m.state == 'done')
                                 delivered_value = sum(m.value for m in stock_moves)
                                 # Then, compute the already invoiced value.
-                                invoiced_value = expense_invoice_line.balance
+                                invoiced_value = sum(expense_invoice_lines.mapped('balance'))
                                 # The amount to invoice is equal to the delivered value minus the already invoiced value.
                                 perpetual_amount = delivered_value - invoiced_value
-                                perpetual_data = (order_line.price_unit, perpetual_amount)
+                                price_unit = delivered_value / (sum(sm.quantity for sm in stock_moves) or 1)
+                                perpetual_data = (price_unit, perpetual_amount)
                                 perpetual_data_by_accounts_and_order_line[expense_account, stock_variation_account][order_line] = perpetual_data
                             elif qty_to_invoice < 0:
                                 # Invoiced not delivered.
-                                label += " (*)"
-                                # invoiced_quantity = sum(posted_invoice_lines.mapped('quantity'))
                                 invoiced_quantity = sum(posted_invoice_lines.mapped('quantity'))
-                                sum_amount = expense_invoice_line.debit
+                                sum_amount = sum(expense_invoice_lines.mapped('debit'))
                                 invoiced_unit_price = sum_amount / invoiced_quantity
                                 perpetual_amount = invoiced_unit_price * qty_to_invoice
                                 perpetual_data = (invoiced_unit_price, perpetual_amount)
@@ -319,21 +326,21 @@ class AccountAccruedOrdersWizard(models.TransientModel):
 
         for (expense_account, stock_variation_account), perpetual_data_by_order_line in perpetual_data_by_accounts_and_order_line.items():
             expense_amount = 0
-            for sale_order_line, perpetual_data in perpetual_data_by_order_line.items():
+            for order_line, perpetual_data in perpetual_data_by_order_line.items():
                 price_unit, amount = perpetual_data
                 expense_amount -= amount
                 if amount == 0:
                     continue
                 if amount > 0:
-                    label = _('(*) Goods Delivered not Invoiced (perpetual valuation)')
+                    label = _('Goods Delivered not Invoiced (perpetual valuation)')
                 else:
-                    label = _('(*) Goods Invoiced not Delivered (perpetual valuation)')
+                    label = _('Goods Invoiced not Delivered (perpetual valuation)')
                 values = _get_aml_vals(orders, amount, 0.0, stock_variation_account.id, label=_(
-                    "(*) %(order)s - %(order_line)s; %(qty_invoiced)s invoiced, %(qty_delivered)s delivered at %(unit_price)s",
+                    "%(order)s - %(order_line)s; %(qty_invoiced)s invoiced, %(qty_delivered)s delivered at %(unit_price)s",
                     order=order.display_name,
                     order_line=_ellipsis(order_line.name, 20),
-                    qty_invoiced=sale_order_line.qty_invoiced_at_date,
-                    qty_delivered=sale_order_line.qty_delivered_at_date,
+                    qty_invoiced=order_line.qty_invoiced_at_date,
+                    qty_delivered=order_line.qty_delivered_at_date,
                     unit_price=formatLang(self.env, price_unit, currency_obj=order.currency_id),
                 ))
                 move_lines.append(Command.create(values))
