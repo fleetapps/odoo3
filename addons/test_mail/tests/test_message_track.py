@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 from markupsafe import Markup
 
@@ -70,6 +70,49 @@ class TestTrackingAPI(TestTrackingCommon):
             self.flush_tracking()
         self.assertEqual(mock_track_finalize.call_count, 1)
         self.assertFalse(self._new_msgs)
+
+        # now tracks those mixin records on a parent record (aka: get logs)
+        parent_record_0 = self.test_tracking_records[0].with_env(self.env)
+        parent_record_1 = self.test_tracking_records[1].with_env(self.env)
+        with self.mock_mail_gateway(), self.mock_mail_app():
+            mixin_records._track_prepare(mixin_records._track_get_fields())
+            parent_record_0._track_record(
+                mixin_records, ('many2one_field_id', 'float_field_with_digits', 'selection_field'), body='Manual Tracking Parent 1')
+            parent_record_1._track_record(
+                mixin_records, ('many2one_field_id', 'float_field_with_digits', 'selection_field'), body='Manual Tracking Parent 2')
+            mixin_records[0].write({
+                'char_field': 'updated 2.0',
+                'many2one_field_id': self.partner_admin.id,
+                'float_field_with_digits': 15.285,
+                'selection_field': 'first',
+            })
+            mixin_records[1].write({
+                'char_field': 'updated 2.1',
+                'many2one_field_id': self.partner_employee.id,
+                'float_field_with_digits': 22.789,
+                'selection_field': 'second',
+            })
+            self.flush_tracking()
+        self.assertEqual(len(self._new_msgs), 4, 'Should have 1 msg / record and / parent, aka 4')
+
+        track_1 = [
+            ('float_field_with_digits', 'float', False, 15.285),
+            ('many2one_field_id', 'many2one', False, self.partner_admin),
+            ('selection_field', 'selection', 'SECOND', 'FIRST'),
+        ]
+        track_2 = [
+            ('float_field_with_digits', 'float', False, 22.789),
+            ('many2one_field_id', 'many2one', False, self.partner_employee),
+            # selection field: same value, should not track
+        ]
+        for msg, expected in zip(self._new_msgs, [
+            {'body': '<p>Manual Tracking Parent 1</p>', 'tracking_values': track_1},
+            {'body': '<p>Manual Tracking Parent 2</p>', 'tracking_values': track_1},
+            {'body': '<p>Manual Tracking Parent 1</p>', 'tracking_values': track_2},
+            {'body': '<p>Manual Tracking Parent 2</p>', 'tracking_values': track_2},
+        ], strict=True):
+            self.assertMessageFields(msg, expected)
+
 
     @users('employee')
     def test_tracking_create(self):
@@ -245,6 +288,52 @@ class TestTrackingAPI(TestTrackingCommon):
             'boolean_field', 'date_field', 'integer_field', 'many2many_field', 'datetime_field', 'one2many_field',
             'float_field_with_digits', 'monetary_field', 'properties_parent_id'
         })
+
+    @users('employee')
+    def test_tracking_record(self):
+        """ Test tracking of a record on another record. """
+        parent_record = self.test_ticket_record.with_env(self.env)
+        tracked_records = self.test_tracking_records[:2].with_env(self.env)
+        parent_record._track_record(tracked_records[0], ['char_field', 'datetime_field'], body='Manual Tracking')
+        parent_record._track_record(tracked_records[1], ['char_field', 'datetime_field'], body='Manual Tracking')
+
+        with self.mock_mail_gateway(), self.mock_mail_app():
+            tracked_records.write({
+                'char_field': 'New Track',
+                'datetime_field': self.dt_ref + timedelta(days=1),
+                'selection_field': 'second',
+            })
+            self.flush_tracking()
+        self.assertEqual(len(self._new_msgs), 4, '1 message / record, 1 on parent / record')
+        track_msgs = self._new_msgs.filtered(lambda m: m.model == tracked_records._name)
+        self.assertEqual(len(track_msgs), 2)
+        for track_msg in track_msgs:
+            self.assertMessageFields(
+                track_msg, {
+                    'author_id': self.partner_employee,
+                    'message_type': 'notification',
+                    'subtype_id': self.env.ref('mail.mt_note'),
+                    'tracking_values': [
+                        ('char_field', 'char', False, 'New Track'),
+                        ('datetime_field', 'datetime', self.dt_ref, self.dt_ref + timedelta(days=1)),
+                        ('selection_field', 'selection', '', 'SECOND'),
+                    ],
+                }
+            )
+        parent_msgs = self._new_msgs.filtered(lambda m: m.model == parent_record._name)
+        self.assertEqual(len(parent_msgs), 2)
+        for parent_msg in parent_msgs:
+            self.assertMessageFields(
+                parent_msg, {
+                    'author_id': self.partner_employee,
+                    'message_type': 'notification',
+                    'subtype_id': self.env.ref('mail.mt_note'),
+                    'tracking_values': [
+                        ('char_field', 'char', False, 'New Track'),
+                        ('datetime_field', 'datetime', self.dt_ref, self.dt_ref + timedelta(days=1)),
+                    ],
+                }
+            )
 
     @users('employee')
     def test_tracking_tweak_author(self):

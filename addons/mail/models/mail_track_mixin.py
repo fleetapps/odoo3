@@ -132,6 +132,31 @@ class MailTrackMixin(models.AbstractModel):
         # launch business flow to manage tracking values
         records_su._track_execute(initial_values, trackings)
 
+        # find additional targets for tracking execution
+        parents_all = self.env.cr.precommit.data.pop(f'mail.tracking.target.{self._name}', {})
+        parents_fnames_all = self.env.cr.precommit.data.pop(f'mail.tracking.target.fnames.{self._name}', {})
+
+        # execute on parents records, if requested
+        for record in records_su:
+            changes, record_trackings = trackings[record.id]
+            required_fnames = parents_fnames_all.get(record.id, [])
+            if required_fnames:
+                filtered_changes = [fname for fname in changes if fname in required_fnames]
+                filtered_trackings = [
+                    vals for vals in record_trackings if (not required_fnames or (
+                        vals.get('field_name') in required_fnames
+                    )
+                )]
+            else:
+                filtered_changes = changes
+                filtered_trackings = record_trackings
+            for _model, parents in parents_all.get(record.id, {}).items():
+                fnames = parents_fnames_all.get(record.id, [])
+                parents._track_execute(
+                    {parent.id: initial_values[record.id] for parent in parents},
+                    {parent.id: (filtered_changes, filtered_trackings) for parent in parents},
+                )
+
         return records_su, initial_values, trackings
 
     @ormcache('self.env.uid', 'self.env.su')
@@ -163,7 +188,7 @@ class MailTrackMixin(models.AbstractModel):
 
         return tracked_fields_get
 
-    # track values generation
+    # track API
     # ------------------------------------------------------
 
     def _track_add(
@@ -209,6 +234,23 @@ class MailTrackMixin(models.AbstractModel):
             self._track_set_log_author(author)
         if body:
             self._track_set_log_message(body)
+
+    def _track_record(
+            self, records: BaseModel, track_fnames: Iterable[str],
+            author: BaseModel | None = None, body: str | Markup | None = None,
+        ):
+        """ Log changes on records on self to centralize trackings. """
+        self.ensure_one()
+        records._track_prepare(track_fnames)
+        target_data = self.env.cr.precommit.data.setdefault(f'mail.tracking.target.{records._name}', {})
+        target_fnames_data = self.env.cr.precommit.data.setdefault(f'mail.tracking.target.fnames.{records._name}', {})
+        for record in records:
+            existing_parents = target_data.setdefault(record.id, {}).setdefault(self._name, self.browse())
+            existing_parents += self
+            target_data[record.id][self._name] = existing_parents
+
+            existing_fnames = target_fnames_data.setdefault(record.id, [])
+            existing_fnames += [f for f in track_fnames if f not in existing_fnames]
 
     # track values generation
     # ------------------------------------------------------
