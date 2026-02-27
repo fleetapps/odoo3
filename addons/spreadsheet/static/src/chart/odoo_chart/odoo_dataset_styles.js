@@ -1,19 +1,18 @@
 import { registries} from "@odoo/o-spreadsheet";
-import "./odoo_chart_datasource"; // ensure the data source is registered.
 
-const { chartTypeRegistry, chartDataSourceRegistry } = registries;
+const { chartTypeRegistry } = registries;
 
 // Legacy compatibility: before datasetStyles was added to the definition, identified with an id,
 // styles were stored in an array in the same order as datasets. This code migrates from the old format to the new one.
 
-const odooTypes = chartDataSourceRegistry.get("odoo").supportedChartTypes;
 
 const hierarchical = ["sunburst", "treemap"];
 
 for (const chartTypeBuilder of chartTypeRegistry.getAll()) {
     const getRuntime = chartTypeBuilder.getRuntime;
     chartTypeBuilder.getRuntime = (getters, definition, dataSource, sheetId, eventHandlers) => {
-        if (!odooTypes.includes(definition.type) || (definition.datasetStyles && !definition.dataSets)) {
+        const isOdoo = definition.dataSource?.type === "odoo";
+        if (!isOdoo || !definition.dataSets?.length) {
             return getRuntime(getters, definition, dataSource, sheetId, eventHandlers);
         }
         const data = hierarchical.includes(definition.type) ? dataSource.extractData() : dataSource.extractHierarchicalData();

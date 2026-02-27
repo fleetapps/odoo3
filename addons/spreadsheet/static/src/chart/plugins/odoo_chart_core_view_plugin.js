@@ -170,7 +170,7 @@ export class OdooChartCoreViewPlugin extends OdooUIPlugin {
      * @param {string} chartId
      */
     _resetChartDataSource(chartId) {
-        const definition = this.getters.getChartDefinition(chartId).dataSource;
+        const definition = this.getters.getChartDefinition(chartId);
         const dataSourceId = this._getOdooChartDataSourceId(chartId);
         this.charts[dataSourceId] = new ChartDataSource(this.custom, definition);
         this._addDomain(chartId);
