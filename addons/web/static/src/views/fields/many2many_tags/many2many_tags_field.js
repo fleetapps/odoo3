@@ -158,7 +158,6 @@ export class Many2ManyTagsField extends Component {
     get tagsListProps() {
         const limit = this.props.visibleItemsLimit ?? this.constructor.DEFAULT_LIMIT;
         return {
-            mapTooltip: (tag) => tag.props.tooltip,
             tags: this.tags,
             visibleItemsLimit: limit === 0 ? Number.POSITIVE_INFINITY : limit,
         };

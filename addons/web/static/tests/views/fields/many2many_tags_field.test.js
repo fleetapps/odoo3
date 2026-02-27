@@ -1062,7 +1062,7 @@ test("Many2ManyTagsField: select multiple records on desktop", async () => {
         resId: 1,
         arch: `
             <form>
-                <field name="timmy" widget="many2many_tags" options="{'visibleItemsLimit': 0}/>
+                <field name="timmy" widget="many2many_tags" options="{'visibleItemsLimit': 0}"/>
             </form>`,
     });
 
@@ -1101,9 +1101,9 @@ test("Many2ManyTagsField: select multiple records doesn't show already added tag
         resModel: "partner",
         resId: 1,
         arch: `
-                <form>
-                    <field name="timmy" widget="many2many_tags" options="{'visibleItemsLimit': 0}/>
-                </form>`,
+            <form>
+                <field name="timmy" widget="many2many_tags" options="{'visibleItemsLimit': 0}"/>
+            </form>`,
     });
 
     await selectFieldDropdownItem("timmy", "Search more...");
@@ -2164,7 +2164,7 @@ test("many2many_tags widget respects visibleItemsLimit in form view", async () =
 
     // We have 5 records and a limit of 3.
     // It should display 2 normal tags and 1 counter badge.
-    expect(".o_field_many2many_tags .o_tag").toHaveCount(2);
-    expect(".o_field_many2many_tags .o_tags_list_counter").toHaveCount(1);
-    expect(".o_field_many2many_tags .o_tags_list_counter").toHaveText("+3");
+    expect(".o_field_many2many_tags .o_tag").toHaveCount(3); // The counter badge also has the .o_tag class
+    expect(".o_field_many2many_tags .o_m2m_avatar_empty").toHaveCount(1); // .o_m2m_avatar_empty is the counter badge
+    expect(".o_field_many2many_tags .o_m2m_avatar_empty").toHaveText("+3");
 });
