@@ -166,7 +166,7 @@ class BuilderContainer extends Component {
             isMobile: this.state.isMobile,
             Plugins: this.props.Plugins,
             config: {
-                builderOptionsTemplate: "html_builder.BuilderOptions",
+                builderOptionsTemplate: "html_builder.TestBuilderOptions",
             },
         };
     }
