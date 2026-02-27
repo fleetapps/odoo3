@@ -113,6 +113,9 @@
                     <field name="state" widget="statusbar" statusbar_visible="confirm,validate,validate1" invisible="validation_type != 'both'"/>
                     <field name="state" widget="statusbar" statusbar_visible="confirm,validate" invisible="validation_type == 'both'"/>
                 </header>
+                <div class="alert alert-warning" role="alert" invisible="can_create">
+                    You are not assigned to any employee in the current company. Therefore, you can't request time off for yourself.
+                </div>
                 <sheet>
                     <div class="oe_button_box" name="button_box"/>
                     <div id="title" class="oe_title">
