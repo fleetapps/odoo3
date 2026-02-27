@@ -75,10 +75,13 @@ export class ChartDataSource extends OdooViewsDataSource {
         if (this._hierarchicalData && this.labelToDomainMapping) {
             return this._hierarchicalData;
         }
-
         const dataPoints = this._model.dataPoints;
         const groupBy = this._metaData.groupBy;
-        const datasets = range(groupBy.length).map(() => ({ data: [], domains: [] }));
+        const datasets = range(groupBy.length).map(() => ({
+            data: [],
+            domains: [],
+            identifiers: [],
+        }));
         const labels = new Array();
         const domainMapping = {};
         for (const gb of groupBy) {
@@ -89,6 +92,7 @@ export class ChartDataSource extends OdooViewsDataSource {
             labels.push(point.value);
             for (let i = 0; i < groupBy.length; i++) {
                 datasets[i].data.push(point.labels[i]);
+                datasets[i].identifiers.push(point.identifier);
 
                 const label = point.labels[i];
                 if (!domainMapping[groupBy[i]][label]) {

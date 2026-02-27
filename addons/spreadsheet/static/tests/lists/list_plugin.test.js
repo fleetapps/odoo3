@@ -1315,7 +1315,7 @@ test("An error is displayed if the list has invalid model", async function () {
         list: {
             ...listDefinition,
             metaData: {
-                ...listdefinition.dataSource.metaData,
+                ...listDefinition.metaData,
                 resModel: "unknown",
             },
         },

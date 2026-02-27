@@ -1354,7 +1354,7 @@ test("Show values is taken into account in the runtime", async () => {
     });
     const runtime = model.getters.getChartRuntime(chartId);
     expect(runtime.chartJsConfig.options.plugins.chartShowValuesPlugin.showValues).toBe(true);
-    expect(runtime.chartJsConfig.options.plugins.chartShowValuesPlugin.type).toBe("bar"); // Not odoo_bar
+    expect(runtime.chartJsConfig.options.plugins.chartShowValuesPlugin.type).toBe("bar");
 });
 
 test("Odoo line and bar charts display only horizontal grid lines", async () => {
@@ -1474,9 +1474,6 @@ test("Non-web chart types are using data source in 'bar' mode", async () => {
     const { model } = await createSpreadsheetWithChart({ type: "radar" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
-
-    const chart = model.getters.getChart(chartId);
-    expect(chart.metaData.mode).toBe("bar");
 
     const chartDataSource = model.getters.getChartDataSource(chartId);
     expect(chartDataSource._metaData.mode).toBe("bar");

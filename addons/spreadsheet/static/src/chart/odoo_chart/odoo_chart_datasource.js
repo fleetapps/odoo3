@@ -1,5 +1,4 @@
 import { registries, constants } from "@odoo/o-spreadsheet";
-import { navigateTo } from "@spreadsheet/actions/helpers";
 import { CommandResult } from "../../o_spreadsheet/cancelled_reason";
 import {
     onGeoOdooChartItemClick,
@@ -15,12 +14,28 @@ const { CHART_TYPES } = constants;
 // Types not supported by odoo charts (at least for now)
 const EXCLUDED_CHART_TYPES = ["scorecard", "gauge", "calendar"];
 
+function generateDataSetId(dataSource, dataSet) {
+    const identifiers = JSON.parse([...dataSet.identifiers][0]);
+    const mainAxis = dataSource.metaData.groupBy[0];
+    const dataSetId = identifiers
+        .slice(1) // first groupBy is the horizontal axis
+        .map((id) => {
+            const [[fieldName, value]] = Object.entries(id);
+            if (Array.isArray(value)) {
+                return `{"${fieldName}":${value[0]}}`; // [id, display_name]
+            }
+            return `{"${fieldName}":${value}}`;
+        })
+        .join(",");
+    return mainAxis + dataSetId;
+}
+
 chartDataSourceRegistry.add("odoo", {
     supportedChartTypes: Array.from(new Set(CHART_TYPES).difference(new Set(EXCLUDED_CHART_TYPES))),
-    fromRangeStr: (definition) => definition,
-    validate: (definition) => CommandResult.Success,
-    transform: (definition) => definition,
-    extractData: (definition, getters) => {
+    fromRangeStr: (dataSource) => dataSource,
+    validate: (dataSource) => CommandResult.Success,
+    transform: (dataSource) => dataSource,
+    extractData: (dataSource, getters) => {
         const sheetId = getters.getActiveSheetId();
         const [chartId] = getters.getChartIds(sheetId);
         const { datasets, labels } = getters.getChartDataSource(chartId).getData();
@@ -30,37 +45,23 @@ chartDataSourceRegistry.add("odoo", {
             }
         }
         return {
-            dataSetsValues: datasets.map((ds, i) => {
-                const identifiers = JSON.parse([...ds.identifiers][0]);
-                const mainAxis = definition.metaData.groupBy[0];
-                const dataSetId = identifiers
-                    .slice(1) // first groupBy is the horizontal axis
-                    .map((id) => {
-                        const [[fieldName, value]] = Object.entries(id);
-                        if (Array.isArray(value)) {
-                            return `{"${fieldName}":${value[0]}}`; // [id, display_name]
-                        }
-                        return `{"${fieldName}":${value}}`;
-                    })
-                    .join(",");
-                return {
-                    ...ds,
-                    data: ds.data.map((d) => ({ value: d })),
-                    dataSetId: mainAxis + dataSetId,
-                };
-            }),
+            dataSetsValues: datasets.map((ds) => ({
+                ...ds,
+                data: ds.data.map((d) => ({ value: d })),
+                dataSetId: generateDataSetId(dataSource, ds),
+            })),
             labelValues: labels.map((l) => ({ value: l })),
         };
     },
-    extractHierarchicalData: (definition, getters) => {
+    extractHierarchicalData: (dataSource, getters) => {
         const sheetId = getters.getActiveSheetId();
         const [chartId] = getters.getChartIds(sheetId);
         const { datasets, labels } = getters.getChartDataSource(chartId).getHierarchicalData();
         return {
-            dataSetsValues: datasets.map((ds, i) => ({
+            dataSetsValues: datasets.map((ds) => ({
                 ...ds,
                 data: ds.data.map((d) => ({ value: d })),
-                dataSetId: i.toString(), // FIXME
+                dataSetId: generateDataSetId(dataSource, ds),
             })),
             labelValues: labels.map((l) => ({ value: l })),
         };
@@ -112,28 +113,7 @@ chartDataSourceRegistry.add("odoo", {
                 return onOdooChartItemClick(getters, chartId)(event, items, chartJSChart);
         }
     },
-    goToDataSet: async (definition, name, dataSet, index, newWindow, getters) => {
-        const domain = dataSet.domains[index];
-        if (!domain || !name) {
-            return;
-        }
-        await navigateTo(
-            getters.getOdooEnv(),
-            definition.actionXmlId,
-            {
-                name,
-                type: "ir.actions.act_window",
-                res_model: definition.metaData.resModel,
-                views: [
-                    [false, "list"],
-                    [false, "form"],
-                ],
-                domain,
-            },
-            { viewType: "list", newWindow }
-        );
-    },
-    adaptRanges: (definition) => definition,
+    adaptRanges: (dataSource) => dataSource,
     getDefinition: (dataSource) => dataSource,
     duplicateInDuplicatedSheet: (dataSource) => dataSource,
     getContextCreation: () => ({}),
