@@ -88,13 +88,6 @@ export class MassMailingHtmlField extends HtmlField {
             if (nextProps.readonly) {
                 toRaw(this.state).showThemeSelector = false;
             }
-            if (nextProps.record.isNew) {
-                Object.assign(toRaw(this.state), {
-                    activeTheme: undefined,
-                    showCodeView: false,
-                    showThemeSelector: true,
-                });
-            }
         });
         useRecordObserver((record) => {
             if (record?.resId !== this.props.record?.resId && this.isDirty) {
@@ -146,7 +139,7 @@ export class MassMailingHtmlField extends HtmlField {
     }
 
     get withBuilder() {
-        return !this.props.readonly && this.state.activeTheme !== "basic";
+        return this.state.activeTheme !== "basic" && !this.props.readonly;
     }
 
     resetIframe() {
