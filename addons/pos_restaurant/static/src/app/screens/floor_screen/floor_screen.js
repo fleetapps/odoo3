@@ -689,6 +689,12 @@ export class FloorScreen extends Component {
         }
         if (!this.pos.isOrderTransferMode) {
             await this.pos.setTableFromUi(table);
+            // Make an empty table assignment visible to other devices.
+            const currentOrder = this.pos.getOrder();
+            if (currentOrder && currentOrder.lines.length === 0 && !currentOrder.isSynced) {
+                this.pos.addPendingOrder([currentOrder.id]);
+                await this.pos.syncAllOrders({ orders: [currentOrder]});
+            }
         }
     }
     unselectTables() {
