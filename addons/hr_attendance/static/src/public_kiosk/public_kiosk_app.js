@@ -29,6 +29,7 @@ class kioskAttendanceApp extends Component{
         barcodeSource: { type: String },
         fromTrialMode: { type: Boolean },
         deviceTrackingEnabled: { type: Boolean },
+        captureCheckInImage: { type: Boolean },
     };
     static components = {
         KioskBarcodeScanner,
@@ -53,6 +54,7 @@ class kioskAttendanceApp extends Component{
             displayDemoMessage: browser.localStorage.getItem("hr_attendance.ShowDemoMessage") !== "false",
         });
         this.lockScanner = false;
+        this.cameraApi = null;
         if (this.props.kioskMode === 'settings' || this.props.fromTrialMode){
             this.manualKioskMode = false;
             useBus(this.barcode.bus, "barcode_scanned", (ev) => this.onBarcodeScanned(ev.detail.barcode));
@@ -162,16 +164,18 @@ class kioskAttendanceApp extends Component{
     }
 
     async onManualSelection(employeeId, enteredPin) {
+        const checkInImage = await this.cameraApi?.capture();
         const result = await this.makeRpcWithGeolocation('manual_selection',
             {
                 'token': this.props.token,
                 'employee_id': employeeId,
-                'pin_code': enteredPin
+                'pin_code': enteredPin,
+                'check_in_image': checkInImage,
             })
         if (result && result.attendance) {
             this.employeeData = result
             this.switchDisplay('greet')
-        }else{
+        } else {
             if (enteredPin){
                 this.displayNotification(_t("Wrong Pin"))
             }
@@ -182,6 +186,8 @@ class kioskAttendanceApp extends Component{
         if (this.lockScanner || this.state.active_display !== 'main') {
             return;
         }
+
+        const checkInImage = await this.cameraApi?.capture();
         this.lockScanner = true;
         this.ui.block();
 
@@ -190,6 +196,7 @@ class kioskAttendanceApp extends Component{
             result = await rpc("attendance_barcode_scanned", {
                 barcode: barcode,
                 token: this.props.token,
+                check_in_image: checkInImage,
             });
 
             if (result && result.employee_name) {
@@ -233,6 +240,7 @@ export async function createPublicKioskAttendance(document, kiosk_backend_info) 
                 barcodeSource: kiosk_backend_info.barcode_source,
                 fromTrialMode: kiosk_backend_info.from_trial_mode,
                 deviceTrackingEnabled: kiosk_backend_info.device_tracking_enabled,
+                captureCheckInImage: kiosk_backend_info.capture_check_in_image,
             },
         dev: env.debug,
         translateFn: appTranslateFn,
