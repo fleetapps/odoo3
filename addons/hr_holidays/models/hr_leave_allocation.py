@@ -1001,3 +1001,185 @@ class HolidaysAllocation(models.Model):
             self.check_access_rule('read')
             return super(HolidaysAllocation, self.sudo()).message_subscribe(partner_ids=partner_ids, subtype_ids=subtype_ids)
         return super().message_subscribe(partner_ids=partner_ids, subtype_ids=subtype_ids)
+
+    def _get_next_carryover_reset(self, current_period_start):
+        plan = self.accrual_plan_id
+        carryover_type = plan.carryover_date
+        if carryover_type == 'year_start':
+            return date(current_period_start.year + 1, 1, 1)
+        elif carryover_type == 'allocation':
+            return current_period_start + relativedelta(years=1)
+        else:
+            m_idx = MONTHS_TO_INTEGER.get(plan.carryover_month, 1)
+            next_reset = date(current_period_start.year, m_idx, plan.carryover_day)
+            if next_reset <= current_period_start:
+                next_reset += relativedelta(years=1)
+            return next_reset
+
+    def _get_period_earnings(self, lvl, period_start, period_end):
+        accrued_gain_time = self.accrual_plan_id.accrued_gain_time
+
+        if accrued_gain_time == 'start':
+            # Accrual events at [period_start, period_end).
+            # _get_next_date is exclusive, so seed with period_start - 1 day.
+            event_date = lvl._get_next_date(period_start - relativedelta(days=1))
+            total = 0.0
+            while event_date and event_date < period_end:
+                total += lvl.added_value
+                event_date = lvl._get_next_date(event_date)
+            return total
+        else:
+            # 'end': Accrual events at (period_start, period_end].
+            event_date = lvl._get_next_date(period_start)
+            total = 0.0
+            while event_date and event_date <= period_end:
+                total += lvl.added_value
+                event_date = lvl._get_next_date(event_date)
+            return total
+
+    def _get_historical_balance(self, include_leave_ids=None):
+        self.ensure_one()
+        is_hour = self.type_request_unit == 'hour'
+        duration_field = 'number_of_hours' if is_hour else 'number_of_days'
+        today = fields.Date.today()
+
+        levels = self.accrual_plan_id.level_ids.sorted('sequence')
+        if not levels:
+            return 0.0, self.date_from
+
+        rolling_balance = 0.0
+        current_period_start = self.date_from
+
+        while True:
+            next_reset = self._get_next_carryover_reset(current_period_start)
+            if next_reset > today:
+                break
+
+            lvl = levels[0]
+            rolling_balance += self._get_period_earnings(lvl, current_period_start, next_reset)
+
+            domain = [
+                ('employee_id', '=', self.employee_id.id),
+                ('holiday_status_id', '=', self.holiday_status_id.id),
+                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('date_from', '>=', datetime.combine(current_period_start, time.min)),
+                ('date_from', '<', datetime.combine(next_reset, time.min)),
+            ]
+            if include_leave_ids is not None:
+                domain.append(('id', 'in', include_leave_ids))
+
+            taken = sum(self.env['hr.leave'].search(domain).mapped(duration_field))
+            rolling_balance -= taken
+
+            if lvl.action_with_unused_accruals == 'lost':
+                rolling_balance = 0.0
+            elif lvl.action_with_unused_accruals == 'maximum':
+                rolling_balance = min(rolling_balance, lvl.postpone_max_days)
+
+            current_period_start = next_reset
+
+        return rolling_balance, current_period_start
+
+    def _get_historical_period_available(self, leave):
+        self.ensure_one()
+        is_hour = self.type_request_unit == 'hour'
+        duration_field = 'number_of_hours' if is_hour else 'number_of_days'
+
+        levels = self.accrual_plan_id.level_ids.sorted('sequence')
+        if not levels:
+            return 0.0
+
+        rolling_balance = 0.0
+        current_period_start = self.date_from
+        leave_date = leave.date_from.date()
+
+        while True:
+            lvl = levels[0]
+            next_reset = self._get_next_carryover_reset(current_period_start)
+            period_earnings = self._get_period_earnings(lvl, current_period_start, next_reset)
+
+            if current_period_start <= leave_date < next_reset:
+                other_leaves = self.env['hr.leave'].search([
+                    ('id', '!=', leave.id),
+                    ('employee_id', '=', self.employee_id.id),
+                    ('holiday_status_id', '=', self.holiday_status_id.id),
+                    ('state', 'in', ['confirm', 'validate1', 'validate']),
+                    ('date_from', '>=', datetime.combine(current_period_start, time.min)),
+                    ('date_from', '<', datetime.combine(next_reset, time.min)),
+                ])
+                other_taken = sum(other_leaves.mapped(duration_field))
+                return max(0.0, rolling_balance + period_earnings - other_taken)
+
+            rolling_balance += period_earnings
+            all_leaves = self.env['hr.leave'].search([
+                ('employee_id', '=', self.employee_id.id),
+                ('holiday_status_id', '=', self.holiday_status_id.id),
+                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('date_from', '>=', datetime.combine(current_period_start, time.min)),
+                ('date_from', '<', datetime.combine(next_reset, time.min)),
+            ])
+            rolling_balance -= sum(all_leaves.mapped(duration_field))
+
+            if lvl.action_with_unused_accruals == 'lost':
+                rolling_balance = 0.0
+            elif lvl.action_with_unused_accruals == 'maximum':
+                rolling_balance = min(rolling_balance, lvl.postpone_max_days)
+
+            current_period_start = next_reset
+
+            if current_period_start > leave_date:
+                return 0.0
+
+    def _calculate_reconciled_consumption(self, current_leave=False, already_seen_leave_ids=None):
+        self.ensure_one()
+
+        if not current_leave:
+            return {'total_reconciliation_impact': 0, 'post_carryover_consumption': 0}
+
+        is_hour = self.type_request_unit == 'hour'
+        duration_field = 'number_of_hours' if is_hour else 'number_of_days'
+        leave_duration = current_leave[duration_field]
+
+        if (self.allocation_type != 'accrual'
+                or not self.accrual_plan_id
+                or not self.accrual_plan_id.level_ids):
+            return {
+                'total_reconciliation_impact': leave_duration,
+                'post_carryover_consumption': leave_duration,
+            }
+
+        already_seen = list(already_seen_leave_ids or [])
+
+        # new_carryover: history counting already-seen leaves PLUS the current leave.
+        # Using include_leave_ids ensures leaves processed later in the same pass do
+        # not inflate this leave's apparent carryover impact.
+        new_include = already_seen + [current_leave.id]
+        new_carryover, last_reset_date = self._get_historical_balance(include_leave_ids=new_include)
+
+        if last_reset_date <= self.date_from:
+            return {
+                'total_reconciliation_impact': leave_duration,
+                'post_carryover_consumption': leave_duration,
+            }
+
+        reset_dt = datetime.combine(last_reset_date, time.min)
+
+        if current_leave.date_to <= reset_dt:
+            available = self._get_historical_period_available(current_leave)
+            valid_consumption = min(leave_duration, available)
+
+            # old_carryover: history counting already-seen leaves WITHOUT the current leave.
+            old_carryover, _ = self._get_historical_balance(include_leave_ids=already_seen)
+            carryover_delta = max(0.0, old_carryover - new_carryover)
+
+            return {
+                'is_historical': True,
+                'total_reconciliation_impact': carryover_delta,
+                'post_carryover_consumption': valid_consumption,
+            }
+
+        return {
+            'is_historical': False,
+            'total_reconciliation_impact': leave_duration,
+            'post_carryover_consumption': leave_duration,
+        }
