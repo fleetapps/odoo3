@@ -5,7 +5,7 @@ import { patch } from "@web/core/utils/patch";
 patch(Thread.prototype, {
     get inChathubOnNewMessage() {
         if (this.channel?.channel_type === "livechat") {
-            return Boolean(this.channel.self_member_id);
+            return this.channel.self_member_id?.livechat_member_type === "agent";
         }
         return super.inChathubOnNewMessage;
     },

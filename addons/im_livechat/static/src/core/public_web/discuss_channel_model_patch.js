@@ -41,7 +41,7 @@ const discussChannelPatch = {
         return (
             (this.channel_type === "livechat" &&
                 !this.store.chatHub.compact &&
-                this.self_member_id) ||
+                this.self_member_id?.livechat_member_type === "agent") ||
             super.autoOpenChatWindowOnNewMessage
         );
     },

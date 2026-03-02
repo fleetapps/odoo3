@@ -116,13 +116,15 @@ export class ChatHub extends Record {
         this.preFirstFetchPromise.resolve();
         const foldChannels = await Promise.all(foldPromises);
         const openChannels = await Promise.all(openPromises);
-        /** @param {import("models").Channel[]} channels */
+        /** @param {import("models").DiscussChannel[]} channels */
         const insertChatWindows = (channels) =>
             channels
                 .filter((channel) => channel?.exists())
                 .map((channel) => this.store.ChatWindow.insert({ channel }));
         const toFold = insertChatWindows(foldChannels);
         const toOpen = insertChatWindows(openChannels);
+        // Ensure cross-tab updates don't close transient channels' chatWindow as they may not exist in another tab
+        toOpen.unshift(...this.opened.filter((cw) => cw.channel.isTransient && cw.notIn(toOpen)));
         // close first to make room for others
         for (const chatWindow of [...this.opened, ...this.folded]) {
             if (chatWindow.notIn(toOpen) && chatWindow.notIn(toFold)) {
