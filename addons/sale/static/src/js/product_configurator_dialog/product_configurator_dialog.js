@@ -3,7 +3,6 @@ import { Component, onWillStart } from "@odoo/owl";
 import { Dialog } from '@web/core/dialog/dialog';
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
-import { useService } from "@web/core/utils/hooks";
 import { ProductList } from "../product_list/product_list";
 import { formatCurrency } from '@web/core/currency';
 
@@ -70,10 +69,10 @@ export class ProductConfiguratorDialog extends Component {
             products: [],
             optionalProducts: [],
         });
-        this.orm = useService("orm");
         // Nest the currency id in an object so that it stays up to date in the `env`, even if we
         // modify it in `onWillStart` afterwards.
         this.currency = { id: this.props.currencyId };
+        this.getValuesUrl = '/sale/product_configurator/get_values';
         this.createProductUrl = '/sale/product_configurator/create_product';
         this.updateCombinationUrl = '/sale/product_configurator/update_combination';
         this.getOptionalProductsUrl = '/sale/product_configurator/get_optional_products';
@@ -133,42 +132,6 @@ export class ProductConfiguratorDialog extends Component {
         return _t("Total: %s", this.getFormattedTotal());
     }
 
-    async _loadData(onlyMainProduct) {
-        if (this.getValuesUrl == '/website_sale/product_configurator/get_values'){
-            return rpc(this.getValuesUrl, {
-                product_template_id: this.props.productTemplateId,
-                quantity: this.props.quantity,
-                currency_id: this.currency.id,
-                so_date: this.props.soDate,
-                product_uom_id: this.props.productUOMId,
-                company_id: this.props.companyId,
-                pricelist_id: this.props.pricelistId,
-                ptav_ids: this.props.ptavIds,
-                only_main_product: onlyMainProduct,
-                show_packaging: this.env.showPackaging,
-                ...this._getAdditionalRpcParams(),
-            });
-        }else{
-            return this.orm.call(
-                'product.template',
-                'sale_product_configurator_get_values',
-                [this.props.productTemplateId],
-                {
-                    product_template_id: this.props.productTemplateId,
-                    quantity: this.props.quantity,
-                    currency_id: this.currency.id,
-                    so_date: this.props.soDate,
-                    product_uom_id: this.props.productUOMId,
-                    company_id: this.props.companyId,
-                    pricelist_id: this.props.pricelistId,
-                    ptav_ids: this.props.ptavIds,
-                    only_main_product: onlyMainProduct,
-                    show_packaging: this.env.showPackaging,
-                    ...this._getAdditionalRpcParams(),
-                });
-        }
-    }
-
     /**
     * Return the total of the product in the list, in the currency of the `sale.order`.
     *
@@ -185,6 +148,22 @@ export class ProductConfiguratorDialog extends Component {
     //--------------------------------------------------------------------------
     // Data Exchanges
     //--------------------------------------------------------------------------
+
+    async _loadData(onlyMainProduct) {
+        return rpc(this.getValuesUrl, {
+            product_template_id: this.props.productTemplateId,
+            quantity: this.props.quantity,
+            currency_id: this.currency.id,
+            so_date: this.props.soDate,
+            product_uom_id: this.props.productUOMId,
+            company_id: this.props.companyId,
+            pricelist_id: this.props.pricelistId,
+            ptav_ids: this.props.ptavIds,
+            only_main_product: onlyMainProduct,
+            show_packaging: this.env.showPackaging,
+            ...this._getAdditionalRpcParams(),
+        });
+    }
 
     async _createProduct(product) {
         return rpc(this.createProductUrl, {

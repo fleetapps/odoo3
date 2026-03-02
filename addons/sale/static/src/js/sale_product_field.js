@@ -190,11 +190,9 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
         const saleOrderRecord = this.props.record.model.root;
         const saleOrderLine = this.props.record.data;
         const ptavIds = this._getVariantPtavIds(saleOrderLine);
-        const result = await this.orm.call(
-            'product.template',
-            'get_single_product_variant',
-            [this.props.record.data.product_template_id.id],
-            {
+        const result = rpc('/sale/product_configurator/get_values',
+            {   
+                product_template_id: this.props.record.data.product_template_id.id,
                 quantity: saleOrderLine.product_uom_qty || 1,
                 currency_id: saleOrderLine.currency_id?.id,
                 so_date: saleOrderRecord.data.date_order ?
@@ -205,8 +203,7 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
                 pricelist_id: saleOrderRecord.data.pricelist_id?.id,
                 ptav_ids: ptavIds,
                 ...this._getAdditionalRpcParams(),
-            }
-        );
+            });
         return result;
     }
 
@@ -221,7 +218,7 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
                     this._openComboConfigurator(false, result.has_optional_products);
                 } else if (result.has_optional_products) {
                     this._openProductConfigurator({
-                        preloadedData: result.preloaded_config_data
+                        preloadedData: result
                     });
                 } else {
                     await this.props.record.update({
@@ -232,7 +229,7 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
             }
         } else if (!result.mode || result.mode === 'configurator') {
             this._openProductConfigurator({
-                preloadedData: result.preloaded_config_data
+                preloadedData: result
             });
         } else {
             // only triggered when sale_product_matrix is installed.
