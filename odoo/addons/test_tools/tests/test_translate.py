@@ -2,16 +2,23 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 from hashlib import sha256
 from unittest.mock import patch
+import ast
+import importlib
 import logging
 import time
 
-from psycopg2 import IntegrityError
+try:
+    import coverage
+except ImportError:
+    coverage = None
+
 from psycopg2.extras import Json
 import io
 
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import sql
+from odoo.tools.misc import file_open
 from odoo.tools.translate import ParsedTranslation, StoredTranslations, TranslationImporter, TranslationModuleReader
 from odoo.tools.translate import quote, unquote, xml_translate, html_translate
 from odoo.tests.common import TransactionCase, BaseCase, tagged
@@ -2009,11 +2016,93 @@ class TestHTMLTranslation(TransactionCase):
 @tagged('at_install', '-post_install')
 class TestStoredTranslations(TransactionCase):
 
+    module_name = 'odoo.tools.translate'
+    function_names = ('StoredTranslations.validated', 'StoredTranslations.written', 'StoredTranslations.__getitem__')
+
+    @staticmethod
+    def _get_coverage_range(file_path: str, function_names: tuple[str, ...]) -> frozenset[int]:
+        """Get line numbers for specified functions without the definition line via AST.
+
+        function_names examples:
+            - 'html_translate': top-level function (no '.')
+            - 'StoredTranslations.validate': class.method
+            - 'StoredTranslations.*': all methods of the class
+        """
+        with file_open(file_path, 'rb') as f:
+            tree = ast.parse(f.read())
+
+        top_level_funcs = {}
+        to_level_classes = {}
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                top_level_funcs[node.name] = node
+            elif isinstance(node, ast.ClassDef):
+                to_level_classes[node.name] = node
+
+        targets = []
+        for name in function_names:
+            if '.' not in name:
+                if name in top_level_funcs:
+                    targets.append(top_level_funcs[name])
+            elif name.endswith('.*'):
+                cls_node = to_level_classes.get(name[:-2])
+                if cls_node:
+                    for item in cls_node.body:
+                        if isinstance(item, ast.FunctionDef):
+                            targets.append(item)
+            else:
+                class_name, method_name = name.split('.', 1)
+                cls_node = to_level_classes.get(class_name)
+                if cls_node:
+                    for item in cls_node.body:
+                        if isinstance(item, ast.FunctionDef) and item.name == method_name:
+                            targets.append(item)
+
+        lines = set()
+        for root in targets:
+            # Signature ends before first body statement
+            first_body_lineno = min(s.lineno for s in root.body)
+            for n in ast.walk(root):
+                if not hasattr(n, 'lineno') or n.lineno < first_body_lineno:
+                    continue
+                lines.update(range(n.lineno, n.end_lineno + 1))
+
+        if not lines:
+            _stats_logger.warning("No lines found for %s in %s", function_names, file_path)
+        return frozenset(lines)
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.env['res.lang']._activate_lang('fr_FR')
         cls.env['res.lang']._activate_lang('nl_NL')
+
+        if coverage is None or \
+            coverage.Coverage.current() is not None or \
+                (file_path := importlib.import_module(cls.module_name).__file__) is None:
+            cls._coverage = None
+            cls._coverage_range = frozenset()
+            return
+
+        cls._coverage = coverage.Coverage(
+            data_file=None,
+            source=[cls.module_name],
+            branch=True,
+        )
+        # Disable module-not-measured: we only care about coverage between start/stop
+        if "module-not-measured" not in cls._coverage.config.disable_warnings:
+            cls._coverage.config.disable_warnings.append("module-not-measured")
+        cls._coverage_range = cls._get_coverage_range(file_path, cls.function_names)
+
+    def setUp(self):
+        super().setUp()
+        if self._coverage is not None:
+            self._coverage.start()
+
+    def tearDown(self):
+        if self._coverage is not None:
+            self._coverage.stop()
+        super().tearDown()
 
     # use methods instead of cls.field because of `Field.__get__` descriptor
     def _get_char_field(self):
@@ -2446,6 +2535,24 @@ class TestStoredTranslations(TransactionCase):
             'en_US': '<form><b>English</b></form>',
             'fr_FR': '<form><b>English</b></form>',
         })
+
+    def test_z_final_coverage_check(self):
+        """Runs last (alphabetically). Collects coverage and asserts 100%"""
+        if self._coverage is None:
+            self.skipTest("coverage test is not started")
+        self._coverage.stop()
+        self._coverage.save()
+        file_path = importlib.import_module(self.module_name).__file__
+        analysis = self._coverage.analysis2(file_path)
+        executable, missing = analysis[1], analysis[3]
+        target_executable = [ln for ln in executable if ln in self._coverage_range]
+        target_missing = [ln for ln in missing if ln in self._coverage_range]
+        total = len(target_executable)
+        covered = total - len(target_missing)
+        pct = 100.0 * covered / total if total else 0
+        missing_refs = "\n".join(f"  {file_path}:{ln}" for ln in sorted(target_missing))
+        message = f"\n{self.function_names} coverage: {covered}/{total} lines ({pct:.1f}%%).\nMissing:\n{missing_refs}"
+        self.assertEqual(len(target_missing), 0, message)
 
 
 @tagged('post_install', '-at_install')
