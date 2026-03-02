@@ -993,9 +993,14 @@ class CrmLead(models.Model):
         # - ('id', 'in', stages.ids): add columns that should be present
         # - OR ('fold', '=', False): add default columns that are not folded
         # - OR ('team_ids', '=', team_id), ('fold', '=', False) if team_id: add team columns that are not folded
+        team_switcher_selected_teams = self.env.context.get("team_switcher_selected_teams")
         team_id = self.env.context.get('default_team_id')
-        team_ids = self.env.user.crm_team_ids._ids if self.env.context.get('show_user_team_stages') else ()
-        team_ids += (team_id,) if team_id else ()
+        team_ids = (team_id,) if team_id else ()
+        # Teams are following the team switcher selection or fallback on user teams if requested.
+        if team_switcher_selected_teams:
+            team_ids += tuple(team_switcher_selected_teams)
+        elif self.env.context.get('show_user_team_stages'):
+            team_ids += self.env.user.crm_team_ids._ids
         search_domain = ['|', ('id', 'in', stages.ids), ('team_ids', '=', False)]
         if team_ids:
             search_domain = ['|', ('id', 'in', stages.ids), '|', ('team_ids', '=', False), ('team_ids', 'in', team_ids)]

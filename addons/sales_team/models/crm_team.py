@@ -231,6 +231,13 @@ class CrmTeam(models.Model):
             self._add_members_to_favorites()
         return res
 
+    def unlink(self):
+        # Recompute the users main sale teams after they've been unlinked.
+        users_with_unlinked_team = self.env['res.users'].search([('sale_team_id', '=', self.ids)])
+        res = super().unlink()
+        self.env.add_to_compute(self.env['res.users']._fields['sale_team_id'], users_with_unlinked_team)
+        return res
+
     @api.ondelete(at_uninstall=False)
     def _unlink_except_default(self):
         default_teams = [
