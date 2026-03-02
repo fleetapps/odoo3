@@ -330,11 +330,12 @@ export class KanbanRenderer extends Component {
     }
 
     get canResequenceRecords() {
-        const { isGrouped, orderBy } = this.props.list;
+        const { isGrouped, orderBy, resModel } = this.props.list;
         const { handleField, recordsDraggable } = this.props.archInfo;
+        const indexToCheck = resModel === 'product.image' ? 1 : 0;
         return Boolean(
             recordsDraggable &&
-                (isGrouped || (handleField && (!orderBy[0] || orderBy[0].name === handleField)))
+                (isGrouped || (handleField && (!orderBy[indexToCheck] || orderBy[indexToCheck].name === handleField)))
         );
     }
 

@@ -31,14 +31,40 @@ def uninstall_hook(env):
 
 
 def _create_extra_variant_images(env):
-    products = env['product.product'].search([('product_tmpl_id.image_1920', '!=', False)])
+    templates = env['product.template'].search([
+        ('image_1920', '!=', False)
+    ])
+
     image_vals = []
-    for product in products:
-        image_vals.append({
-            'name': product.display_name,
-            'product_variant_ids': [(4, product.id)],
-            'attribute_value_ids': [(6, 0, product.product_template_attribute_value_ids.ids)],
-            'image_1920': product.image_variant_1920 or product.product_tmpl_id.image_1920,
-            'sequence': 0,
-        })
-    env['product.image'].create(image_vals)
+
+    for template in templates:
+        existing_binaries = template.product_template_image_ids.mapped('image_1920')
+
+        if template.image_1920 and template.image_1920 not in existing_binaries:
+            image_vals.append({
+                'name': template.display_name,
+                'product_tmpl_id': template.id,
+                'image_1920': template.image_1920,
+                'sequence': 0,
+            })
+            existing_binaries.append(template.image_1920)
+
+        for product in template.product_variant_ids:
+            variant_image = product.image_variant_1920
+
+            if (
+                variant_image
+                and variant_image != template.image_1920
+                and variant_image not in existing_binaries
+            ):
+                image_vals.append({
+                    'name': product.display_name,
+                    'product_tmpl_id': template.id,
+                    'attribute_value_ids': [(6, 0, product.product_template_attribute_value_ids.ids)],
+                    'image_1920': variant_image,
+                    'sequence': 0,
+                })
+                existing_binaries.append(variant_image)
+
+    if image_vals:
+        env['product.image'].create(image_vals)

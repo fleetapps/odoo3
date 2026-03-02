@@ -14,9 +14,18 @@ class ProductProduct(models.Model):
     variant_ribbon_id = fields.Many2one(string="Variant Ribbon", comodel_name='product.ribbon')
     website_id = fields.Many2one(related='product_tmpl_id.website_id', readonly=False)
 
+    # product_variant_image_ids = fields.Many2many(
+    #     'product.image',
+    #     string="Extra Variant Images",
+    #     relation='product_image_product_variant_rel',
+    #     column1='product_variant_id',
+    #     column2='product_image_id',
+    # )
+
     product_variant_image_ids = fields.Many2many(
         'product.image',
-        string="Extra Variant Images",
+        compute='_compute_product_variant_image_ids',
+        inverse='_inverse_product_variant_image_ids',
         relation='product_image_product_variant_rel',
         column1='product_variant_id',
         column2='product_image_id',
@@ -51,6 +60,18 @@ class ProductProduct(models.Model):
     )
 
     #=== COMPUTE METHODS ===#
+
+    def _compute_product_variant_image_ids(self):
+        for product in self:
+            product.product_variant_image_ids = (
+                product.product_tmpl_id.product_template_image_ids.filtered(
+                    lambda img: img._is_applicable_to_variant(product)
+                )
+            )
+
+    def _inverse_product_variant_image_ids(self):
+        for product in self:
+            product.product_tmpl_id.product_template_image_ids |= product.product_variant_image_ids
 
     def _get_base_unit_price(self, price):
         self.ensure_one()
@@ -122,11 +143,10 @@ class ProductProduct(models.Model):
         (which will fall back on the main image of the template, if unset).
         """
         self.ensure_one()
-        variant_images = self.product_variant_image_ids
-        template_images = self.product_tmpl_id.product_template_image_ids.filtered('is_template_image')
-        images = (variant_images | template_images).sorted('sequence')
-
-        return list(images) or [self]
+        variant_images = self.product_variant_image_ids.sorted(
+            key=lambda img: (not bool(img.attribute_value_ids), img.sequence)
+        )
+        return list(variant_images) or [self]
 
     def _get_combination_info_variant(self, **kwargs):
         """Return the variant info based on its combination.
@@ -229,7 +249,6 @@ class ProductProduct(models.Model):
         return [
             self.env['website'].image_url(extra_image, 'image_1920')
             for extra_image in self.product_variant_image_ids
-            + self.product_template_image_ids.filtered('is_template_image')
             if extra_image.image_128  # only images, no video urls
         ]
 
@@ -298,8 +317,15 @@ class ProductProduct(models.Model):
 
     def _set_main_image_from_extra_images(self):
         for product in self:
-            first_extra_image = product.product_variant_image_ids.sorted("sequence")[:1]
+            first_extra_image = (
+                product.product_tmpl_id.product_template_image_ids.filtered(
+                    lambda img: img._is_applicable_to_variant(product)
+                )
+            ).sorted(key=lambda img: (not bool(img.attribute_value_ids), img.sequence))[:1]
 
             product.image_variant_1920 = (
                 first_extra_image.image_1920 if first_extra_image else False
             )
+
+            if product == product.product_tmpl_id.product_variant_id:
+                product.product_tmpl_id.image_1920 = product.image_variant_1920

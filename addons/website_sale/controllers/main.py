@@ -712,14 +712,9 @@ class WebsiteSale(payment_portal.PaymentPortal):
                 'image_1920': thumbnail,
             })]
 
-        if is_variant_media:
-            product_product.write({
-                'product_variant_image_ids': media_create_data
-            })
-        else:
-            product_template.write({
-                'product_template_image_ids': media_create_data
-            })
+        product_template.write({
+            'product_template_image_ids': media_create_data
+        })
 
     @route(['/shop/product/clear-images'], type='jsonrpc', auth='user', website=True)
     def clear_product_images(self, product_product_id, product_template_id):
@@ -770,14 +765,10 @@ class WebsiteSale(payment_portal.PaymentPortal):
             product_template = image_to_resequence
             product = product_template.product_variant_id
         else:
-            product = image_to_resequence.product_variant_ids.filtered(
+            product_template = image_to_resequence.product_tmpl_id
+            product = product_template.product_variant_ids.filtered(
                 lambda p: p.id == int(product_variant_id)
             )
-            product_template = product.product_tmpl_id or image_to_resequence.product_tmpl_id
-            if not product:
-                product = product_template.product_variant_ids.filtered(
-                    lambda p: p.id == int(product_variant_id)
-                )
 
         if not product and not product_template:
             raise ValidationError(_("Product not found"))

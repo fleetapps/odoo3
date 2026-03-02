@@ -169,6 +169,9 @@
             <group name="upsell" position="attributes">
                 <attribute name="invisible">0</attribute>
             </group>
+            <field name="image_1920" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
             <group name="upsell" position="inside">
                 <field name="accessory_product_ids" widget="many2many_tags"
                        domain="[('sale_ok', '=', True)]"
@@ -261,11 +264,16 @@
                 <field name="variant_ribbon_id" options="{'no_quick_create': True}"/>
             </group>
             <group name="sales" position="after">
-                <div name="product_variant_images" string="Extra Variant Media" colspan="2">
+                <group name="product_variant_images" string="Extra Variant Media" colspan="2">
                     <field
                         name="product_variant_image_ids"
                         class="o_website_sale_image_list"
-                        context="{'default_name': name, 'default_product_variant_ids': [id]}"
+                        context="{
+                            'default_name': name,
+                            'default_product_variant_ids': [id],
+                            'default_attribute_value_ids': product_template_attribute_value_ids,
+                            'default_product_tmpl_id': product_tmpl_id,
+                        }"
                         mode="kanban"
                         add-label="Add Media"
                         nolabel="1"
@@ -273,7 +281,7 @@
                         widget="x2_many_media_viewer"
                         options="{'convert_to_webp': True}"
                     />
-                </div>
+                </group>
             </group>
             <field name="image_1920" position="attributes">
                 <attribute name="readonly">1</attribute>

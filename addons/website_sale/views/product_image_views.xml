@@ -39,8 +39,9 @@
         <field name="name">product.image.view.kanban</field>
         <field name="model">product.image</field>
         <field name="arch" type="xml">
-            <kanban string="Product Images" default_order="sequence">
+            <kanban string="Product Images" default_order="has_attribute_value desc, sequence, id">
                 <field name="sequence" widget="handle"/>
+                <field name="has_attribute_value"/>
                 <field name="product_tmpl_id"/>
                 <field name="product_variant_ids"/>
                 <field name="name"/>
@@ -53,8 +54,8 @@
                             <field
                                 name="attribute_value_ids"
                                 class="overflow-y-auto p-2"
-                                widget="many2many_tags"
-                                options="{'color_field': 'color'}"
+                                widget="many2many_tags_color_dot"
+                                options="{'color_field': 'html_color'}"
                             />
                             <!-- below 100 Kb: good -->
                             <t t-if="record.image_1920.raw_value.length &lt; 100*1000">

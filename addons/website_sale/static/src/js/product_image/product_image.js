@@ -44,31 +44,18 @@ export class ProductImage extends Component {
     }
 
     async beforeOpen() {
-        const isNewRecord = !this.record.resId;
         const productTmplId = this.record.data.product_tmpl_id.id || this.record.context.active_id;
-        const productVariantId = isNewRecord
-            ? this.record.context.default_product_variant_ids?.[0]
-            : false;
 
-        const { attributes, current_value_ids } = await this.orm.call(
+        this.state.attributes = await this.orm.call(
             'product.template',
             'get_attribute_values_for_image_assignment',
-            [productTmplId, productVariantId],
+            [productTmplId],
         );
 
-        this.state.attributes = attributes;
-
-        const ids = current_value_ids.length
-            ? current_value_ids
-            : this.record.data[this.props.name]._currentIds;
-
-        if (current_value_ids.length) {
-            this.record.update({ [this.props.name]: [x2ManyCommands.set(current_value_ids)] });
-        }
-        this.state.checkedIds = new Set(ids);
+        this.state.checkedIds = new Set(this.record.data[this.props.name]._currentIds);
     }
 
-    toggleValue(valueId) {
+    async toggleValue(valueId) {
         const checkedIds = this.state.checkedIds;
         const isChecked = checkedIds.has(valueId);
 
