@@ -1401,6 +1401,29 @@ class TestStockQuant(TestStockCommon):
             'lot_id': False,
         }])
 
+    def test_set_inventory_quantity_zero(self):
+        """
+        test that the quant is set to 0 from forecasted report.
+        """
+        quant = self.env['stock.quant'].create([{
+            'location_id': self.stock_location.id,
+            'product_id': self.productA.id,
+            'inventory_quantity': 10,
+        }])
+
+        self.productA.property_stock_inventory = False
+
+        quant.with_context(inventory_report_mode=True).action_set_inventory_quantity_zero()
+        move_line = self.env['stock.move.line'].search([('product_id', '=', self.productA.id)])
+        loss_location_id = self.env['ir.default']._get_model_defaults('product.template').get('property_stock_inventory')
+        default_loss_location = self.env['stock.location'].browse(loss_location_id)
+
+        self.assertEqual(
+            move_line.location_dest_id, default_loss_location,
+            "The destination location should be the default loss location"
+        )
+        self.assertEqual(quant.inventory_quantity, 0)
+
 
 class TestStockQuantRemovalStrategy(TestStockCommon):
 
