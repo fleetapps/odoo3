@@ -17,8 +17,29 @@ import {
     userContext,
     waitStoreFetch,
 } from "@mail/../tests/mail_test_helpers";
+<<<<<<< 7c7ec1dc3d128e7e43836abf88766056b556cfd5
 import { describe, expect, test } from "@odoo/hoot";
 import { Command, onRpc, serverState } from "@web/../tests/web_test_helpers";
+||||||| 802143bd00260adc8f7585180f443e24e407b877
+import { describe, test } from "@odoo/hoot";
+import {
+    asyncStep,
+    Command,
+    onRpc,
+    serverState,
+    waitForSteps,
+} from "@web/../tests/web_test_helpers";
+=======
+import { describe, expect, test } from "@odoo/hoot";
+import { Deferred } from "@odoo/hoot-dom";
+import {
+    asyncStep,
+    Command,
+    onRpc,
+    serverState,
+    waitForSteps,
+} from "@web/../tests/web_test_helpers";
+>>>>>>> 9134e0dc18d3122ac0b17cd4346d9c0d06b977d1
 
 describe.current.tags("desktop");
 defineLivechatModels();
@@ -158,4 +179,40 @@ test("do not create new thread when operator answers to visitor", async () => {
     await triggerHotkey("Enter");
     await contains(".o-mail-Message", { text: "Hello!" });
     await expect.waitForSteps(["/mail/message/post"]);
+});
+
+test("Only create one channel when posting multiple messages", async () => {
+    const getSessionDeferred = new Deferred();
+    await loadDefaultEmbedConfig();
+    onRpc("/im_livechat/get_session", async (req) => {
+        const { params } = await req.json();
+        if (params.persisted) {
+            await getSessionDeferred;
+        }
+        expect.step("/im_livechat/get_session");
+    });
+    onRpc("/mail/message/post", async (req) => {
+        const { params } = await req.json();
+        expect.step(`/mail/message/post - ${params.post_data.body}`);
+    });
+    await start({ authenticateAs: false });
+    await click(".o-livechat-LivechatButton");
+    await expect.waitForSteps(["/im_livechat/get_session"]);
+    await insertText(".o-mail-Composer-input", "1");
+    await click(".o-sendMessageActive");
+    await contains(".o-mail-Composer-input", { value: "" });
+    await insertText(".o-mail-Composer-input", "2");
+    await click(".o-sendMessageActive");
+    await contains(".o-mail-Composer-input", { value: "" });
+    await insertText(".o-mail-Composer-input", "3");
+    await click(".o-sendMessageActive");
+    await contains(".o-mail-Composer-input", { value: "" });
+    await expect.waitForSteps([]);
+    getSessionDeferred.resolve();
+    await expect.waitForSteps([
+        "/im_livechat/get_session",
+        "/mail/message/post - 1",
+        "/mail/message/post - 2",
+        "/mail/message/post - 3",
+    ]);
 });
