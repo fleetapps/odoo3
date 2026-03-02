@@ -5,22 +5,21 @@
     <div t-if="props.options.length"
          class="options-container mb-1" t-ref="root" t-att-data-container-title="title"
          t-on-pointerenter="onPointerEnter" t-on-pointerleave="onPointerLeave">
-        <div class="options-container-header d-flex align-items-center justify-content-between">
+        <div class="options-container-header d-flex align-items-center justify-content-between" role="heading">
             <t t-set="isActionable" t-value="Object.keys(props.snippetModel).length > 0"></t>
-            <div
+            <t
+                t-tag="this.props.toggleFold ? 'button' : 'div'"
                 class="options-container-label py-2 flex-grow-1 d-flex align-items-center"
-                t-att-class="{
-                    'options-container-label-actionable cursor-pointer': isActionable,
-                }"
-                t-att-role="isActionable ? 'button' : 'heading'"
+                t-att-class="this.props.toggleFold ? 'options-container-label-actionable o-hb-btn btn' : ''"
+                t-att-aria-expanded="this.props.toggleFold ? `${!this.props.folded}` : undefined"
                 t-on-click="this.props.toggleFold ?? (() => {})"
             >
-                <i t-if="this.props.toggleFold" class="fa fa-fw mx-1" role="img" t-att-class="this.props.folded ? 'fa-caret-right' : 'fa-caret-down'"></i>
+                <i t-if="this.props.toggleFold" class="fa fa-fw mx-1" aria-hidden="true" t-att-class="this.props.folded ? 'fa-caret-right' : 'fa-caret-down'"/>
                 <span t-att-class="{'ms-2': !this.props.toggleFold}" t-out="title"/>
                 <t t-if="props.optionTitleComponents" t-foreach="props.optionTitleComponents" t-as="optionTitleComponent" t-key="optionTitleComponent.id">
                     <t t-component="optionTitleComponent.Component" t-props="optionTitleComponent.props || {}"/>
                 </t>
-            </div>
+            </t>
 
             <div class="d-flex align-items-center gap-1 p-2">
                 <div t-if="props.headerMiddleButtons">
