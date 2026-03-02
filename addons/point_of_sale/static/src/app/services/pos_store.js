@@ -56,7 +56,6 @@ export const CONSOLE_COLOR = "#F5B427";
 export class PosStore extends WithLazyGetterTrap {
     loadingSkipButtonIsShown = false;
     mainScreen = { name: null, component: null };
-<<<<<<< HEAD
     static excludedLazyGetters = [
         "defaultPage",
         "firstPage",
@@ -69,9 +68,6 @@ export class PosStore extends WithLazyGetterTrap {
         "printOptions",
         "showSaveOrderButton",
     ];
-=======
-    orderReceiptComponent = OrderReceipt;
->>>>>>> 32005469cbcb ([ADD] l10n_be_pos_blackbox: add support for the Belgian Blackbox v2)
 
     static serviceDependencies = [
         "bus_service",
@@ -90,6 +86,7 @@ export class PosStore extends WithLazyGetterTrap {
         "mail.sound_effects",
         "iot_longpolling",
     ];
+    orderReceiptComponent = OrderReceipt;
 
     constructor() {
         super({});
