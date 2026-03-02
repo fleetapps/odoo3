@@ -658,8 +658,8 @@ class ProjectProject(models.Model):
                 vals['favorite_user_ids'] = [self.env.uid]
         projects = super().create(vals_list)
         for project in projects:
-            if project.privacy_visibility == 'portal':
-                project.message_subscribe(partner_ids=[project.partner_id.id])
+            if project.privacy_visibility in ['invited_users', 'portal'] and project.partner_id:
+                project.message_subscribe(partner_ids=project.partner_id.ids)
         return projects
 
     def write(self, vals):
@@ -719,6 +719,10 @@ class ProjectProject(models.Model):
             vals['date_last_stage_update'] = fields.Datetime.now()
 
         res = super().write(vals) if vals else True
+        if vals.get('partner_id'):
+            for project in self:
+                if project.partner_id.id not in project.message_partner_ids.ids and project.privacy_visibility in ['invited_users', 'portal']:
+                    project.message_subscribe(partner_ids=project.partner_id.ids)
 
         if 'allow_task_dependencies' in vals and not vals.get('allow_task_dependencies'):
             self.env['project.task'].search([('project_id', 'in', self.ids), ('state', '=', '04_waiting_normal')]).write({'state': '01_in_progress'})
