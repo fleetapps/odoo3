@@ -64,6 +64,9 @@ export class FloorScreen extends Component {
         this.pos.navigate("ProductScreen", {
             orderUuid: this.pos.selectedOrderUuid,
         });
+        if (this.pos.config.use_presets) {
+            this.pos.selectPreset(false, this.pos.getOrder(), true);
+        }
     }
 
     toggleTableSelector() {

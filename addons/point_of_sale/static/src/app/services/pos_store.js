@@ -2020,7 +2020,7 @@ export class PosStore extends WithLazyGetterTrap {
             }
         }
     }
-    async selectPreset(preset = false, order = this.getOrder()) {
+    async selectPreset(preset = false, order = this.getOrder(), presetSelection = false) {
         if (!preset) {
             const selectionList = this.config.available_preset_ids.map((preset) => ({
                 id: preset.id,
@@ -2034,7 +2034,7 @@ export class PosStore extends WithLazyGetterTrap {
             }
 
             preset =
-                selectionList.length === 2
+                selectionList.length === 2 && !presetSelection
                     ? selectionList.find((preset) => !preset.isSelected).item
                     : await makeAwaitable(this.dialog, SelectionPopup, {
                           title: _t("Select preset"),
