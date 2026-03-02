@@ -291,3 +291,8 @@ class StockMove(models.Model):
         if self.is_subcontract:
             return super(StockMove, self.with_context(force_lot_m2o=True))._generate_serial_numbers(next_serial, next_serial_count, location_id)
         return super()._generate_serial_numbers(next_serial, next_serial_count, location_id)
+
+    def _get_additional_domain(self):
+        if self.move_dest_ids.raw_material_production_id.subcontractor_id:
+            return []
+        return super()._get_additional_domain()

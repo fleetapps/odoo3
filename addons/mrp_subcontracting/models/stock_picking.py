@@ -104,10 +104,10 @@ class StockPicking(models.Model):
 
     def _prepare_subcontract_mo_vals(self, subcontract_move, bom):
         subcontract_move.ensure_one()
-        reference = self.env['stock.reference'].create({
-            'name': self.name,
-            'move_ids': [Command.link(subcontract_move.id)],
-        })
+        reference = self.env['stock.reference'].search([('name', '=', self.name)], limit=1)
+        if not reference:
+            reference = self.env['stock.reference'].create({'name': self.name})
+        reference.write({'move_ids': [Command.link(subcontract_move.id)]})
         product = subcontract_move.product_id
         warehouse = self._get_warehouse(subcontract_move)
         subcontracting_location = \
