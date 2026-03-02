@@ -5,6 +5,7 @@ import { rpc } from "@web/core/network/rpc";
 
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
+import { Deferred } from "@web/core/utils/concurrency";
 import { session } from "@web/session";
 import { canLoadLivechat } from "@im_livechat/embed/common/misc";
 
@@ -68,6 +69,7 @@ export class LivechatService {
         if (!thread.isTransient) {
             return thread;
         }
+<<<<<<< 7c7ec1dc3d128e7e43836abf88766056b556cfd5
         const temporaryThread = thread;
         const deleteTemporary = async () => {
             await this.store.chatHub.initPromise;
@@ -78,13 +80,50 @@ export class LivechatService {
         if (!savedChannel) {
             await deleteTemporary();
             return;
+||||||| 802143bd00260adc8f7585180f443e24e407b877
+        const temporaryThread = thread;
+        const deleteTemporary = async () => {
+            await this.store.chatHub.initPromise;
+            await this.store.ChatWindow.get({ thread: temporaryThread })?.close({ force: true });
+            temporaryThread?.delete();
+        };
+        const savedThread = await this._createThread({ originThread: thread, persist: true });
+        if (!savedThread) {
+            await deleteTemporary();
+            return;
+=======
+        if (this._persistDeferred) {
+            return this._persistDeferred;
+>>>>>>> 9134e0dc18d3122ac0b17cd4346d9c0d06b977d1
         }
+<<<<<<< 7c7ec1dc3d128e7e43836abf88766056b556cfd5
         savedChannel.fetchNewMessages();
         this.env.services["mail.store"].initialize();
         savedChannel.readyToSwapDeferred.then(async () => {
             if (!savedChannel?.exists()) {
+||||||| 802143bd00260adc8f7585180f443e24e407b877
+        savedThread.fetchNewMessages();
+        this.env.services["mail.store"].initialize();
+        savedThread.readyToSwapDeferred.then(async () => {
+            if (!savedThread?.exists()) {
+=======
+        this._persistDeferred = new Deferred();
+        try {
+            const temporaryThread = thread;
+            const deleteTemporary = async () => {
+                await this.store.chatHub.initPromise;
+                await this.store.ChatWindow.get({ thread: temporaryThread })?.close({
+                    force: true,
+                });
+                temporaryThread?.delete();
+            };
+            const savedThread = await this._createThread({ originThread: thread, persist: true });
+            if (!savedThread) {
+                await deleteTemporary();
+>>>>>>> 9134e0dc18d3122ac0b17cd4346d9c0d06b977d1
                 return;
             }
+<<<<<<< 7c7ec1dc3d128e7e43836abf88766056b556cfd5
             // Do not load unread messaes: new messages were loaded to avoid
             // flickering, we do not want another load that would result in the
             // same issue.
@@ -93,6 +132,38 @@ export class LivechatService {
             savedChannel.openChatWindow({ focus: true });
         });
         return savedChannel;
+||||||| 802143bd00260adc8f7585180f443e24e407b877
+            // Do not load unread messaes: new messages were loaded to avoid
+            // flickering, we do not want another load that would result in the
+            // same issue.
+            savedThread.scrollUnread = false;
+            deleteTemporary();
+            savedThread.openChatWindow({ focus: true });
+        });
+        return savedThread;
+=======
+            savedThread.fetchNewMessages();
+            this.env.services["mail.store"].initialize();
+            savedThread.readyToSwapDeferred.then(async () => {
+                if (!savedThread?.exists()) {
+                    return;
+                }
+                // Do not load unread messages: new messages were loaded to avoid
+                // flickering, we do not want another load that would result in the
+                // same issue.
+                savedThread.scrollUnread = false;
+                deleteTemporary();
+                savedThread.openChatWindow({ focus: true });
+            });
+            this._persistDeferred.resolve(savedThread);
+            return savedThread;
+        } catch (error) {
+            this._persistDeferred.reject(error);
+            throw error;
+        } finally {
+            this._persistDeferred = null;
+        }
+>>>>>>> 9134e0dc18d3122ac0b17cd4346d9c0d06b977d1
     }
 
     /**
