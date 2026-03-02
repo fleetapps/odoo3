@@ -2,11 +2,18 @@
 
 import { _t } from "@web/core/l10n/translation";
 import { markup } from "@odoo/owl";
-import { InputConfirmationDialog } from "@portal/js/components/input_confirmation_dialog/input_confirmation_dialog";
+import { TotpConfirmationDialog } from "../components/totp_confirmation_dialog";
 import { handleCheckIdentity } from "@portal/js/portal_security";
 import publicWidget from "@web/legacy/js/public/public_widget";
+<<<<<<< 335094813b85d9631f99d64bba68f809f252d601
 import { browser } from "@web/core/browser/browser";
 import { user } from "@web/core/user";
+||||||| 24b2b5879ea700ad88d33ee0a85a84deb03fbdba
+import { session } from "@web/session";
+import { browser } from "@web/core/browser/browser";
+=======
+import { session } from "@web/session";
+>>>>>>> b68d6962fade9ff5145d8a15bd95c6641af29b7b
 
 /**
  * Replaces specific <field> elements by normal HTML, strip out the rest entirely
@@ -48,13 +55,6 @@ function fromField(f, record) {
 
         const copyButton = document.createElement('button');
         copyButton.setAttribute('class', 'btn btn-sm btn-primary o_clipboard_button o_btn_char_copy py-0 px-2');
-        copyButton.onclick = async function(event) {
-            event.preventDefault();
-            $(copyButton).tooltip({title: _t("Copied!"), trigger: "manual", placement: "bottom"});
-            await browser.navigator.clipboard.writeText($(secretSpan)[0].innerText);
-            $(copyButton).tooltip('show');
-            setTimeout(() => $(copyButton).tooltip("hide"), 800);
-        };
 
         copyButton.appendChild(copySpanIcon);
         copyButton.appendChild(copySpanText);
@@ -162,7 +162,7 @@ publicWidget.registry.TOTPButton = publicWidget.Widget.extend({
         const xmlBody = doc.querySelector('sheet *');
         const [body, ,] = fixupViewBody(xmlBody, record);
 
-        this.call("dialog", "add", InputConfirmationDialog, {
+        this.call("dialog", "add", TotpConfirmationDialog, {
             body: markup(body.outerHTML),
             onInput: ({ inputEl }) => {
                 inputEl.setCustomValidity("");
