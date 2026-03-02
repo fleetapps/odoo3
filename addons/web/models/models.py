@@ -1318,6 +1318,12 @@ class Base(models.AbstractModel):
         def adapt(value):
             if isinstance(value, BaseModel):
                 return value.id
+            if isinstance(value, datetime.datetime):
+                tzinfo = None
+                if self.env.context.get('tz') in all_timezones:
+                    tzinfo = ZoneInfo(self.env.context['tz'])
+                    value = value.replace(tzinfo=tzinfo).astimezone(datetime.UTC)
+                value = value.strftime(DEFAULT_SERVER_DATETIME_FORMAT)
             return value
 
         result = defaultdict(lambda: dict.fromkeys(progress_bar['colors'], 0))
