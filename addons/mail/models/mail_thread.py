@@ -602,7 +602,7 @@ class MailThread(models.AbstractModel):
         authors = self.env.cr.precommit.data.get(f'mail.tracking.author.{self._name}', {})
 
         for record in self:
-            changes, tracking_value_ids = trackings.get(record.id, (None, None))
+            changes, tracking_values = trackings.get(record.id, (None, None))
             if not changes:
                 continue
 
@@ -620,13 +620,13 @@ class MailThread(models.AbstractModel):
                     body=body,
                     author_id=author_id,
                     subtype_id=subtype.id,
-                    tracking_value_ids=tracking_value_ids
+                    tracking_value_ids=[(0, 0, vals) for vals in tracking_values],
                 )
-            elif tracking_value_ids:
+            elif tracking_values:
                 record._message_log(
                     body=body,
                     author_id=author_id,
-                    tracking_value_ids=tracking_value_ids,
+                    tracking_value_ids=[(0, 0, vals) for vals in tracking_values],
                 )
 
     def _track_log_get_default_body(self, track_init_values: ValuesType) -> str | Markup:
