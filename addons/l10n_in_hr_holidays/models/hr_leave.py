@@ -104,6 +104,49 @@ class HrLeave(models.Model):
         linked_leave = leaves_by_date.get(current_date, self.env["hr.leave"])
         if linked_leave and not linked_leave._l10n_in_is_full_day_request():
             return self.env["hr.leave"]
+        if not linked_leave:
+            return linked_leave
+        if not check_extendability:
+            return linked_leave
+
+        # Compare with baseline duration (without sandwich logic) to know
+        # whether the linked leave already includes sandwich days.
+        base_days, _base_hours = super(HrLeave, linked_leave)._get_durations(
+            check_work_entry_type=True,
+            resource_calendar=None,
+        ).get(linked_leave.id, (0.0, 0.0))
+        if float_compare(linked_leave.number_of_days, base_days, precision_digits=2) <= 0:
+            return linked_leave
+
+        # If the edge of the linked leave that touches the current leave is itself
+        # non-working, keep it linkable so the edge day can be attributed to the
+        # current leave (e.g. public holiday at edge).
+        linked_edge_date = linked_leave.request_date_to if reverse else linked_leave.request_date_from
+        if not linked_leave._l10n_in_is_working(
+            linked_edge_date,
+            public_holiday_dates,
+            linked_leave.resource_calendar_id,
+        ):
+            return linked_leave
+
+        linked_start_date = linked_leave.request_date_from if reverse else linked_leave.request_date_to
+        linked_linked_leave = linked_leave._l10n_in_find_linked_leave(
+            linked_start_date,
+            public_holiday_dates,
+            linked_leave.resource_calendar_id,
+            leaves_by_date,
+            reverse=reverse,
+        )
+        if not linked_linked_leave:
+            return self.env["hr.leave"]
+
+        if not linked_leave._l10n_in_count_adjacent_non_working(
+            linked_start_date,
+            public_holiday_dates,
+            linked_leave.resource_calendar_id,
+            reverse=reverse,
+        ):
+            return self.env["hr.leave"]
         return linked_leave
 
     def _l10n_in_get_linked_leaves(self, leaves_dates_by_employee, public_holidays_date_by_company):
