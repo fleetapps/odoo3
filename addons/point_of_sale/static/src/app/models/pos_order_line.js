@@ -331,7 +331,13 @@ export class PosOrderline extends Base {
         if (this.qty < 0) {
             valid_lots_quantity = -valid_lots_quantity;
         }
+<<<<<<< 577b50db270d64c571b4335aab7b5b971c58f017
         this.setQuantity(valid_lots_quantity);
+||||||| c093f401bc77a9f2c2ffc8e133b393104a97222a
+        this.set_quantity(valid_lots_quantity);
+=======
+        this.set_quantity(valid_lots_quantity, !!this.combo_parent_id);
+>>>>>>> 48b09746cd4446fbc949054a46fb892b20c05e25
     }
 
     hasValidProductLot() {
