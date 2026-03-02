@@ -132,27 +132,19 @@ class TestEquipmentPostInstall(TestEquipmentCommon):
         In theory this should never happen, but we should fail gracefully
         in case these dates are forced set to False.
         """
-
         form = Form(self.env['maintenance.equipment'].with_user(self.manager))
         form.name = "brain"
         equipment = form.save()
+
+        before = fields.Datetime.now()
         form = Form(self.env['maintenance.request'].with_user(self.manager))
         form.name = "improve efficiency"
         form.equipment_id = equipment
         form.maintenance_type = 'corrective'
         maintenance = form.save()
-        self.assertFalse(maintenance.schedule_date)
-        self.assertFalse(maintenance.close_date)
 
-        maintenance.state = 'done'
-        self.assertFalse(maintenance.schedule_date)
-        self.assertTrue(maintenance.close_date)
-        form = Form(equipment)
-
-        # this shouldn't happen unless it's forced
-        maintenance.close_date = False
-        form = Form(equipment)
-        maintenance.close_date = fields.Date.today()
-        form = Form(equipment)
-        maintenance.close_date = False
-        form = Form(equipment)
+        self.assertTrue(maintenance.schedule_date)
+        self.assertTrue(maintenance.schedule_end)
+        self.assertGreaterEqual(maintenance.schedule_date, before)
+        self.assertLessEqual(maintenance.schedule_date, after)
+        self.assertEqual(maintenance.schedule_end, maintenance.schedule_date + timedelta(hours=1))
