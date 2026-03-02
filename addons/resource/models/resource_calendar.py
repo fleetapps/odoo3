@@ -344,7 +344,7 @@ class ResourceCalendar(models.Model):
     # Computation API
     # --------------------------------------------------
 
-    def _attendance_intervals_batch(self, start_dt, end_dt, resources=None, domain=None, tz=None, lunch=False):
+    def _attendance_intervals_batch(self, start_dt, end_dt, resources=None, domain=None, tz=None, lunch=False, resource_periods=None):
         assert start_dt.tzinfo and end_dt.tzinfo
         self.ensure_one()
         if not resources:
@@ -414,28 +414,39 @@ class ResourceCalendar(models.Model):
                 else:
                     base_result.append((day_from, day_to, attendance))
 
-
-        # Copy the result localized once per necessary timezone
-        # Strictly speaking comparing start_dt < time or start_dt.astimezone(tz) < time
-        # should always yield the same result. however while working with dates it is easier
-        # if all dates have the same format
-        result_per_tz = {
-            tz: [(max(bounds_per_tz[tz][0], tz.localize(val[0])),
-                min(bounds_per_tz[tz][1], tz.localize(val[1])),
-                val[2])
-                    for val in base_result]
-            for tz in resources_per_tz.keys()
-        }
         resource_calendars = resources._get_calendar_at(start_dt, tz)
         result_per_resource_id = dict()
         for tz, tz_resources in resources_per_tz.items():
-            res = result_per_tz[tz]
-
-            res_intervals = Intervals(res, keep_distinct=True)
             start_datetime = start_dt.astimezone(tz)
             end_datetime = end_dt.astimezone(tz)
-
+            # Copy the result localized once per necessary timezone
+            localized_base = [
+                (tz.localize(val[0]), tz.localize(val[1]), val[2])
+                for val in base_result
+            ]
             for resource in tz_resources:
+                if resource_periods and resource.id in resource_periods:
+                    r_start, r_stop = resource_periods[resource.id]
+                    r_bound_start = max(start_dt.astimezone(tz), r_start.astimezone(tz))
+                    r_bound_stop = min(end_dt.astimezone(tz), r_stop.astimezone(tz))
+                else:
+                    r_bound_start = start_dt.astimezone(tz)
+                    r_bound_stop = end_dt.astimezone(tz)
+
+                # Strictly speaking comparing start_dt < time or start_dt.astimezone(tz) < time
+                # should always yield the same result. however while working with dates it is easier
+                res_intervals = [
+                    (max(r_bound_start, b[0]), min(r_bound_stop, b[1]), b[2])
+                    for b in localized_base
+                    if b[0] < r_bound_stop and b[1] > r_bound_start
+                ]
+
+                if resource_periods and resource.id in resource_periods:
+                    start_datetime = res_intervals[0][0] if res_intervals else start_datetime
+                    end_datetime = res_intervals[-1][1] if res_intervals else end_datetime
+                # start_datetime = min(start_datetime, res_intervals[0][0]) if res_intervals else start_datetime
+                # end_datetime = max(end_datetime, res_intervals[-1][1]) if res_intervals else end_datetime
+
                 if resource and not resource_calendars.get(resource, False):
                     # If the resource is fully flexible, return the whole period from start_dt to end_dt with a dummy attendance
                     hours = (end_dt - start_dt).total_seconds() / 3600
@@ -512,9 +523,9 @@ class ResourceCalendar(models.Model):
                     result_per_resource_id[resource.id] = Intervals(intervals, keep_distinct=True)
                 elif resource in per_resource_result:
                     resource_specific_result = [(max(bounds_per_tz[tz][0], tz.localize(val[0])), min(bounds_per_tz[tz][1], tz.localize(val[1])), val[2]) for val in per_resource_result[resource]]
-                    result_per_resource_id[resource.id] = Intervals(itertools.chain(res, resource_specific_result), keep_distinct=True)
+                    result_per_resource_id[resource.id] = Intervals(itertools.chain(res_intervals, resource_specific_result), keep_distinct=True)
                 else:
-                    result_per_resource_id[resource.id] = res_intervals
+                    result_per_resource_id[resource.id] = Intervals(res_intervals, keep_distinct=True)
         return result_per_resource_id
 
     def _handle_flexible_leave_interval(self, dt0, dt1, leave):
@@ -594,7 +605,17 @@ class ResourceCalendar(models.Model):
         else:
             resources_list = list(resources) + [self.env['resource.resource']]
 
-        attendance_intervals = self._attendance_intervals_batch(start_dt, end_dt, resources, tz=tz or self.env.context.get("employee_timezone"))
+        # Get all validity intervals within the given period for the resources' calendars
+        validity_intervals = resources.sudo()._get_calendars_validity_within_period(start_dt, end_dt)
+        resource_periods = {}
+        for r in resources_list:
+            if r.id in validity_intervals and self in validity_intervals[r.id]:
+                interval = validity_intervals[r.id][self]
+                if interval:
+                    # Get start & end period for the given resource's calendar
+                    resource_periods[r.id] = (min(i[0] for i in interval), max(i[1] for i in interval))
+        attendance_intervals = self._attendance_intervals_batch(start_dt, end_dt, resources, tz=tz or self.env.context.get("employee_timezone"), resource_periods=resource_periods)
+
         if compute_leaves:
             leave_intervals = self._leave_intervals_batch(start_dt, end_dt, resources, domain, tz=tz)
             return {
