@@ -220,7 +220,10 @@ class ProductTemplate(models.Model):
                 'is_combo': self.type == 'combo',
             })
 
-        if (not res.get('product_id') or res.get('has_optional_products')) and not self.env.context.get('website_id'):
+        if (
+                not res.get('product_id')
+                or res.get('has_optional_products')
+            ) and not self.env.context.get('website_id'):
 
             preloaded_data = self.sale_product_configurator_get_values(
                 product_template_id=self.id,
@@ -389,7 +392,9 @@ class ProductTemplate(models.Model):
             attr_data['id']: attr_data
             for attr_data in ptals.attribute_id.read(['id', 'name', 'display_type'])
         }
-        ptavs = ptals.product_template_value_ids.filtered(lambda p: p.ptav_active or combination and p.id in combination.ids)
+        ptavs = ptals.product_template_value_ids.filtered(
+            lambda p: p.ptav_active or combination and p.id in combination.ids
+        )
         ptavs_map = dict(zip(ptavs.ids, ptavs.read(['name', 'html_color', 'image', 'is_custom'])))
 
         values = dict(

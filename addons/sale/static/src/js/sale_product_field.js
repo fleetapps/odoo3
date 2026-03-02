@@ -197,7 +197,9 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
             {
                 quantity: saleOrderLine.product_uom_qty || 1,
                 currency_id: saleOrderLine.currency_id?.id,
-                so_date: saleOrderRecord.data.date_order ? serializeDateTime(saleOrderRecord.data.date_order) : undefined,
+                so_date: saleOrderRecord.data.date_order ?
+                    serializeDateTime(saleOrderRecord.data.date_order)
+                    : undefined,
                 product_uom_id: saleOrderLine.product_uom_id?.id,
                 company_id: saleOrderRecord.data.company_id?.id,
                 pricelist_id: saleOrderRecord.data.pricelist_id?.id,

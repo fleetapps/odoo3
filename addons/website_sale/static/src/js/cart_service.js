@@ -203,6 +203,7 @@ export class CartService {
                 ...rest
             });
         }
+
         const shouldShowProductConfigurator = await this.rpc(
             '/website_sale/should_show_product_configurator',
             {
