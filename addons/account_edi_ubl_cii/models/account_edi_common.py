@@ -801,7 +801,7 @@ class AccountEdiCommon(models.AbstractModel):
         if line_total_amount_node is None or line_total_amount_node.text is None or not line_total_amount_node.text.strip():
             return None
         price_subtotal = float(line_total_amount_node.text)
-        if price_subtotal == 0:
+        if price_subtotal == 0 and not self.env.context.get('allow_zero_subtotal_lines'):
             return None
 
         # quantity
