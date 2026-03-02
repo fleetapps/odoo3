@@ -4,6 +4,7 @@ import { MessageSeenIndicator } from "@mail/discuss/core/common/message_seen_ind
 
 import { Component } from "@odoo/owl";
 
+import { _t } from "@web/core/l10n/translation";
 import { useChildRef, useService } from "@web/core/utils/hooks";
 import { useHover } from "@mail/utils/common/hooks";
 import { usePopover } from "@web/core/popover/popover_hook";
@@ -23,7 +24,7 @@ class ChatBubblePreview extends Component {
     get previewText() {
         const lastMessage = this.channel.newestPersistentOfAllMessage;
         if (!lastMessage) {
-            return false;
+            return _t("This is the start of your conversation");
         }
         return lastMessage.previewText;
     }
