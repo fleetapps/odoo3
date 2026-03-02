@@ -293,6 +293,82 @@ class ProductProduct(models.Model):
     # EDI
     # -------------------------------------------------------------------------
 
+    def _import_retrieve_product_from_barcode(self, product_values):
+        barcode = product_values.get('barcode')
+        if barcode:
+            return {'criteria': {'domain': [('barcode', '=', barcode)]}}
+
+    def _import_retrieve_product_from_default_code(self, product_values):
+        default_code = product_values.get('default_code')
+        if default_code:
+            return {'criteria': {'domain': [('default_code', '=', default_code)]}}
+
+    def _import_retrieve_product_from_name(self, product_values):
+        name = product_values.get('default_code')
+        if not name:
+            return
+
+        if name and '\n' in name:
+            # cut Sales Description from the name
+            name = name.split('\n')[0]
+        if name:
+            return {'criteria': [
+                {'domain': [('name', '=', name)]},
+                {'domain': [('name', 'ilike', name)]},
+            ]}
+
+    @api.model
+    def _import_retrieve_product(self, search_plan, company, product_values_list):
+        cache = {}
+
+        static_domain = expression.OR([
+            [*self._check_company_domain(company), ('company_id', '!=', False)],
+            [('company_id', '=', False)],
+        ])
+        for product_values in product_values_list:
+            for plan in search_plan:
+                break_loop = False
+
+                plan_values = plan(product_values)
+                if not plan_values:
+                    continue
+
+                for criteria in plan_values['criteria']:
+                    product = None
+                    if domain := criteria.get('domain'):
+
+                        # Look to the cache.
+                        cache_key = str(domain)
+                        if cache_key in cache:
+                            product = cache[cache_key]
+                            if not product:
+                                continue
+
+                        if not product:
+                            full_domain = expression.AND([static_domain, domain])
+                            product = self.search(
+                                full_domain,
+                                order='company_id, id DESC',
+                                limit=1,
+                            )
+
+                        if product:
+                            cache[cache_key] = product
+
+                    elif criteria.get('search_method'):
+                        product = criteria['search_method']({
+                            **criteria,
+                            'static_domain': static_domain,
+                        })
+
+                    if product:
+                        product_values['product'] = product
+                        break_loop = True
+                        break
+
+                if break_loop:
+                    break
+
     def _retrieve_product(self, name=None, default_code=None, barcode=None, company=None, extra_domain=None):
         '''Search all products and find one that matches one of the parameters.
 
@@ -303,35 +379,18 @@ class ProductProduct(models.Model):
         :param extra_domain:    Any extra domain to add to the search.
         :returns:               A product or an empty recordset if not found.
         '''
-        if name and '\n' in name:
-            # cut Sales Description from the name
-            name = name.split('\n')[0]
-        domains = []
-        if barcode:
-            domains.append([('barcode', '=', barcode)])
-        if default_code:
-            domains.append([('default_code', '=', default_code)])
-        if name:
-            domains.append([('name', '=', name)])
-            # avoid matching unrelated products whose names merely contain that short string
-            if len(name) > 4:
-                domains.append([('name', 'ilike', name)])
-
-        company = company or self.env.company
-        for company_domain in (
-            [*self.env['res.partner']._check_company_domain(company), ('company_id', '!=', False)],
-            [('company_id', '=', False)],
-        ):
-            for domain in domains:
-                product = self.env['product.product'].search(
-                    expression.AND([
-                        domain,
-                        company_domain,
-                        extra_domain or [],
-                    ]),
-                    limit=1
-                )
-                # We need a single product. Exit early if one is found (implements the priority logic).
-                if product:
-                    return product
-        return self.env['product.product']
+        product_values = {
+            'name': name,
+            'default_code': default_code,
+            'barcode': barcode,
+        }
+        self._import_retrieve_product(
+            search_plan=[
+                self._import_retrieve_product_from_barcode,
+                self._import_retrieve_product_from_default_code,
+                self._import_retrieve_product_from_name,
+            ],
+            company=company or self.env.company,
+            customer_values_list=[product_values],
+        )
+        return product_values.get('product') or self.env['product.product']

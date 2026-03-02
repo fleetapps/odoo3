@@ -4451,65 +4451,101 @@ class AccountTax(models.Model):
         return zero_tax
 
     @api.model
-    def _retrieve_tax_with_price_include(self, basic_domain, extra_values):
-        price_include = extra_values.get('price_include')
-        extra_domains = []
-        if not price_include:
-            extra_domains.append([('price_include', '=', False)])
-        elif price_include is None or price_include:
-            extra_domains.append([('price_include', '=', True)])
-        for extra_domain in extra_domains:
-            tax = self.env['account.tax'].search(basic_domain + extra_domain, limit=1)
-            if tax:
-                return tax
-
-    @api.model
-    def _retrieve_tax_with_invoice_predictive(self, basic_domain, extra_values):
+    def _import_retrieve_tax_from_invoice_predictive(self, tax_values):
         # Check if 'account_accountant' is installed.
         if 'payment_state_before_switch' not in self.env['account.move']._fields:
             return
 
-        invoice_predictive = extra_values.get('invoice_predictive')
+        invoice_predictive = tax_values.get('invoice_predictive')
         if not invoice_predictive:
             return
 
-        predicted_tax_ids = self.env['account.move.line']._predict_specific_tax(
-            move=invoice_predictive['invoice'],
-            name=invoice_predictive['name'],
-            partner=invoice_predictive['partner'],
-            amount_type=extra_values['amount_type'],
-            amount=extra_values['amount'],
-            type_tax_use=extra_values['type_tax_use'],
-        )
-        return self.env['account.tax'].browse(predicted_tax_ids).filtered_domain(basic_domain)
+        def search_predictive(values):
+            domain = tax_values['domain']
+            predicted_tax_ids = self.env['account.move.line']._predict_specific_tax(
+                move=invoice_predictive['invoice'],
+                name=invoice_predictive['name'],
+                partner=invoice_predictive['partner'],
+                amount_type=values['amount_type'],
+                amount=values['amount'],
+                type_tax_use=values['type_tax_use'],
+            )
+            return self.env['account.tax'].browse(predicted_tax_ids).filtered_domain(domain)[:1]
+
+        return {'criteria': [{'search_method': search_predictive}]}
 
     @api.model
-    def _retrieve_tax(self, company, extra_values, criteria, extra_domain=None):
-        amount_type = extra_values.get('amount_type', 'percent')
-        type_tax_use = extra_values.get('type_tax_use', 'purchase')
-        amount = extra_values.get('amount')
-        if amount is None:
-            return self.env['account.tax']
+    def _import_retrieve_tax_from_price_include_exclude(self, tax_values):
+        price_include = tax_values.get('price_include')
+        criteria = []
+        if not price_include:
+            criteria.append({'domain': [('price_include', '=', False)]})
+        elif price_include is None or price_include:
+            criteria.append({'domain': [('price_include', '=', True)]})
 
-        extra_values = {
-            **extra_values,
-            'amount_type': amount_type,
-            'type_tax_use': type_tax_use,
-            'amount': amount,
-        }
+        return {'criteria': criteria}
 
-        basic_domain = [
-            *self._check_company_domain(company),
-            ('amount_type', '=', amount_type),
-            ('type_tax_use', '=', type_tax_use),
-            ('amount', '=', amount),
-        ] + (extra_domain or [])
-        for criterion in criteria:
-            tax = criterion(basic_domain, extra_values)
-            if tax:
-                return tax
+    @api.model
+    def _import_retrieve_tax(self, search_plan, company, tax_values_list):
+        cache = {}
 
-        return self.env['account.tax']
+        static_domain = expression.OR([
+            [*self._check_company_domain(company), ('company_id', '!=', False)],
+            [('company_id', '=', False)],
+        ])
+        for tax_values in tax_values_list:
+            tax_domain = [
+               ('amount_type', '=', tax_values['amount_type']),
+               ('type_tax_use', '=', tax_values['type_tax_use']),
+               ('amount', '=', tax_values['amount']),
+            ]
+            if tax_values.get('name'):
+                tax_domain.append(('name', '=', tax_values['name']))
+            if (
+                (ubl_cii_tax_category_code := tax_values.get('ubl_cii_tax_category_code'))
+                and 'ubl_cii_tax_category_code' in self._fields
+            ):
+                tax_domain.append(('ubl_cii_tax_category_code', '=', ubl_cii_tax_category_code))
+
+            for plan in search_plan:
+                break_loop = False
+
+                plan_values = plan(tax_values)
+                if not plan_values:
+                    continue
+
+                for criteria in plan_values['criteria']:
+                    tax = None
+                    if criteria_domain := criteria.get('domain'):
+                        domain = expression.AND([tax_domain, criteria_domain])
+
+                        # Look to the cache.
+                        cache_key = str(domain)
+                        if cache_key in cache:
+                            tax = cache[cache_key]
+                            if not tax:
+                                continue
+
+                        if not tax:
+                            full_domain = expression.AND([static_domain, domain])
+                            tax = self.search(full_domain, limit=1)
+
+                        if tax:
+                            cache[cache_key] = tax
+
+                    elif criteria.get('search_method'):
+                        tax = criteria['search_method']({
+                            **criteria,
+                            'static_domain': expression.AND([tax_domain, static_domain]),
+                        })
+
+                    if tax:
+                        tax_values['tax'] = tax
+                        break_loop = True
+                        break
+
+                if break_loop:
+                    break
 
 
 class AccountTaxRepartitionLine(models.Model):

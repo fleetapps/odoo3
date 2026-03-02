@@ -64,14 +64,13 @@ class TestUblCiiCommon(AccountTestInvoicingCommon):
     @classmethod
     def _create_partner_nl(cls, **kwargs):
         return cls.env['res.partner'].create({
+            **cls._create_partner_default_values(),
             'name': "partner_nl",
             'street': "Kunststraat, 3",
             'zip': "1000",
             'city': "Amsterdam",
             'vat': 'NL000099998B57',
-            'invoice_sending_method': 'manual',
             'company_registry': None,
-            'company_id': cls.company_data['company'].id,
             'country_id': cls.env.ref('base.nl').id,
             'peppol_eas': '0106',
             'peppol_endpoint': '77777677',
@@ -127,34 +126,41 @@ class TestUblCiiCommon(AccountTestInvoicingCommon):
             **kwargs,
         })
 
+    @classmethod
+    def subfolders(cls):
+        return None, None
+
     # -------------------------------------------------------------------------
     # EXPORT HELPERS
     # -------------------------------------------------------------------------
-
-    @classmethod
-    def subfolder_export(cls):
-        return 'export'
 
     @classmethod
     def _generate_invoice_ubl_file(cls, invoice, **kwargs):
         cls.env['account.move.send']._generate_and_send_invoices(invoice, **{'sending_methods': ['manual'], **kwargs})
 
     def _assert_invoice_ubl_file(self, invoice, filename):
+        subfolder_format, subfolder_country = self.subfolders()
+        subfolder = f'export/{subfolder_format}/invoice/{subfolder_country}'
+
         self.assertTrue(invoice.ubl_cii_xml_id)
-        self.assert_xml(invoice.ubl_cii_xml_id.raw, filename, subfolder=self.subfolder_export())
+        self.assert_xml(invoice.ubl_cii_xml_id.raw, filename, subfolder=subfolder)
 
     # -------------------------------------------------------------------------
     # IMPORT HELPERS
     # -------------------------------------------------------------------------
 
     @classmethod
-    def subfolder_import(cls):
-        return 'import'
+    def _import_invoice_as_attachment(cls, test_name):
+        """ Import a test file as an attachment.
 
-    @classmethod
-    def _import_as_attachment(cls, test_name):
+        :param test_name:   The name of the test file to import.
+        :return:            The newly created attachment with the content of the targeted file.
+        """
+        subfolder_format, subfolder_country = cls.subfolders()
+        subfolder = f'import/{subfolder_format}/invoice/{subfolder_country}'
+
         filename = f"{test_name}.xml"
-        full_file_path = cls._get_test_file_path(cls, filename, subfolder=cls.subfolder_import())
+        full_file_path = cls._get_test_file_path(cls, filename, subfolder=subfolder)
         with file_open(full_file_path, 'rb') as file:
             return cls.env['ir.attachment'].create({
                 'mimetype': 'application/xml',
@@ -163,18 +169,18 @@ class TestUblCiiCommon(AccountTestInvoicingCommon):
             })
 
     @classmethod
-    def _import_as_attachment_on(cls, test_name=None, attachment=None, journal=None):
-        """
-        :param str test_name:
-        :param ir.attachment attachment:
-        :param account.journal journal:
-        :return: the created move object from the attachment/file
-        :rtype: account.move
+    def _import_invoice_as_attachment_on(cls, test_name=None, attachment=None, journal=None):
+        """ Import an attachment on an accounting journal to create a brand new invoice.
+
+        :param test_name:   The name of the test file to import (mutually exclusive with 'attachment').
+        :param attachment:  OR an attachment containing the file to be imported  (mutually exclusive with 'test_name').
+        :param journal:     An optional specific accounting journal. Will be the default purchase journal if not specified.
+        :return:            The newly created invoice/vendor bill.
         """
         assert bool(test_name) ^ bool(attachment), "Either `filename` or `attachment` must be provided, but not both."
         journal = journal or cls.company_data["default_journal_purchase"]
         if test_name:
-            attachment = cls._import_as_attachment(test_name)
+            attachment = cls._import_invoice_as_attachment(test_name)
         return journal._create_document_from_attachment(attachment.id)
 
 
@@ -195,8 +201,9 @@ class TestUblCiiBECommon(TestUblCiiCommon):
         })
         return company
 
-    def subfolder_export(self):
-        return f'{super().subfolder_export()}/be'
+    @classmethod
+    def subfolders(cls):
+        return super().subfolders()[0], 'be'
 
 
 class TestUblCiiFRCommon(TestUblCiiCommon):
@@ -214,8 +221,9 @@ class TestUblCiiFRCommon(TestUblCiiCommon):
         })
         return company
 
-    def subfolder_export(self):
-        return f'{super().subfolder_export()}/fr'
+    @classmethod
+    def subfolders(cls):
+        return super().subfolders()[0], 'fr'
 
 
 class TestUblBis3Common(TestUblCiiCommon):
@@ -226,14 +234,10 @@ class TestUblBis3Common(TestUblCiiCommon):
         values['invoice_edi_format'] = 'ubl_bis3'
         return values
 
-    @classmethod
-    def _create_partner_nl(cls, **kwargs):
-        kwargs.setdefault('invoice_edi_format', 'ubl_bis3')
-        return super()._create_partner_nl(**kwargs)
-
     # -------------------------------------------------------------------------
     # EXPORT HELPERS
     # -------------------------------------------------------------------------
 
-    def subfolder_export(self):
-        return super().subfolder_export().replace('export', 'export/bis3/invoice')
+    @classmethod
+    def subfolders(cls):
+        return 'bis3', super().subfolders()[1]
