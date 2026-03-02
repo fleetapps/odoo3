@@ -614,7 +614,8 @@ class StockMove(models.Model):
 
     def _search_picking_for_assignation_domain(self):
         domain = super()._search_picking_for_assignation_domain()
-        domain += [('production_group_id', '=', self.production_group_id.id)]
+        if not getattr(self.move_dest_ids.raw_material_production_id, 'subcontractor_id', False):
+            domain += [('production_group_id', '=', self.production_group_id.id)]
         return domain
 
     def action_open_reference(self):
