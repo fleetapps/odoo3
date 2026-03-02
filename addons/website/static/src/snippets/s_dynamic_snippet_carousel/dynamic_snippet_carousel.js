@@ -12,6 +12,7 @@ export class DynamicSnippetCarousel extends DynamicSnippet {
     }
 
     getQWebRenderOptions() {
+<<<<<<< 4000ba9d68a268ecadc2762041a61d11f998a584
         const scrollMode = this.el.classList.contains("o_carousel_multi_items") ? "single" : "all";
         return Object.assign(super.getQWebRenderOptions(...arguments), {
             interval: parseInt(this.el.dataset.carouselInterval),
@@ -19,6 +20,32 @@ export class DynamicSnippetCarousel extends DynamicSnippet {
             arrowPosition: this.el.dataset.arrowPosition || "",
             scrollMode: scrollMode,
         });
+||||||| 935d4302374c9c0acc98f7a6ef94a51408b2e02e
+        const scrollMode = this.el.classList.contains('o_carousel_multi_items') ? 'single' : 'all';
+        return Object.assign(
+            super.getQWebRenderOptions(...arguments),
+            {
+                interval: parseInt(this.el.dataset.carouselInterval),
+                rowPerSlide: parseInt(uiUtils.isSmall() ? 1 : this.el.dataset.rowPerSlide || 1),
+                arrowPosition: this.el.dataset.arrowPosition || "",
+                scrollMode: scrollMode,
+            },
+        );
+=======
+        const renderOptions = super.getQWebRenderOptions(...arguments);
+        const isSingleScroll = this.el.classList.contains("o_carousel_multi_items");
+        const scrollMode =
+            isSingleScroll && renderOptions.data.length > renderOptions.chunkSize
+                ? "single"
+                : "all";
+        return Object.assign(renderOptions, {
+                interval: parseInt(this.el.dataset.carouselInterval),
+                rowPerSlide: parseInt(uiUtils.isSmall() ? 1 : this.el.dataset.rowPerSlide || 1),
+                arrowPosition: this.el.dataset.arrowPosition || "",
+                scrollMode: scrollMode,
+            },
+        );
+>>>>>>> 57aade7b566ccab442d3ebdacaee67fdd665e203
     }
 }
 
