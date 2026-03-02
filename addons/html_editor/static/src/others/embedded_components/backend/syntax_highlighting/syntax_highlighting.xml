@@ -4,7 +4,7 @@
     <t t-name="html_editor.EmbeddedSyntaxHighlighting">
         <CodeToolbar target="state.host" currentLanguage="embeddedState.languageId"
             getContent="() => this.textarea.value" onLanguageChange="onLanguageChange.bind(this)"
-            convertToParagraph="this.props.convertToParagraph"
+            convertToParagraph="this.props.convertToParagraph" toggleCodeWrap="toggleCodeWrap.bind(this)"
         />
         <pre t-ref="pre"/>
         <textarea t-ref="textarea" class="o_prism_source" contenteditable="true" placeholder="Code"

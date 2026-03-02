@@ -71,7 +71,7 @@ test("starting edition with a pre activates syntax highlighting", async () => {
             '<p data-selection-placeholder=""><br></p>' +
             highlightedPre({ value: "some code" }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>', // Undo did nothing.
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">some code</pre>`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">some code</pre>`,
     });
 });
 
@@ -118,7 +118,7 @@ test("starting edition with a pre activates syntax highlighting (with dataset va
                 textareaRange: 12, // "Hello world![]"
             }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>', // Undo did nothing.
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="javascript">Hello world!</pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="javascript" data-code-wrap="false">Hello world!</pre>[]`,
     });
 });
 
@@ -141,7 +141,7 @@ test("inserting a code block activates syntax highlighting plugin, typing trigge
             '<p data-selection-placeholder=""><br></p>' +
             highlightedPre({ value: "abcd", textareaRange: 4 }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>', // The change of value in the textarea is reflected in the pre.
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">abcd</pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">abcd</pre>[]`,
     });
 });
 
@@ -153,7 +153,7 @@ test("inserting an empty code block activates syntax highlighting plugin with an
             '<p data-selection-placeholder=""><br></p>' +
             highlightedPre({ value: "", textareaRange: 0 }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext"><br></pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false"><br></pre>[]`,
     });
 });
 
@@ -182,7 +182,7 @@ test("inserting a code block in an empty paragraph with a style placeholder acti
             })}
             <p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>`
         ),
-        contentAfter: `<p><br></p><pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext"><br></pre>[]`,
+        contentAfter: `<p><br></p><pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false"><br></pre>[]`,
     });
 });
 
@@ -207,7 +207,7 @@ test("inserting text and undo after an empty code block activates the syntax hig
             `<p data-selection-placeholder="" class="o-horizontal-caret o-we-hint" o-we-hint-text='Type "/" for commands'>[]<br></p>` +
             highlightedPre({ value: "" }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `[]<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext"><br></pre>`,
+        contentAfter: `[]<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false"><br></pre>`,
     });
 });
 
@@ -229,7 +229,7 @@ test("changing languages in a code block changes its highlighting", async () => 
                 textareaRange: 9,
             }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="javascript">some code</pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="javascript" data-code-wrap="false">some code</pre>[]`,
     });
 });
 
@@ -250,7 +250,7 @@ test("should fill an empty pre", async () => {
             '<p data-selection-placeholder=""><br></p>' +
             highlightedPre({ value: "", textareaRange: 0 }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>', // Note: the BR is outside the highlight.
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext"><br></pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false"><br></pre>[]`,
     });
 });
 
@@ -286,7 +286,7 @@ test("the textarea should never contains zws", async () => {
             '<p data-selection-placeholder=""><br></p>' +
             highlightedPre({ value: "abc", textareaRange: 3 }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">abc</pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">abc</pre>[]`,
     });
 });
 
@@ -326,7 +326,7 @@ test("can copy content with the copy button", async () => {
             '<p data-selection-placeholder=""><br></p>' +
             highlightedPre({ value: "abcd", textareaRange: 4 }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">abcd</pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">abcd</pre>[]`,
     });
 });
 
@@ -350,7 +350,7 @@ test("tab in code block inserts 4 spaces", async () => {
                 textareaRange: 6, // "co    []de"
             }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">co    de</pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">co    de</pre>[]`,
     });
 });
 
@@ -375,7 +375,7 @@ test("tab in selection in code block indents each selected line", async () => {
                 textareaRange: [5, 19], // "    a[\n    b c\n     ]d"
             }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">${valueAfter.replaceAll(
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">${valueAfter.replaceAll(
             "\n",
             "<br>"
         )}</pre>[]`,
@@ -415,7 +415,7 @@ test("shift+tab in code block outdents the current line", async () => {
                 textareaRange: 15, // "    some\nco    []de\n    for you"
             }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">${valueAfter.replaceAll(
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">${valueAfter.replaceAll(
             "\n",
             "<br>"
         )}</pre>[]`,
@@ -455,7 +455,7 @@ test("shift+tab in selection in code block outdents each selected line", async (
                 textareaRange: [1, 6], // "a[\nb c\n]d"
             }) +
             '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">a<br>b c<br>d</pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">a<br>b c<br>d</pre>[]`,
     });
 });
 
@@ -1114,7 +1114,7 @@ test("can copy/paste a highlighted code block", async () => {
             await press(["ctrl", "c"], { dataTransfer: clipboardData });
             const copiedValue = unformat(
                 `<p>ab</p>
-                <pre data-embedded="readonlySyntaxHighlighting" data-language-id="javascript">some code</pre>
+                <pre data-embedded="readonlySyntaxHighlighting" data-language-id="javascript" data-code-wrap="false">some code</pre>
                 <p>cd</p>`
             );
             expect(clipboardData.getData("text/html")).toBe(copiedValue);
@@ -1133,7 +1133,7 @@ test("can copy/paste a highlighted code block", async () => {
         ),
         contentAfter: unformat(
             `<p>ab</p>
-            <pre data-embedded="readonlySyntaxHighlighting" data-language-id="javascript">some code</pre>
+            <pre data-embedded="readonlySyntaxHighlighting" data-language-id="javascript" data-code-wrap="false">some code</pre>
             <p>cd[]</p>`
         ),
     });
@@ -1145,7 +1145,7 @@ test("invisible whitespace gets trimmed before changing tag to pre", async () =>
             hel[]lo
         </p>`,
         stepFunction: insertPre,
-        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">hello</pre>[]`,
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">hello</pre>[]`,
     });
 });
 
@@ -1175,7 +1175,7 @@ test("can write in a highlighted code block within a nested list", async () => {
                 <li class="oe-nested">
                     <ul>
                         <li>
-                            <pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">some codexy</pre>[]
+                            <pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">some codexy</pre>[]
                         </li>
                     </ul>
                 </li>
@@ -1262,4 +1262,40 @@ test("should keep textarea focused after copying code content", async () => {
 
     // Ensure focus remains on the textarea after copying
     expect(document.activeElement).toBe(textarea);
+});
+
+test("should toggle code wrapping via the code toolbar", async () => {
+    await testEditorWithHighlightedContent({
+        contentBefore: "<pre>some code</pre>",
+        contentBeforeEdit:
+            '<p data-selection-placeholder=""><br></p>' +
+            highlightedPre({ value: "some code" }) +
+            '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
+        stepFunction: async (editor) => {
+            // Focus the textarea inside the code block
+            const textarea = editor.document.querySelector("textarea");
+            await click(textarea);
+
+            // Wait for the code toolbar and trigger the wrap action
+            await waitFor(".o_code_toolbar");
+            await click(".o_code_toolbar button[name='wrap']");
+
+            await compareHighlightedContent(
+                getContent(editor.editable),
+                '<p data-selection-placeholder=""><br></p>' +
+                    highlightedPre({ value: "some code", textareaRange: 9, codeWrap: true }) +
+                    '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
+                "Code block should be wrapped after clicking the wrap button in the code toolbar",
+                editor
+            );
+
+            // Trigger the wrap action again to unwrap
+            await click(".o_code_toolbar button[name='wrap']");
+        },
+        contentAfterEdit:
+            '<p data-selection-placeholder=""><br></p>' +
+            highlightedPre({ value: "some code", textareaRange: 9 }) +
+            '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
+        contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">some code</pre>[]`,
+    });
 });

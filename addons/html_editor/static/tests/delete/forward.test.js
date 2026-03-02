@@ -797,7 +797,7 @@ describe("Selection collapsed", () => {
                         '<p data-selection-placeholder=""><br></p>' +
                         highlightedPre({ value: "abd", textareaRange: 2 }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">abd</pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">abd</pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
@@ -815,7 +815,7 @@ describe("Selection collapsed", () => {
                         '<p data-selection-placeholder=""><br></p>' +
                         highlightedPre({ value: "     abd", textareaRange: 7 }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">     abd</pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">     abd</pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
@@ -833,7 +833,7 @@ describe("Selection collapsed", () => {
                         '<p data-selection-placeholder=""><br></p>' +
                         highlightedPre({ value: "abd     ", textareaRange: 2 }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">abd     </pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">abd     </pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
@@ -851,7 +851,7 @@ describe("Selection collapsed", () => {
                         '<p data-selection-placeholder=""><br></p>' +
                         highlightedPre({ value: "     abd     ", textareaRange: 7 }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">     abd     </pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">     abd     </pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
@@ -869,7 +869,7 @@ describe("Selection collapsed", () => {
                         '<p data-selection-placeholder=""><br></p>' +
                         highlightedPre({ value: "    ab", textareaRange: 2 }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">    ab</pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">    ab</pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
@@ -887,7 +887,7 @@ describe("Selection collapsed", () => {
                         '<p data-selection-placeholder=""><br></p>' +
                         highlightedPre({ value: "abcd", textareaRange: 2 }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">abcd</pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">abcd</pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
@@ -911,7 +911,7 @@ describe("Selection collapsed", () => {
                         '<p data-selection-placeholder=""><br></p>' +
                         highlightedPre({ value: "ab", textareaRange: 0 }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">ab</pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">ab</pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
@@ -935,7 +935,7 @@ describe("Selection collapsed", () => {
                         '<p data-selection-placeholder=""><br></p>' +
                         highlightedPre({ value: "ab", textareaRange: 2 }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">ab</pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">ab</pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
