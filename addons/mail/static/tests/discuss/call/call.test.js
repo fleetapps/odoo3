@@ -1294,6 +1294,7 @@ test("open conversation from call invitation (discuss app)", async () => {
     await click("[title='Join Call']");
     await contains(".o-mail-DiscussContent-threadName[title=General]");
 });
+<<<<<<< d644f5552b95675f187346b74f93e328f80675e2
 
 test("Meeting chat panel excludes call notifications for 'New Meeting' channels", async () => {
     mockDate("2026-01-01 10:00:00");
@@ -1360,3 +1361,31 @@ test("shows a presenter bar when screen-sharing in discuss calls and meetings", 
     }
     await contains(".o-discuss-CallPresentationBar", { count: 0 });
 });
+||||||| d038b2c23b9f7c74d381e25276d00155bf89331e
+=======
+
+test("show warning when blur hardware acceleration is not available", async () => {
+    const pyEnv = await startServer();
+    patchWithCleanup(HTMLCanvasElement.prototype, {
+        getContext(type) {
+            if (type.includes("webgl")) {
+                return false;
+            }
+            return super.getContext(type);
+        },
+    });
+    const channelId = pyEnv["discuss.channel"].create({ name: "General" });
+    await start();
+    await openDiscuss(channelId);
+    await click("[title='Start Call']");
+    await click("button[title='Turn camera on']");
+    await click("button[title='Video Settings']");
+    await click(":has(:text(Blur background)) .form-switch");
+    await contains(".o-discuss-BlurPerformanceWarning-button");
+    expect(".o-discuss-BlurPerformanceWarning-button").toBeVisible();
+    await contains(".o-discuss-CallDropdown-content:has(:text('Performance Warning:'))");
+    expect(".o-discuss-CallDropdown-content:has(:text('Performance Warning:'))").toBeVisible();
+    await click("[title='Dismiss warning']");
+    await contains(".o-discuss-BlurPerformanceWarning-button", { count: 0 });
+});
+>>>>>>> bcc4c766f9453802bfee2232fb4232e362225eca
