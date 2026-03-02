@@ -589,7 +589,7 @@ class MrpWorkorder(models.Model):
         for production in self.mapped("production_id"):
             production._link_workorders_and_moves()
 
-    def _action_plan(self, from_date=False, alternative=True):
+    def _action_plan(self, from_date=False, alternative=True, block_by=True):
         """Plan or replan a set of manufacturing workorders
 
         :param from_date: An optional `datetime` object. If provided, The planning will start from
@@ -610,8 +610,8 @@ class MrpWorkorder(models.Model):
             if wo.id in done_wo:
                 continue
             date_start = max(from_date or datetime.now(), datetime.now())
-            if self.env.context.get('consider_blocked_by', True):
-                wo.blocked_by_workorder_ids.filtered(lambda wo: wo.id not in done_wo)._action_plan(from_date=from_date, alternative=alternative)
+            wo.blocked_by_workorder_ids.filtered(lambda wo: wo.id not in
+                done_wo)._action_plan(from_date=from_date, alternative=alternative, block_by=block_by)
             done_wo.update(wo.blocked_by_workorder_ids.ids)
             if wo.blocked_by_workorder_ids and wo.blocked_by_workorder_ids[-1].date_finished:
                 date_start = wo.blocked_by_workorder_ids[-1].date_finished
@@ -975,7 +975,7 @@ class MrpWorkorder(models.Model):
         date_to_plan_on = max((wo.leave_id.date_to for wo in self.blocked_by_workorder_ids if wo.leave_id), default=datetime.now())
         if self.env.context.get('date_to_plan_on'):
             date_to_plan_on = fields.Datetime.from_string(self.env.context.get('date_to_plan_on'))
-        self.with_context(consider_blocked_by=False)._action_plan(from_date=date_to_plan_on, alternative=False)
+        self._action_plan(from_date=date_to_plan_on, alternative=False, block_by=False)
 
     def action_unplan(self):
         self.leave_id.unlink()
