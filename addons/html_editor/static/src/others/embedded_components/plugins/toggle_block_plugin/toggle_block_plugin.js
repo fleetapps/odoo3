@@ -526,16 +526,19 @@ export class ToggleBlockPlugin extends Plugin {
     }
 
     insertToggleBlock() {
-        let initialText;
+        let initialText, titleBlockTag;
         const selection = this.dependencies.selection.getSelectionData().deepEditableSelection;
         if (selection.isCollapsed) {
             const selectedBlock = closestBlock(selection.startContainer);
             initialText = selectedBlock.textContent;
             selectedBlock.remove();
+            if (/^H[1-6]$/.test(selectedBlock.tagName)) {
+                titleBlockTag = selectedBlock.tagName;
+            }
         }
-
-        const block = this.renderToggleBlock(initialText);
-        const target = block.querySelector(`${titleSelector} > ${baseContainerGlobalSelector}`);
+        const block = this.renderToggleBlock(initialText, titleBlockTag);
+        const selector = titleBlockTag ?? `${titleSelector} > ${baseContainerGlobalSelector}`;
+        const target = block.querySelector(selector);
         this.dependencies.dom.insert(block);
         this.dependencies.selection.setCursorStart(target);
         this.dependencies.history.addStep();
@@ -582,11 +585,12 @@ export class ToggleBlockPlugin extends Plugin {
         }
     }
 
-    renderToggleBlock(initialText) {
+    renderToggleBlock(initialText, titleNodeName) {
         const baseContainer = this.dependencies.baseContainer.createBaseContainer();
         return parseHTML(
             this.document,
             renderToString("html_editor.EmbeddedToggleBlockBlueprint", {
+                titleNodeName,
                 baseContainerNodeName: baseContainer.nodeName,
                 baseContainerAttributes: {
                     class: baseContainer.className,
