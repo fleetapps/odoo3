@@ -1,15 +1,11 @@
-from odoo.addons.account_edi_ubl_cii.tests.common import TestUblBis3Common
+from odoo.addons.account_edi_ubl_cii.tests.common import TestUblBis3Common, TestUblCiiBECommon
 from odoo.tests import tagged
 
 from freezegun import freeze_time
 
 
 @tagged('post_install_l10n', 'post_install', '-at_install')
-class TestUblImportBis3BE(TestUblBis3Common):
-
-    @classmethod
-    def subfolder_import(cls):
-        return f"{super().subfolder_import()}/bis3/invoice/be"
+class TestUblImportBis3BE(TestUblBis3Common, TestUblCiiBECommon):
 
     @freeze_time('2020-01-01')
     def test_import_partner(self):
@@ -17,7 +13,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
         self.assertFalse(self.env['res.partner'].search([('vat', '=', 'BE0477472701')]))
 
         # Test the partner has been created.
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_partner',
             journal=self.company_data['default_journal_sale'],
         )
@@ -33,7 +29,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
         }])
 
         # Test the partner has been retrieved.
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_partner',
             journal=self.company_data['default_journal_sale'],
         )
@@ -43,7 +39,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
     def test_import_discount_per_line_price_on_big_quantity(self):
         tax_21 = self.percent_tax(21.0)
 
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_discount_per_line_price_on_big_quantity',
             journal=self.company_data['default_journal_sale'],
         )
@@ -79,7 +75,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
     def test_import_lot_of_decimals_in_quantities(self):
         tax_21 = self.percent_tax(21.0)
 
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_lot_of_decimals_in_quantities',
             journal=self.company_data['default_journal_sale'],
         )
@@ -132,7 +128,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
     @freeze_time('2020-01-01')
     def test_import_not_matched_tax(self):
         """ The tax has not been retrieved. Do not store any 'extra_tax_data'. """
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_discount_per_line_price_on_big_quantity',
             journal=self.company_data['default_journal_sale'],
         )
@@ -169,7 +165,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
         tax_25 = self.percent_tax(25.0)
         tax_0 = self.percent_tax(0.0)
 
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_mixed_allowance_charges',
             journal=self.company_data['default_journal_sale'],
         )
@@ -246,7 +242,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
         new_account = default_account.copy()
 
         # Retrieve the tax having the lower sequence.
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_discount_per_line_price_on_big_quantity',
             journal=self.company_data['default_journal_sale'],
         )
@@ -273,7 +269,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
         )
 
         # Retrieve the tax having the lower sequence.
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_discount_per_line_price_on_big_quantity',
             journal=self.company_data['default_journal_sale'],
         )
@@ -310,7 +306,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
             post=True,
         )
 
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_discount_per_line_price_on_big_quantity',
             journal=self.company_data['default_journal_sale'],
         )
@@ -346,7 +342,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
     def test_import_cash_rounding_add_invoice_line(self):
         tax_21 = self.percent_tax(21.0)
 
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_cash_rounding_add_invoice_line',
             journal=self.company_data['default_journal_sale'],
         )
@@ -381,7 +377,7 @@ class TestUblImportBis3BE(TestUblBis3Common):
     def test_import_cash_rounding_biggest_tax(self):
         tax_21 = self.percent_tax(21.0)
 
-        invoice = self._import_as_attachment_on(
+        invoice = self._import_invoice_as_attachment_on(
             test_name='test_import_cash_rounding_biggest_tax',
             journal=self.company_data['default_journal_sale'],
         )
@@ -411,116 +407,100 @@ class TestUblImportBis3BE(TestUblBis3Common):
     # PARTIAL IMPORTS
     # -------------------------------------------------------------------------
 
-    @freeze_time('2020-01-01')
+    def test_partial_import_invoice_line_name_and_description(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_name_and_description')
+        self.assertRecordValues(invoice.invoice_line_ids, [{'name': 'description value'}])
+
     def test_partial_import_invoice_line_name(self):
-        invoice = self._import_as_attachment_on(
-            test_name='test_partial_import_invoice_line_name_1',
-            journal=self.company_data['default_journal_sale'],
-        )
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_name')
+        self.assertRecordValues(invoice.invoice_line_ids, [{'name': 'name value'}])
 
+    def test_partial_import_invoice_line_only_line_extension_amount(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_only_line_extension_amount')
+        self.assertRecordValues(invoice.invoice_line_ids, [{
+            'price_unit': 899.99,
+            'quantity': 1.0,
+        }])
+
+    def test_partial_import_invoice_line_line_extension_amount_plus_quantity(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_line_extension_amount_plus_quantity')
+        self.assertRecordValues(invoice.invoice_line_ids, [{
+            'price_unit': 179.998,
+            'quantity': 5.0,
+        }])
+
+    def test_partial_import_invoice_line_line_extension_amount_plus_quantity_plus_allowance_plus_charge(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_line_extension_amount_plus_quantity_plus_allowance_plus_charge')
         self.assertRecordValues(invoice.invoice_line_ids, [
-            {'name': 'description value'},
+            {
+                'price_unit': 200.0,
+                'quantity': 5.0,
+                'discount': 10.000000000000007,
+            },
+            {
+                'price_unit': 50.0,
+                'quantity': 1.0,
+                'discount': 0.0,
+            },
         ])
 
-        invoice = self._import_as_attachment_on(
-            test_name='test_partial_import_invoice_line_name_2',
-            journal=self.company_data['default_journal_sale'],
-        )
+    def test_partial_import_invoice_line_price_amount_plus_base_quantity(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_price_amount_plus_base_quantity')
+        self.assertRecordValues(invoice.invoice_line_ids, [{
+            'price_unit': 90.0,
+            'quantity': 5.0,
+        }])
 
+    def test_partial_import_invoice_line_price_amount_plus_base_quantity_plus_allowance(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_price_amount_plus_base_quantity_plus_allowance')
+        self.assertRecordValues(invoice.invoice_line_ids, [{
+            'price_unit': 90.0,
+            'quantity': 5.0,
+        }])
+
+    def test_partial_import_invoice_line_line_extension_amount_weird_0_quantity_and_0_price_amount(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_line_extension_amount_weird_0_quantity_and_0_price_amount')
+        self.assertRecordValues(invoice.invoice_line_ids, [{
+            'price_unit': 1000.0,
+            'quantity': 1.0,
+            'discount': 0.0,
+            'price_subtotal': 1000.0,
+        }])
+
+    def test_partial_import_invoice_line_line_extension_amount_weird_0_quantity(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_line_extension_amount_weird_0_quantity')
+        self.assertRecordValues(invoice.invoice_line_ids, [{
+            'price_unit': 100.0,
+            'quantity': 10.0,
+            'discount': 0.0,
+            'price_subtotal': 1000.0,
+        }])
+
+    def test_partial_import_invoice_line_line_extension_amount_weird_0_price_amount(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_line_extension_amount_weird_0_price_amount')
+        self.assertRecordValues(invoice.invoice_line_ids, [{
+            'price_unit': 10.0,
+            'quantity': 100.0,
+            'discount': 0.0,
+            'price_subtotal': 1000.0,
+        }])
+
+    def test_partial_import_invoice_line_negative_lines_and_total(self):
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_negative_lines_and_total')
         self.assertRecordValues(invoice.invoice_line_ids, [
-            {'name': 'name value'},
+            {
+                'price_unit': 400.0,
+                'quantity': 7.000000000000005,
+                'discount': 0.0,
+                'price_subtotal': 2800.0,
+            },
+            {
+                'price_unit': 500.0,
+                'quantity': -3.000000000000003,
+                'discount': 0.0,
+                'price_subtotal': -1500.0,
+            },
         ])
-
-    def test_partial_import_invoice_line_price_unit_quantity(self):
-        test_expected_line_ids_map = {
-            'test_partial_import_invoice_line_price_unit_quantity_1': [
-                {
-                    'price_unit': 899.99,
-                    'quantity': 1.0,
-                },
-            ],
-
-            # Combined with a quantity.
-            'test_partial_import_invoice_line_price_unit_quantity_2': [
-                {
-                    'price_unit': 179.998,
-                    'quantity': 5.0,
-                },
-            ],
-
-            # Combined with both allowance and charge.
-            'test_partial_import_invoice_line_price_unit_quantity_3': [
-                {
-                    'price_unit': 200.0,
-                    'quantity': 5.0,
-                    'discount': 10.000000000000007,
-                },
-                {
-                    'price_unit': 50.0,
-                    'quantity': 1.0,
-                    'discount': 0.0,
-                },
-            ],
-
-            # Compute from PriceAmount and BaseQuantity.
-            'test_partial_import_invoice_line_price_unit_quantity_4': [
-                {
-                    'price_unit': 90.0,
-                    'quantity': 5.0,
-                },
-            ],
-
-            # Combine with allowance/charge on price.
-            'test_partial_import_invoice_line_price_unit_quantity_5': [
-                {
-                    'price_unit': 90.0,
-                    'quantity': 5.0,
-                },
-            ],
-
-            # Zero values on quantity / price unit
-            'test_partial_import_invoice_line_price_unit_quantity_6': [
-                {
-                    'price_unit': 1000.0,
-                    'quantity': 1.0000000000000009,
-                    'discount': 0.0,
-                    'price_subtotal': 1000.0,
-                },
-                {
-                    'price_unit': 100.0,
-                    'quantity': 10.000000000000009,
-                    'discount': 0.0,
-                    'price_subtotal': 1000.0,
-                },
-                {
-                    'price_unit': 10.0,
-                    'quantity': 100.00000000000009,
-                    'discount': 0.0,
-                    'price_subtotal': 1000.0,
-                },
-            ],
-
-            # Negative lines and total on <Invoice/> XML.
-            'test_partial_import_invoice_line_price_unit_quantity_7': [
-                {
-                    'price_unit': 400.0,
-                    'quantity': 7.000000000000005,
-                    'discount': 0.0,
-                    'price_subtotal': 2800.0,
-                },
-                {
-                    'price_unit': 500.0,
-                    'quantity': -3.000000000000003,
-                    'discount': 0.0,
-                    'price_subtotal': -1500.0,
-                },
-            ],
-        }
-
-        for test_name, expected_line_ids in test_expected_line_ids_map.items():
-            with self.subTest(test_name=test_name):
-                invoice = self._import_as_attachment_on(test_name=test_name)
-                self.assertRecordValues(invoice.invoice_line_ids, expected_line_ids)
 
     def test_partial_import_invoice_line_product(self):
         products = self.env['product.product'].create([{
@@ -539,10 +519,10 @@ class TestUblImportBis3BE(TestUblBis3Common):
             'barcode': '00002',
         }])
 
-        invoice = self._import_as_attachment_on(test_name='test_partial_import_invoice_line_product_1')
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_product_1')
         self.assertRecordValues(invoice.invoice_line_ids, [{'product_id': products[0].id}])
 
-        invoice = self._import_as_attachment_on(test_name='test_partial_import_invoice_line_product_2')
+        invoice = self._import_invoice_as_attachment_on(test_name='test_partial_import_invoice_line_product_2')
         self.assertRecordValues(invoice.invoice_line_ids, [
             {'product_id': products[0].id},
             {'product_id': products[1].id},
