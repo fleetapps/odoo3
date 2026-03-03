@@ -6,7 +6,6 @@ class PdpResponse(models.Model):
     _description = 'Response Messages for PDP'
 
     pdp_message_uuid = fields.Char('PDP UUID', required=True)
-    # TODO: rename to status?
     response_code = fields.Selection(
         selection=[
             ('submitted', 'Submitted'),

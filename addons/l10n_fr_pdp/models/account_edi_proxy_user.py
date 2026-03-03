@@ -34,6 +34,8 @@ PROCESS_CONDITION_CODE_TO_RESPONSE_CODE = {
     '220': 'cancelled',  # S
 }
 
+STATUS_TO_PROCESS_CONDITION_CODE = {status: code for code, status in PROCESS_CONDITION_CODE_TO_RESPONSE_CODE.items()}
+
 
 def _parse_cdar_datetime(date_string):
     if date_string is None:
@@ -380,7 +382,7 @@ class AccountEdiProxyClientUser(models.Model):
                     }
                 )
                 response_code_to_description_map = dict(pdp_response._fields['response_code']._description_selection(self.env))
-                response_code_description = response_code_to_description_map[pdp_response.response_code]
+                response_code_description = response_code_to_description_map.get(pdp_response.response_code, pdp_response.response_code)
                 origin_move._message_log(
                     body=self.env._(
                         "The Response issued on %(issue_date)s with Response Code '%(response_code)s' was sent by the access point.",
@@ -451,11 +453,12 @@ class AccountEdiProxyClientUser(models.Model):
                 bodies={move.id: log_message for move in reference_moves},
             )
         else:
+            status_list = [{'note': additional_info.get('note')}]  # We only put the note since we have all other info
             self.env['pdp.response'].create([
                 {
                     'pdp_message_uuid': message['message_uuid'],
                     'response_code': status,
-                    # TODO: status_info
+                    'status_info': "\n\n".join([self._format_status_dict(status) for status in status_list]),
                     'pdp_state': 'processing',
                     'move_id': move.id,
                     'issue_date': issue_time,
@@ -474,7 +477,7 @@ class AccountEdiProxyClientUser(models.Model):
         response_uuids = []
         purchase_journal = self.company_id.pdp_purchase_journal_id
 
-        # Note: We process the invoices first to avoid importing a respnse before its origin move
+        # Note: We process the invoices first to avoid importing a response before its origin move
         for uuid, content in messages.items():
             if content['document_type'] == 'CrossDomainAcknowledgementAndResponse':
                 response_uuids.append(uuid)
@@ -487,9 +490,8 @@ class AccountEdiProxyClientUser(models.Model):
         origin_message_uuids = [messages[uuid]['origin_message_uuid'] for uuid in response_uuids]
         relevant_moves_domain = [
             ('pdp_message_uuid', 'in', origin_message_uuids),
-            ('company_id', '=', self.company_id.id),  # TODO: on PRRO PR?
+            ('company_id', '=', self.company_id.id),
         ]
-        # TODO: maybe we should put a unique constraint on 'pdp_message_uuid'
         uuid_to_move_map = self.env['account.move'].search(relevant_moves_domain).grouped('pdp_message_uuid')
         for uuid in response_uuids:
             content = messages[uuid]
@@ -498,7 +500,7 @@ class AccountEdiProxyClientUser(models.Model):
             if not origin_move:
                 _logger.warning('The PDP response with UUID %s could not be imported: Original journal entry (UUID %s) not found.', uuid, origin_uuid)
                 continue
-            if response := self._pdp_import_response(uuid, content, origin_move):
+            if response := self._pdp_import_response(uuid, content, origin_move[:1]):
                 processed_messages[uuid] = response
 
         return processed_messages
@@ -514,17 +516,17 @@ class AccountEdiProxyClientUser(models.Model):
         info = self._pdp_extract_response_info(decoded_document)
         response_code = info['response_code']
         issue_date = info['issue_date']
-        status_info = info['status_info']
-        # TODO: Maybe split note reason / reason code part off from `note`
+        status_list = info['status_list']
+        markup_status_info = Markup('<br/><br/>').join([self._format_status_dict(status, separator=Markup('<br/>')) for status in status_list])
         response_code_to_description_map = dict(response._fields['response_code']._description_selection(self.env))
         if response_code not in response_code_to_description_map or not issue_date:
             origin_move._message_log(
                 body=self.env._(
-                    "Failed to process incoming response (Response Code = %(response_code)s; Issue Date = %(issue_date)s).%(br)s%(note_info)s",
+                    "Failed to process incoming response (Response Code = %(response_code)s; Issue Date = %(issue_date)s).%(br)s%(satus_info)s",
                     response_code=response_code,
                     issue_date=issue_date,
-                    note_info=f"It included the following status info:\n{status_info}" if status_info else '',
-                    br=Markup('<br/>') if status_info else '',
+                    status_info=markup_status_info,
+                    br=Markup('<br/>It included the following status info:<br/>') if markup_status_info else '',
                 ),
             )
             return response
@@ -545,9 +547,9 @@ class AccountEdiProxyClientUser(models.Model):
         response = self.env['pdp.response'].create({
             'pdp_message_uuid': uuid,
             'response_code': response_code,
-            'pdp_state': content['state'],  # TODO: do we need to fetch response messages that are not 'done'?
+            'pdp_state': content['state'],
             'move_id': origin_move.id,
-            'status_info': status_info,
+            'status_info': '\n\n'.join([self._format_status_dict(status, separator=Markup('\n')) for status in status_list]),
             'issue_date': issue_date,
         })
         # TODO: Maybe we should "sort" all the imported responses by `issue_date` before logging the messages?
@@ -555,11 +557,11 @@ class AccountEdiProxyClientUser(models.Model):
         if content['state'] == 'done':
             origin_move._message_log(
                 body=self.env._(
-                    "Received response with Response Code '%(response_code)s' issued on %(issue_date)s.%(br)s%(note_info)s",
+                    "Received response with Response Code '%(response_code)s' issued on %(issue_date)s.%(br)s%(status_info)s",
                     response_code=response_code_description,
                     issue_date=issue_date,
-                    note_info=f"It included the following status info:\n{status_info}" if status_info else '',
-                    br=Markup('<br/>') if status_info else '',
+                    status_info=markup_status_info,
+                    br=Markup('<br/>It included the following status info:<br/>') if markup_status_info else '',
                 ),
                 attachment_ids=attachment.ids,
             )
@@ -580,45 +582,44 @@ class AccountEdiProxyClientUser(models.Model):
                   for payment_node in node.findall("./ram:SpecifiedDocumentCharacteristic", namespaces=CDAR_NSMAP)
               ]),
               'note': "\n".join([
-                  f"({note_node.findtext('./ram:SubjectCode', namespaces=CDAR_NSMAP)}) {note_node.findtext('./ram:Content', namespaces=CDAR_NSMAP)}"
+                  (f"({subject_code})" if subject_code else "") + content
                   for note_node in node.findall("./ram:IncludedNote", namespaces=CDAR_NSMAP)
+                  if ((subject_code := note_node.findtext('./ram:SubjectCode', namespaces=CDAR_NSMAP))
+                      or (content := note_node.findtext('./ram:Content', namespaces=CDAR_NSMAP)))
               ]),
             } for node in status_nodes
         ] if status_nodes is not None else []
-
-        def format_status_dict(status):
-
-            index = status['index']
-            reason_code = status.get('reason_code')
-            reason = status.get('reason')
-            note = status.get('note')
-
-            infos = []
-            # Reason
-            if index:
-                infos.append(f"#{index}")
-            if reason_code and reason:
-                infos.append(f"[{reason_code}] {reason}")
-            elif reason_code:
-                infos.append(f"Response Code: {reason_code}")
-            elif reason:
-                infos.append(reason)
-            # Note
-            if note:
-                infos.append(note)
-            # Payments
-            payments = status.get('payments')
-            if payments:
-                infos.append(payments)
-
-            return "\n".join(infos)
 
         return {
             'process_condition_code': process_condition_code,
             'response_code': PROCESS_CONDITION_CODE_TO_RESPONSE_CODE.get(process_condition_code, process_condition_code),
             'issue_date': _parse_cdar_datetime(xml_node.findtext("rsm:AcknowledgementDocument/ram:IssueDateTime/udt:DateTimeString", namespaces=CDAR_NSMAP)),
-            'status_info': "\n\n".join([format_status_dict(status) for status in status_list]),
+            'status_list': status_list,
         }
+
+    @api.model
+    def _format_status_dict(self, status, separator='\n'):
+        reason_code = status.get('reason_code')
+        reason = status.get('reason')
+        note = status.get('note')
+
+        infos = []
+        # Reason
+        if reason_code and reason:
+            infos.append(f"[{reason_code}] {reason}")
+        elif reason_code:
+            infos.append(f"Response Code: {reason_code}")
+        elif reason:
+            infos.append(reason)
+        # Note
+        if note:
+            infos.append(note)
+        # Payments
+        payments = status.get('payments')
+        if payments:
+            infos.append(payments)
+
+        return separator.join(infos)
 
     def _pdp_import_invoice(self, uuid, content, journal):
         if not journal:

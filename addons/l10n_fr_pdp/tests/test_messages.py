@@ -14,7 +14,7 @@ from odoo.addons.account.tests.test_account_move_send import TestAccountMoveSend
 from .common import FAKE_UUID, FILE_PATH, TestL10nFrPdpCommon
 
 
-# TODO: some Peppol only sending tests (non-FR)
+# TODO: some Peppol only sending tests (non-FR); implement `_create_belgian_invoice`
 
 
 @tagged('post_install_l10n', 'post_install', '-at_install')

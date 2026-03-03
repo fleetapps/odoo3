@@ -3,6 +3,7 @@ from datetime import datetime
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from odoo.addons.l10n_fr_pdp.models.account_edi_proxy_user import STATUS_TO_PROCESS_CONDITION_CODE
 from odoo.addons.l10n_fr_pdp.models.account_edi_xml_ubl_21_fr import PDP_CUSTOMIZATION_ID
 
 UNSENT_PDP_MOVE_STATES = {'ready', 'to_send', 'error'}
@@ -82,7 +83,7 @@ class AccountMove(models.Model):
         # Take the latest response status if we have any
         # TODO: I suppose "partially paid" is possible? Since 'paid' lifecyle does not have to be the full amount
         response_message = self.pdp_response_ids.filtered(lambda l: l.pdp_state == 'done')
-        if latest_status := response_message.sorted(lambda l: (l.issue_date or datetime.min, l.id), reverse=True)[:1].response_code:
+        if latest_status := response_message.sorted(lambda l: (l.issue_date or datetime.min, STATUS_TO_PROCESS_CONDITION_CODE.get(l.response_code, '0'), l.id), reverse=True)[:1].response_code:
             return latest_status
 
         # We have received the purchase document so it is 'in_hand'

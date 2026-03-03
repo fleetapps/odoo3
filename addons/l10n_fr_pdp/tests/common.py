@@ -193,7 +193,6 @@ class TestL10nFrPdpCommon(TestUblCiiCommon, TestAccountMoveSendCommon):
         })
 
     def _create_belgian_invoice(self, move_type='out_invoice'):
-        # TODO:
         raise NotImplementedError
 
     @classmethod

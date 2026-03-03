@@ -140,7 +140,7 @@ class ResPartner(models.Model):
     def _get_ubl_cii_formats_info(self):
         # EXTENDS 'account_edi_ubl_cii'
         formats_info = super()._get_ubl_cii_formats_info()
-        formats_info['ubl_21_fr'] = {'countries': ['FR'], 'on_peppol': False}  # TODO: it is on peppol but only used with PDP
+        formats_info['ubl_21_fr'] = {'countries': ['FR'], 'on_peppol': False}
         return formats_info
 
     def _get_suggested_invoice_edi_format(self):

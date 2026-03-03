@@ -37,7 +37,7 @@ class AccountEdiXmlUbl21Fr(models.AbstractModel):
             partner = vals[partner_type]
             if not partner.pdp_identifier:
                 constraints[f"ubl_21_fr_{partner_type}_pdp_identifier_required"] = _("The following partner's PDP identifier is missing: %s", partner.display_name)
-            if not partner.siret:  # TODO: siren also enough
+            if not partner.siret:
                 constraints[f"ubl_21_fr_{partner_type}_siret_required"] = _("The following partner's SIRET is missing: %s", partner.display_name)
 
         return constraints
@@ -81,32 +81,23 @@ class AccountEdiXmlUbl21Fr(models.AbstractModel):
             'cbc:ProfileID': {'_text': profile_id},
         })
 
-        # [BR-FR-05] Add mandatory notes with defaults if not already present
         # TODO: adapted from BAJE PR
+        # [BR-FR-05] Add mandatory notes with defaults if not already present
         # Initialize / Listify 'cbc:Note'
-        if 'cbc:Note' not in document_node or not isinstance(document_node.get('cbc:Note'), list):
-            existing_note = document_node.get('cbc:Note')
+        existing_note = document_node.get('cbc:Note')
+        if not existing_note or not isinstance(document_node.get('cbc:Note'), list):
             document_node['cbc:Note'] = [existing_note] if existing_note else []
         # Add default notes
         for code, default_content in FR_DEFAULT_NOTES.items():
             document_node['cbc:Note'].append({
                 '_text': f"#{code}#{default_content}",
             })
-        # TODO: Remove after testing
+
+        # TODO:after_certification: Remove
         if self.env['ir.config_parameter'].sudo().get_param('l10n_fr_pdp.superpdp_refuse', 'no') == 'yes':
             document_node['cbc:Note'].append({
                 '_text': "#SAF#SUPER_PDP_ADR_ERROR",
             })
-
-    def _get_partner_address_vals(self, partner):
-        # EXTENDS account.edi.xml.ubl_21
-        # Old helper not used by default (see _export_invoice override)
-        # If you change this method, please change the corresponding new helper (at the end of this file).
-        vals = super()._get_partner_address_vals(partner)
-        # schematron/openpeppol/3.13.0/xslt/CEN-EN16931-UBL.xslt
-        # [UBL-CR-225]-A UBL invoice should not include the AccountingCustomerParty Party PostalAddress CountrySubentityCode
-        vals.pop('country_subentity_code', None)
-        return vals
 
     def _add_invoice_payment_means_nodes(self, document_node, vals):
         super()._add_invoice_payment_means_nodes(document_node, vals)
@@ -115,38 +106,46 @@ class AccountEdiXmlUbl21Fr(models.AbstractModel):
         # [UBL-CR-414]-A UBL invoice should not include the PaymentMeans InstructionID
         document_node['cac:PaymentMeans']['cbc:InstructionID'] = None
 
-    def _get_address_node(self, vals):
+    def _ubl_get_partner_address_node(self, vals, partner):
         # schematron/openpeppol/3.13.0/xslt/CEN-EN16931-UBL.xslt
         # [UBL-CR-225]-A UBL invoice should not include the AccountingCustomerParty Party PostalAddress CountrySubentityCode
-        address_node = super()._get_address_node(vals)
-        address_node['cbc:CountrySubentityCode'] = None
-        address_node['cac:Country']['cbc:Name'] = None
-        return address_node
+        node = super()._ubl_get_partner_address_node(vals, partner)
+        node['cbc:CountrySubentityCode'] = None
+        node['cac:Country']['cbc:Name'] = None
+        return node
 
-    def _get_party_node(self, vals):
-        party_node = super()._get_party_node(vals)
+    def _ubl_add_party_endpoint_id_node(self, vals):
+        super()._ubl_add_party_endpoint_id_node(vals)
+        partner = vals['party_vals']['partner']
+        commercial_partner = partner.commercial_partner_id
+        vals['party_node']['cbc:EndpointID'] = {
+            '_text': commercial_partner.pdp_identifier,
+            'schemeID': '0225',
+        }
 
-        partner = vals['partner']
+    def _ubl_add_party_identification_nodes(self, vals):
+        super()._ubl_add_party_identification_nodes(vals)
+        partner = vals['party_vals']['partner']
         commercial_partner = partner.commercial_partner_id
 
-        # [UBL-SR-16] Buyer identifier shall occur maximum once
-        party_id = commercial_partner.ref
         siret = commercial_partner.siret or ''
         siren = siret[:9]
         party_id = siren
         party_id_scheme = "0002"
         # party_id = siret
         # party_id_scheme = "0009"
-        party_node['cac:PartyIdentification'] = {
+        # [UBL-SR-16] Buyer identifier shall occur maximum once
+        vals['party_node']['cac:PartyIdentification'] = {
             'cbc:ID': {'_text': party_id, 'schemeID': party_id_scheme},
         }
 
-        party_node['cbc:EndpointID'] = {
-            '_text': commercial_partner.pdp_identifier,
-            'schemeID': '0225',
-        }
+    def _ubl_add_party_tax_scheme_nodes(self, vals):
+        # EXTENDS account.edi.ubl
+        super()._ubl_add_party_tax_scheme_nodes(vals)
+        partner = vals['party_vals']['partner']
+        commercial_partner = partner.commercial_partner_id
 
-        party_node['cac:PartyTaxScheme'] = [
+        vals['party_node']['cac:PartyTaxScheme'] = [
             {
                 'cbc:CompanyID': {'_text': commercial_partner.vat or commercial_partner.pdp_identifier},
                 'cac:TaxScheme': {
@@ -154,9 +153,18 @@ class AccountEdiXmlUbl21Fr(models.AbstractModel):
                 },
             },
         ]
-        party_node['cac:PartyLegalEntity']['cbc:CompanyID'] = {'_text': siren, 'schemeID': '0002'}
 
-        party_node['cac:PartyLegalEntity']['cac:RegistrationAddress'] = None
+    def _ubl_add_party_legal_entity_nodes(self, vals):
+        # EXTENDS account.edi.ubl
+        super()._ubl_add_party_legal_entity_nodes(vals)
+        partner = vals['party_vals']['partner']
+        commercial_partner = partner.commercial_partner_id
 
-        party_node['cac:Contact']['cbc:ID'] = None
-        return party_node
+        siret = commercial_partner.siret or ''
+        siren = siret[:9]
+        vals['party_node']['cac:PartyLegalEntity'] = {
+            'cbc:RegistrationName': {'_text': commercial_partner.name},
+            'cbc:CompanyID': {
+                '_text': siren, 'schemeID': '0002',
+            },
+        }

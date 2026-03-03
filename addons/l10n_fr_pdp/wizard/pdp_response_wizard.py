@@ -21,8 +21,9 @@ class PdpResponseWizard(models.TransientModel):
             ("cancelled", "Cancelled"),
             # For incoming messages
             ("refused", "Refused"),
-            # TODO: maybe we should not support the following
             ("approved", "Approved"),
+            # TODO: maybe we should not support the following
+            ("in_hand", "In Hand"),
             # ("contested", "Contested"),
             # ("payment_sent", "Payment Sent"),
         ],
@@ -128,9 +129,7 @@ class PdpResponseWizard(models.TransientModel):
             raise UserError(_("Some of the moves are not posted: %s", format_list(self.env, not_approved_moves.mapped('display_name'))))
 
         additional_info = {
-            'details': {
-                field: value for field in ['note', 'reason_code'] if (value := self[field])
-            }
+            field: value for field in ['note', 'reason_code'] if (value := self[field])
         }
 
         moves_by_company = self.move_ids.grouped('company_id')
@@ -147,8 +146,7 @@ class PdpResponseWizard(models.TransientModel):
                             "tax_percent": self._round_format_number_2(key['amount']),
                         } for key, tax_details in self._get_tax_details(move).items() if key
                     ]
-                    # TODO: allow note?
-                    company.pdp_edi_user._pdp_send_response(moves, 'paid', {'payments': payments})
+                    company.pdp_edi_user._pdp_send_response(moves, 'paid', additional_info={**additional_info, 'payments': payments})
             else:
                 company.pdp_edi_user._pdp_send_response(moves, self.status, additional_info=additional_info)
         return self.env.context.get('cancel_res', True)
