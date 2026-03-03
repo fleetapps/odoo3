@@ -367,17 +367,15 @@ export class BuilderOptionsPlugin extends Plugin {
         }
 
         const previousElementToIdAndStateMap = new Map(
-            this.lastContainers.map((c) => [c.element, { id: c.id, folded: c.folded }])
+            this.lastContainers.map((c) => [c.element, { id: c.id, foldedIntent: c.foldedIntent }])
         );
-        const keepUnfolded = this.lastContainers.some((c) => c.element === element);
         let containers = reactive(
             [...elementToOptions]
                 .sort(([a], [b]) => (b.contains(a) ? 1 : -1))
                 .map(([element, Options]) => ({
                     id: previousElementToIdAndStateMap.get(element)?.id || uniqueId(),
-                    folded: keepUnfolded
-                        ? previousElementToIdAndStateMap.get(element)?.folded ?? true
-                        : true,
+                    folded: previousElementToIdAndStateMap.get(element)?.foldedIntent ?? true,
+                    foldedIntent: previousElementToIdAndStateMap.get(element)?.foldedIntent,
                     element,
                     options: Options,
                     optionTitleComponents: elementToOptionTitleComponents.get(element) || [],
@@ -475,6 +473,11 @@ export class BuilderOptionsPlugin extends Plugin {
         }
         // Store the next target to activate in the current step.
         this.dependencies.history.setStepExtra("nextTarget", targetEl);
+        // If a container was unfolded because it was the last one, we want to
+        // keep it unfolded if this new target is one of its descendant
+        for (const c of this.lastContainers) {
+            c.foldedIntent = c.folded;
+        }
     }
 
     onWillAddStep() {
