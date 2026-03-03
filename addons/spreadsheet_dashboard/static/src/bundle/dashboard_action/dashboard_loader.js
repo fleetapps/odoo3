@@ -1,4 +1,5 @@
 import { Model } from "@odoo/o-spreadsheet";
+import { browser } from "@web/core/browser/browser";
 import { OdooDataProvider } from "@spreadsheet/data_sources/odoo_data_provider";
 import { createDefaultCurrency } from "@spreadsheet/currency/helpers";
 import { _t } from "@web/core/l10n/translation";
@@ -16,6 +17,13 @@ export const Status = {
     Loading: "Loading",
     Loaded: "Loaded",
     Error: "Error",
+};
+
+const ERROR_MESSAGE_BY_STATUS = {
+    403: _t(
+        "This dashboard includes data you are not allowed to access. Contact your administrator for the required permissions."
+    ),
+    404: _t("The requested dashboard could not be found."),
 };
 
 /**
@@ -192,9 +200,7 @@ export class DashboardLoader {
         const dashboard = this._getDashboard(dashboardId);
         dashboard.status = Status.Loading;
         try {
-            const result = await this.env.services.http.get(
-                `/spreadsheet/dashboard/data/${dashboardId}`
-            );
+            const result = await this._fetchDashboardData(dashboardId);
             const { snapshot, revisions, default_currency, is_sample } = result;
             dashboard.model = this._createSpreadsheetModel(snapshot, revisions, default_currency);
             dashboard.status = Status.Loaded;
@@ -202,8 +208,28 @@ export class DashboardLoader {
         } catch (error) {
             dashboard.error = error;
             dashboard.status = Status.Error;
+            if ([403, 404].includes(error.code)) {
+                return; // handled by display of error message in dashboard view
+            }
             throw error;
         }
+    }
+
+    /**
+     * @private
+     * @param {number} dashboardId
+     */
+    async _fetchDashboardData(dashboardId) {
+        const response = await browser.fetch(`/spreadsheet/dashboard/data/${dashboardId}`, {
+            method: "GET",
+        });
+        if (!response.ok) {
+            const error = new Error();
+            error.code = response.status;
+            error.message = ERROR_MESSAGE_BY_STATUS[response.status];
+            throw error;
+        }
+        return response.json();
     }
 
     /**
