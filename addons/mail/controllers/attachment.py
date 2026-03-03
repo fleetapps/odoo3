@@ -5,22 +5,32 @@ import io
 import logging
 import zipfile
 
-from werkzeug.exceptions import NotFound, UnsupportedMediaType
+from werkzeug.exceptions import BadRequest, NotFound, UnsupportedMediaType
 
 from odoo import _, http
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, MissingError, UserError
 from odoo.http import request
 from odoo.http.stream import content_disposition
-from odoo.tools.misc import file_open
+from odoo.tools.mail import html_sanitize
+from odoo.tools.misc import file_open, replace_exceptions
 from odoo.tools.pdf import DependencyError, PdfReadError, extract_page
 
 from odoo.addons.mail.controllers.thread import ThreadController
+from odoo.addons.mail.tools.attachment_reader import attachment_read
 from odoo.addons.mail.tools.discuss import Store, add_guest_to_context
 
 logger = logging.getLogger(__name__)
 
+try:
+    from markdown2 import markdown
+except ImportError:
+    markdown = None
+    logger.warning("markdown2 is not installed, markdown won't be rendered")
+
 
 class AttachmentController(ThreadController):
+    TEXTUAL_THUMBNAIL_SIZE = 4096
+
     def _make_zip(self, name, attachments):
         streams = (request.env['ir.binary']._get_stream_from(record, 'raw') for record in attachments)
         # TODO: zip on-the-fly while streaming instead of loading the
@@ -170,3 +180,76 @@ class AttachmentController(ThreadController):
         if attachment.name:
             headers.append(("Content-Disposition", content_disposition(attachment.name)))
         return request.make_response(content, headers)
+
+    @http.route(
+        "/mail/attachment/render_textual/<int:attachment_id>",
+        type="http",
+        auth="public",
+        readonly=True,
+    )
+    def mail_attachment_render_textual(self, attachment_id, access_token=None, head=False):
+        """Render the textual content for preview and thumbnail.
+
+        Render the document content / preview for
+        - Simple text
+        - HTML
+        - XML
+        - JSON
+        - Markdown
+
+        :param attachment_id: TODO
+        :param access_token: the access token to the document record
+        :param head: show the thumbnail (first 4kiB) of text-like documents
+        """
+        attachment = request.env["ir.attachment"].browse(int(attachment_id)).exists()
+
+        if not attachment or (
+            not attachment.has_access("read")
+            and not attachment._has_attachments_ownership([access_token])
+        ):
+            raise NotFound()
+
+        attachment_sudo = attachment.sudo()  # TODO check
+        if not attachment_sudo:
+            raise request.not_found()
+
+        mimetype = attachment_sudo.mimetype
+
+        # TODO check
+        # if (mimetype == 'application/json' and not head) or mimetype == 'text/html':
+        #     # The content is rendered by the browser
+        #     with replace_exceptions(ValueError, MissingError, by=request.not_found()):
+        #         stream = self._documents_content_stream(document_sudo)
+        #     return stream.get_response(as_attachment=False)
+
+        if (not mimetype.startswith('text/')
+            and mimetype not in ('application/json', 'application/xml')):
+            e = f"bad document mimetype: expect text/* or a recognized application/, got {mimetype}"
+            raise BadRequest(e)
+
+        if head:
+            content = attachment_read(attachment_sudo, size=self.TEXTUAL_THUMBNAIL_SIZE)
+        else:
+            content = attachment_sudo.raw
+
+        if not content:
+            raise NotFound()
+
+        # if not content: # TODO check
+        #     with replace_exceptions(ValueError, MissingError, by=request.not_found()):
+        #         stream = self._documents_content_stream(document_sudo)
+        #     return stream.get_response(as_attachment=False)
+
+        if mimetype == 'text/markdown' and markdown:
+            return request.render("mail.content_markdown", {
+                'content': html_sanitize(markdown(
+                    content,
+                    safe_mode='escape',  # escape HTML inside the MD source
+                    # https://github.com/trentm/python-markdown2/wiki/Extras
+                    extras=['strike', 'fenced-code-blocks', 'tables', 'footnotes'],
+                )),
+            })
+
+        return request.render("mail.content_textual", {
+            'content': content.decode(errors='replace'),
+        })
