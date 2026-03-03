@@ -3964,7 +3964,8 @@ class TestAccrualAllocations(TestHrHolidaysCommon):
                 'date_from': past_date,
             })
             future_date = datetime.date.today() + relativedelta(days=1)
-            allocation._process_accrual_plans(date_to=future_date)
+            allocations_data = allocation._process_accrual_plans(date_to=future_date)
+            allocation._update_accrual_from_data(allocations_data)
 
     def test_accrual_allocation_with_virtual_future_leaves(self):
         """ This test considers a case where the employee has an accrual plan with no carryover and

@@ -601,23 +601,26 @@ class HrWorkEntryType(models.Model):
         # Get the expiration date and carryover date of all allocations and compute the closest expiration date
         expiration_dates_per_allocation = defaultdict(lambda: {'expiration_date': fields.Date(), 'carryover_date': fields.Date(), 'carried_over_days_expiration_date': fields.Date()})
         expiration_dates = list()
-        carried_over_days_expiration_data = self._get_carried_over_days_expiration_data(allocations, target_date)
+        carried_over_days_expiration_data = self._get_accrual_carried_over_days_expiration_data(allocations, target_date)
         for allocation in allocations:
             expiration_date = allocation.date_to
 
             current_lvl, _ = allocation.sudo()._get_current_accrual_plan_level_idx(target_date)
-            carryover_date = False
+            carryover_date = None
             if current_lvl and (current_lvl.action_with_unused_accruals == 'lost' or current_lvl.carryover_options == 'limited'):
                 carryover_date = allocation.sudo()._get_next_carryover_date(target_date, date_from_included=False)
 
-            carried_over_days_expiration_date = carried_over_days_expiration_data[allocation]['expiration_date']
+            if allocation.allocation_type == "accrual":
+                carried_over_days_expiration_date = carried_over_days_expiration_data[allocation]['expiration_date']
+            else:
+                carried_over_days_expiration_date = None
 
             expiration_dates.extend([expiration_date, carryover_date, carried_over_days_expiration_date])
             expiration_dates_per_allocation[allocation]['expiration_date'] = expiration_date
             expiration_dates_per_allocation[allocation]['carryover_date'] = carryover_date
             expiration_dates_per_allocation[allocation]['carried_over_days_expiration_date'] = carried_over_days_expiration_date
 
-        expiration_dates = list(filter(lambda date: date is not False, expiration_dates))
+        expiration_dates = list(filter(bool, expiration_dates))
         expiration_dates.sort()
         # Compute the number of expiring leaves
         for closest_expiration_date in expiration_dates:
@@ -641,18 +644,21 @@ class HrWorkEntryType(models.Model):
         # No leaves will expire
         return False, 0
 
-    def _get_carried_over_days_expiration_data(self, allocations, target_date):
-        fake_allocations = self.env['hr.leave.allocation']
-        for allocation in allocations:
-            fake_allocations |= self.env['hr.leave.allocation'].with_context(default_date_from=target_date).new(origin=allocation)
-        fake_allocations.sudo().with_context(default_date_from=target_date)._process_accrual_plans(target_date, log=False)
-        carried_over_days_expiration_data = {
-            fake_allocation._origin:
-            {
-                'expiration_date': fake_allocation.carried_over_days_expiration_date,
-                'no_expiring_days': max(0, fake_allocation.expiring_carryover_days - fake_allocation.leaves_taken)
+    def _get_accrual_carried_over_days_expiration_data(self, allocations, target_date):
+        """ Returns a dict with the  """
+        accrual_allocations = allocations.filtered(lambda alloc: alloc.allocation_type == 'accrual')
+        updated_alloc_data = accrual_allocations.sudo().with_context(default_date_from=target_date)._process_accrual_plans(target_date, log=False)
+        carried_over_days_expiration_data = {}
+        for allocation in accrual_allocations:
+            expiring_days = updated_alloc_data[allocation.id]['expiring_carryover_days']
+            leaves_taken = updated_alloc_data[allocation.id]['leaves_taken'] or 0
+            carried_over_days_expiration_data[allocation] = {
+                'expiration_date': updated_alloc_data[allocation.id]['carried_over_days_expiration_date'],
+                'no_expiring_days': max(0, expiring_days - leaves_taken),
             }
-            for fake_allocation in fake_allocations
-        }
-        fake_allocations.invalidate_recordset()
+        for allocation in allocations - accrual_allocations:
+            carried_over_days_expiration_data[allocation] = {
+                'expiration_date': None,
+                'no_expiring_days': 0,
+            }
         return carried_over_days_expiration_data

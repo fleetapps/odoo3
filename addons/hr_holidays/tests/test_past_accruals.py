@@ -68,6 +68,7 @@ class TestAccrualAllocations(TestHrHolidaysCommon):
                 'number_of_days': 0,
             })
 
-            allocation._process_accrual_plans()
+            allocations_data = allocation._process_accrual_plans()
+            allocation._update_accrual_from_data(allocations_data)
 
             self.assertEqual(allocation.number_of_days, 0)

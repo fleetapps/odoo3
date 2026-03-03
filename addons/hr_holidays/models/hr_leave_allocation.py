@@ -2,6 +2,7 @@
 
 # Copyright (c) 2005-2006 Axelor SARL. (http://www.axelor.com)
 from calendar import monthrange
+from collections import defaultdict
 from datetime import datetime, date, time
 from dateutil.relativedelta import relativedelta
 
@@ -14,7 +15,16 @@ from odoo.tools.float_utils import float_round
 
 
 class HrLeaveAllocation(models.Model):
-    """ Allocation Requests Access specifications: similar to leave requests """
+    """ Allocation Requests Access specifications: similar to leave requests
+
+        Some of the methods of this class are tagged with 'Possibly accrual inconsistent' or 'Accrual inconsistent'.
+        This means that:
+        - They mustn't use allocation fields that are not returned by the `_get_accrual_to_update_fields`, but instead use the `allocation_data`
+        - They mustn't modify any field of the allocation, but update the `allocation_data` parameter
+
+        Some of these methods have `allocation_data=None`, and in the case allocation_data is None, then they can directly use/modify any of the allocation
+        field. In this case, those method will be tagged 'Possibly accrual inconsistent', and not 'Accrual inconsistent'.
+    """
     _name = 'hr.leave.allocation'
     _description = "Time Off Allocation"
     _order = "create_date desc"
@@ -141,10 +151,12 @@ class HrLeaveAllocation(models.Model):
     def _compute_is_officer(self):
         self.is_officer = self.env.user.has_group("hr_holidays.group_hr_holidays_user")
 
-    def _get_employee_hours_per_day(self):
+    def _get_employee_hours_per_day(self, allocation_data=None):
+        """ Possibly accrual inconsistent (see this class comment) """
         self.ensure_one()
         if self.allocation_type == 'accrual':
-            date_from = self.nextcall or self.date_from
+            nextcall = allocation_data['nextcall'] if allocation_data else self.nextcall
+            date_from = nextcall or self.date_from
         else:
             date_from = self.date_from
         return self.employee_id._get_hours_per_day(date_from)
@@ -326,25 +338,26 @@ class HrLeaveAllocation(models.Model):
             return carryover_date + relativedelta(years=1)
         return carryover_date
 
-    def _get_maximum_leave_yearly_days(self, level):
+    def _get_maximum_leave_yearly_days(self, level, allocation_data=None):
+        """ Possibly accrual inconsistent (see this class comment) """
         if level.added_value_type != 'hour':
             return level.maximum_leave_yearly
-        return level.maximum_leave_yearly / self._get_employee_hours_per_day()
+        return level.maximum_leave_yearly / self._get_employee_hours_per_day(allocation_data)
 
-    def _add_days_to_allocation(self, current_level, leaves_taken, period_start, period_end, start_date, end_date):
+    def _add_days_to_allocation(self, allocation_data, current_level, period_start, period_end, start_date, end_date):
+        """ Accrual inconsistent (see this class comment) """
         self.ensure_one()
-        days_to_add = self._get_period_added_days(
-            current_level, period_start, start_date, period_end, end_date)
+        days_to_add = self._get_period_added_days(allocation_data, current_level, period_start, start_date, period_end, end_date)
         if current_level.cap_accrued_time_yearly:
-            maximum_leave_yearly = self._get_maximum_leave_yearly_days(current_level)
-            yearly_remaining_amount = maximum_leave_yearly - self.yearly_accrued_amount
+            maximum_leave_yearly = self._get_maximum_leave_yearly_days(current_level, allocation_data)
+            yearly_remaining_amount = maximum_leave_yearly - allocation_data['yearly_accrued_amount']
             days_to_add = min(days_to_add, yearly_remaining_amount)
         if current_level.cap_accrued_time:
-            capped_total_balance = leaves_taken + self._get_lvl_max_leave_days(current_level)
-            days_to_add = min(days_to_add, capped_total_balance - self.number_of_days)
-        self.number_of_days += days_to_add
-        self.yearly_accrued_amount += days_to_add
-        self.last_accrual = self.nextcall
+            capped_total_balance = allocation_data['leaves_taken'] + self._get_lvl_max_leave_days(current_level, allocation_data)
+            days_to_add = min(days_to_add, capped_total_balance - allocation_data['number_of_days'])
+        allocation_data['number_of_days'] += days_to_add
+        allocation_data['yearly_accrued_amount'] += days_to_add
+        allocation_data['last_accrual'] = allocation_data['nextcall']
 
     def _get_current_accrual_plan_levels(self, date, lvls_intervals=None):
         """ Wrapper for `accrual_plan_id._get_current_accrual_plan_levels` """
@@ -352,7 +365,7 @@ class HrLeaveAllocation(models.Model):
         if not self.accrual_plan_id or (self.date_to and date > self.date_to):
             return None
         if not lvls_intervals:
-            lvls_intervals = self.accrual_plan_id._get_lvls_intervals(self.date_from)
+            lvls_intervals = self.accrual_plan_id._get_lvls_boundaries(self.date_from)
         return self.accrual_plan_id._get_current_accrual_plan_levels(date, lvls_intervals)
 
     def _get_current_accrual_plan_level_idx(self, date, lvls_intervals=None):
@@ -362,17 +375,20 @@ class HrLeaveAllocation(models.Model):
         current_levels = self._get_current_accrual_plan_level_idx_for_accrual(date, lvls_intervals)
         return current_levels['current_level'] if current_levels else (None, None)
 
-    def _get_current_accrual_plan_level_idx_for_accrual(self, date, lvl_intervals=None):
+    def _get_current_accrual_plan_level_idx_for_accrual(self, date, lvl_boundaries=None):
         """ Unlike `_get_current_accrual_plan_level_idx`, takes the levels transition into account.
             For example, if `date` is a levels transition and `accrued_gain_time` is "end", then we want to
             get the "previous" plan level as we need to compute number_of_days, expiring_days, ... depending on the
             "previous" level policy.
+
             Returns a `dict` with the following entries:
             - "current_level": (current_level, current_level_idx)     -> Current level
             - "accrual_level": (accrual_level, accrual_level_idx)     -> Current level considering levels transition
+
+            See `accrual_plan_id._get_current_accrual_plan_levels` for more info
         """
         self.ensure_one()
-        plan_levels = self._get_current_accrual_plan_levels(date, lvl_intervals)
+        plan_levels = self._get_current_accrual_plan_levels(date, lvl_boundaries)
         if not plan_levels:
             return None
         if "previous_level" not in plan_levels:
@@ -382,6 +398,7 @@ class HrLeaveAllocation(models.Model):
         return {"current_level": plan_levels["current_level"], "accrual_level": plan_levels["current_level"]}
 
     def _get_accrual_plan_level_work_entry_prorata(self, level, start_period, start_date, end_period, end_date):
+        """ Possibly accrual inconsistent (see this class comment) """
         self.ensure_one()
         datetime_min_time = datetime.min.time()
         start_dt = datetime.combine(start_date, datetime_min_time)
@@ -415,7 +432,8 @@ class HrLeaveAllocation(models.Model):
             work_entry_prorata = worked / (left + planned_worked) if (left + planned_worked) else 0
         return work_entry_prorata
 
-    def _get_period_added_days(self, level, period_start, start_date, period_end, end_date):
+    def _get_period_added_days(self, allocation_data, level, period_start, start_date, period_end, end_date):
+        """ Accrual inconsistent (see this class comment) """
         self.ensure_one()
         if level.frequency in level._get_hourly_frequencies() or level.accrual_plan_id.is_based_on_worked_time:
             work_entry_prorata = self._get_accrual_plan_level_work_entry_prorata(level, period_start, start_date, period_end, end_date)
@@ -424,7 +442,7 @@ class HrLeaveAllocation(models.Model):
             added_days = level.added_value
         # Convert time in hours to time in days in case the level is encoded in hours
         if level.added_value_type == 'hour':
-            added_days = added_days / self._get_employee_hours_per_day()
+            added_days = added_days / self._get_employee_hours_per_day(allocation_data)
         period_prorata = 1
         if (period_start != start_date or period_end != end_date) and not level.accrual_plan_id.is_based_on_worked_time:
             period_days = (period_end - period_start)
@@ -432,178 +450,224 @@ class HrLeaveAllocation(models.Model):
             period_prorata = min(1, call_days / period_days) if period_days else 1
         return added_days * period_prorata
 
-    def _get_leaves_taken_days(self):
+    def _get_leaves_taken_days(self, allocation_data=None):
+        """ Possibly accrual inconsistent (see this class comment) """
         self.ensure_one()
         if self.work_entry_type_id.request_unit in ["day", "half_day"]:
             return self.leaves_taken
-        return self.leaves_taken / self._get_employee_hours_per_day()
+        return self.leaves_taken / self._get_employee_hours_per_day(allocation_data)
 
-    def _get_lvl_max_leave_days(self, level):
+    def _get_lvl_max_leave_days(self, level, allocation_data=None):
+        """ Possibly accrual inconsistent (see this class comment) """
         self.ensure_one()
         if level.added_value_type == "day":
             return level.maximum_leave
-        return level.maximum_leave / self._get_employee_hours_per_day()
+        return level.maximum_leave / self._get_employee_hours_per_day(allocation_data)
 
-    def _update_carryover_expiration_date(self, current_carryover_date, current_level):
-        self.ensure_one()
+    @api.model
+    def _update_carryover_expiration_date(self, allocation_data, current_carryover_date, current_level):
+        """ Accrual inconsistent (see this class comment) """
         if current_level.accrual_validity:
-            self.carried_over_days_expiration_date = current_carryover_date + \
+            allocation_data['carried_over_days_expiration_date'] = current_carryover_date + \
                 relativedelta(**{current_level.accrual_validity_type + 's': current_level.accrual_validity_count})
         else:
-            self.carried_over_days_expiration_date = False
+            allocation_data['carried_over_days_expiration_date'] = None
 
-    def _process_expiration_date(self, current_level, leaves_taken, carryover_date):
-        self.ensure_one()
-        expiring_days = max(0, self.expiring_carryover_days - leaves_taken)
-        self.number_of_days = max(0, self.number_of_days - expiring_days)
-        self.expiring_carryover_days = 0
-        self._update_carryover_expiration_date(carryover_date, current_level)
+    @api.model
+    def _process_expiration_date(self, allocation_data, current_level, carryover_date):
+        """ Accrual inconsistent (see this class comment) """
+        expiring_days = max(0, self.expiring_carryover_days - allocation_data['leaves_taken'])
+        allocation_data['number_of_days'] = max(0, self.number_of_days - expiring_days)
+        allocation_data['expiring_carryover_days'] = 0
+        self._update_carryover_expiration_date(allocation_data, carryover_date, current_level)
 
     def _get_max_carryover_days(self, current_level):
         if current_level.added_value_type == 'day':
             return current_level.max_carryover_duration
         return current_level.max_carryover_duration / self._get_employee_hours_per_day()
 
-    def _process_carryover_date(self, current_level, leaves_taken, carryover_date):
+    def _process_carryover_date(self, allocation_data, current_level, carryover_date):
         self.ensure_one()
         if current_level.action_with_unused_accruals == 'lost' or current_level.carryover_options == 'limited':
-            allocated_days_left = self.number_of_days - leaves_taken
             allocation_max_days = 0
             if current_level.carryover_options == 'limited':
+                allocated_days_left = allocation_data['number_of_days'] - allocation_data['leaves_taken']
                 max_carryover_duration = self._get_max_carryover_days(current_level)
                 allocation_max_days = min(max_carryover_duration, allocated_days_left)
-            self.number_of_days = min(self.number_of_days, allocation_max_days) + leaves_taken
+            allocation_data['number_of_days'] = min(allocation_data['number_of_days'], allocation_max_days) + allocation_data['leaves_taken']
 
-        self.expiring_carryover_days = self.number_of_days
-        self._update_carryover_expiration_date(carryover_date, current_level)
+        allocation_data['expiring_carryover_days'] = self.number_of_days
+        self._update_carryover_expiration_date(allocation_data, carryover_date, current_level)
 
-    def _process_accrual_start(self, current_level, next_accrual, leaves_taken):
-        """ Process accrual based on self.nextcall when accrued_gain_time is `start` """
+    def _process_accrual_start(self, allocation_data, current_level, next_accrual):
+        """ Process accrual based on self.nextcall when accrued_gain_time is `start`
+            Accrual inconsistent (see this class comment)
+        """
         self.ensure_one()
-        period_start = current_level._get_previous_date(self.nextcall)
+        period_start = current_level._get_previous_date(allocation_data['nextcall'])
         current_lvl_start_date = current_level._get_start_date(self.date_from)
-        if self.nextcall == period_start or self.nextcall == current_lvl_start_date:
-            accrual_start_date = self.nextcall
+        if allocation_data['nextcall'] == period_start or allocation_data['nextcall'] == current_lvl_start_date:
+            accrual_start_date = allocation_data['nextcall']
             accrual_end_date = next_accrual
-            period_end = current_level._get_next_date(self.nextcall)
-            self._add_days_to_allocation(current_level, leaves_taken, period_start, period_end, accrual_start_date, accrual_end_date)
+            period_end = current_level._get_next_date(allocation_data['nextcall'])
+            self._add_days_to_allocation(allocation_data, current_level, period_start, period_end, accrual_start_date, accrual_end_date)
 
-    def _process_accrual_end(self, current_level, current_level_idx, lvl_intervals, first_level_start_date, leaves_taken):
-        """ Process accrual based on self.nextcall when accrued_gain_time is `end` """
+    def _process_accrual_end(self, allocation_data, current_level, current_level_idx, lvl_intervals, first_level_start_date):
+        """ Process accrual based on self.nextcall when accrued_gain_time is `end`
+            Accrual inconsistent (see this class comment)
+        """
         self.ensure_one()
-        period_end = current_level._get_next_date(self.lastcall)
+        period_end = current_level._get_next_date(allocation_data['lastcall'])
         current_level_last_date = self.accrual_plan_id._get_lvl_last_date(self.date_from, current_level_idx, lvl_intervals)
-        if self.nextcall == period_end or self.nextcall == current_level_last_date:
-            accrual_start_date = self.last_accrual or first_level_start_date
-            accrual_end_date = self.nextcall
-            period_start = current_level._get_previous_date(self.lastcall)
-            self._add_days_to_allocation(current_level, leaves_taken, period_start, period_end, accrual_start_date, accrual_end_date)
+        if allocation_data['nextcall'] == period_end or allocation_data['nextcall'] == current_level_last_date:
+            accrual_start_date = allocation_data['last_accrual'] or first_level_start_date
+            accrual_end_date = allocation_data['nextcall']
+            period_start = current_level._get_previous_date(allocation_data['lastcall'])
+            self._add_days_to_allocation(allocation_data, current_level, period_start, period_end, accrual_start_date, accrual_end_date)
 
-    def _has_expiring_days(self):
+    def _has_expiring_days(self, allocation_data):
+        """ Accrual inconsistent (see this class comment) """
         self.ensure_one()
-        return (self.nextcall and self.carried_over_days_expiration_date
-            and self.nextcall <= self.carried_over_days_expiration_date)
+        expiration_date = allocation_data['carried_over_days_expiration_date']
+        return allocation_data['nextcall'] and expiration_date and allocation_data['nextcall'] <= expiration_date
 
-    def _init_accrual_calls(self):
-        """ Initialize `last_accrual`, `lastcall` and `nextcall` """
-        for allocation in self:
-            if allocation.allocation_type == 'regular':
-                continue
+    def _init_accrual_calls(self, allocation_data):
+        """ Initialize `last_accrual`, `lastcall` and `nextcall`
+            Accrual inconsistent (see this class comment)
+        """
+        self.ensure_one()
+        if self.allocation_type == 'regular' or not self.accrual_plan_id.level_ids:
+            return
 
-            level_ids = allocation.accrual_plan_id.level_ids.sorted('sequence')
-            first_level = level_ids[0]
-
-            allocation.last_accrual = False
-            allocation.lastcall = first_level._get_start_date(allocation.date_from)
-
-            if allocation.accrual_plan_id.accrued_gain_time == 'start':
-                allocation.nextcall = allocation.lastcall
-                return
-            nextcall = first_level._get_next_date(allocation.lastcall)
+        level_ids = self.accrual_plan_id.level_ids.sorted('sequence')
+        first_level = level_ids[0]
+        lastcall = first_level._get_start_date(self.date_from)
+        if self.accrual_plan_id.accrued_gain_time == 'start':
+            nextcall = lastcall
+        else:
+            nextcall = first_level._get_next_date(lastcall)
             if first_level.can_be_carryover:
-                carryover_date = allocation._get_next_carryover_date(allocation.lastcall)
+                carryover_date = self._get_next_carryover_date(lastcall)
                 nextcall = min(carryover_date, nextcall)
             if len(level_ids) > 1:
-                second_level_start_date = allocation.accrual_plan_id._get_lvl_last_date(allocation.date_from, level_idx=0)
+                second_level_start_date = self.accrual_plan_id._get_lvl_last_date(self.date_from, level_idx=0)
                 nextcall = min(second_level_start_date, nextcall)
-            allocation.nextcall = nextcall
+        allocation_data['last_accrual'] = None
+        allocation_data['lastcall'] = lastcall
+        allocation_data['nextcall'] = nextcall
 
-    def _process_accrual_plans(self, date_to=None, force_period=False, log=True):
+    def _get_accrual_allocation_data(self):
+        allocation_data = {}
+        for allocation in self:
+            allocation_data[allocation.id] = {
+                'last_accrual': allocation.last_accrual,
+                'lastcall': allocation.lastcall,
+                'nextcall': allocation.nextcall,
+                'number_of_days': allocation.number_of_days,
+                'yearly_accrued_amount': allocation.yearly_accrued_amount,
+                'carried_over_days_expiration_date': allocation.carried_over_days_expiration_date,
+                'expiring_carryover_days': allocation.expiring_carryover_days,
+                # -------- Not updated fields
+                'leaves_taken': None,
+            }
+        return allocation_data
+
+    @api.model
+    def _get_accrual_to_update_fields(self):
+        return ['last_accrual', 'lastcall', 'nextcall', 'number_of_days', 'yearly_accrued_amount',
+            'carried_over_days_expiration_date', 'expiring_carryover_days']
+
+    def _update_accrual_from_data(self, allocations_data):
+        to_update_fields = self._get_accrual_to_update_fields()
+        for allocation_id, values in allocations_data.items():
+            if allocation := self.filtered(lambda alloc: alloc.id == allocation_id):
+                to_update_values = {field: values[field] for field in to_update_fields}
+                allocation[0].write(to_update_values)
+
+    def _process_accrual_plans(self, date_to=None, log=True):
+        """ This method is part of the cron's process.
+            The goal of this method is to retroactively apply accrual plan levels and progress from nextcall to date_to or today.
         """
-        This method is part of the cron's process.
-        The goal of this method is to retroactively apply accrual plan levels and progress from nextcall to date_to or today.
-        If force_period is set, the accrual will run until date_to in a prorated way (used for end of year accrual actions).
-        """
+        def _get_leaves_taken(allocation, allocation_data):
+            precomputed_allocations = {allocation.id: allocation_data}
+            # By setting `precomputed_allocations`, avoid infinite loop (otherwise _get_consumed_leaves -> _get_future_leaves_on -> _process_accrual_plans -> ...)
+            employee_days_per_allocation = allocation.employee_id._get_consumed_leaves(
+                allocation.work_entry_type_id, allocation.nextcall, ignore_future=True, precomputed_allocations=precomputed_allocations)[0]
+            leaves_taken = employee_days_per_allocation[allocation.employee_id][allocation.work_entry_type_id][allocation]['leaves_taken']
+            if allocation.work_entry_type_id.unit_of_measure == 'hour':
+                leaves_taken /= allocation.employee_id._get_hours_per_day(allocation_data['nextcall'] or allocation.date_from)
+            return leaves_taken
+
         date_to = date_to or fields.Date.today()
         first_allocation = _("""This allocation have already ran once, any modification won't be effective to the days allocated to the employee. If you need to change the configuration of the allocation, delete and create a new one.""")
-        for allocation in self:
-            if allocation.allocation_type != 'accrual':
+        accrual_allocations = self.filtered(lambda alloc: alloc.allocation_type == 'accrual')
+        allocations_data = self._get_accrual_allocation_data()
+        for allocation in accrual_allocations:
+            allocation_data = allocations_data[allocation.id]
+
+            if not allocation.accrual_plan_id.level_ids:
                 continue
             level_ids = allocation.accrual_plan_id.level_ids.sorted('sequence')
-            if not level_ids:
-                return
-
-            # [BUG] compute leaves_taken here waiting for leaves_taken bug fix see community-239836
-            leaves_taken = allocation._get_leaves_taken_days()
-
             first_level = level_ids[0]
             first_level_start_date = first_level._get_start_date(allocation.date_from)
-
             if date_to < first_level_start_date:
-                return
+                continue
 
-            if not allocation.nextcall:
+            if not allocation_data['nextcall']:
                 # First time the plan is run
-                allocation._init_accrual_calls()
+                allocation._init_accrual_calls(allocation_data)
                 if log:
                     allocation._message_log(body=first_allocation)
 
-            lvls_intervals = allocation.accrual_plan_id._get_lvls_intervals(allocation.date_from)
-            while allocation.nextcall <= date_to:
-                plan_levels = allocation._get_current_accrual_plan_level_idx_for_accrual(allocation.nextcall, lvls_intervals)
+            lvls_boundaries = allocation.accrual_plan_id._get_lvls_boundaries(allocation.date_from)
+            while allocation_data['nextcall'] <= date_to:
+                allocation_data['leaves_taken'] = _get_leaves_taken(allocation, allocation_data)
+                plan_levels = allocation._get_current_accrual_plan_level_idx_for_accrual(allocation_data['nextcall'], lvls_boundaries)
                 if not plan_levels:
                     break
 
                 (current_level, current_level_idx), (accrual_level, accrual_level_idx) = plan_levels["current_level"], plan_levels["accrual_level"]
-                nextcall = current_level._get_next_date(allocation.nextcall)
+                nextcall = current_level._get_next_date(allocation_data['nextcall'])
 
                 # There are 3 more accrual "events" (added to the level period start-end): level transition, carryover date and carriedover expiring days date
                 # 1. Take level transition into account
-                current_level_last_date = allocation.accrual_plan_id._get_lvl_last_date(allocation.date_from, current_level_idx, lvls_intervals)
-                if current_level_last_date and allocation.nextcall < current_level_last_date:
+                current_level_last_date = allocation.accrual_plan_id._get_lvl_last_date(allocation.date_from, current_level_idx, lvls_boundaries)
+                if current_level_last_date and allocation_data['nextcall'] < current_level_last_date:
                     nextcall = min(nextcall, current_level_last_date)
 
                 next_accrual = nextcall
                 carryover_date = False
                 if current_level.can_be_carryover:
-                    carryover_date = allocation._get_next_carryover_date(allocation.nextcall)
+                    carryover_date = allocation._get_next_carryover_date(allocation_data['nextcall'])
                     # 2. Take carryover date into account
-                    if allocation.nextcall < carryover_date:
+                    if allocation_data['nextcall'] < carryover_date:
                         nextcall = min(nextcall, carryover_date)
 
-                    if allocation.nextcall == carryover_date:
-                        allocation._process_carryover_date(current_level, leaves_taken, carryover_date)
-                if current_level.accrual_validity or allocation._has_expiring_days():
+                    if allocation_data['nextcall'] == carryover_date:
+                        allocation._process_carryover_date(allocation_data, current_level, carryover_date)
+                if current_level.accrual_validity or allocation._has_expiring_days(allocation_data):
                     # 3. Take expiring days into account
-                    if allocation._has_expiring_days() and allocation.carried_over_days_expiration_date > allocation.nextcall:
-                        nextcall = min(allocation.carried_over_days_expiration_date, nextcall)
+                    if allocation._has_expiring_days(allocation_data) and allocation_data['carried_over_days_expiration_date'] > allocation_data['nextcall']:
+                        nextcall = min(allocation_data['carried_over_days_expiration_date'], nextcall)
 
-                    if allocation.nextcall == allocation.carried_over_days_expiration_date:
-                        allocation._process_expiration_date(current_level, leaves_taken, carryover_date)
+                    if allocation_data['nextcall'] == allocation_data['carried_over_days_expiration_date']:
+                        allocation._process_expiration_date(allocation_data, current_level, carryover_date)
 
                 if allocation.accrual_plan_id.accrued_gain_time == 'start':
-                    allocation._process_accrual_start(accrual_level, next_accrual, leaves_taken)
+                    if carryover_date and allocation_data['nextcall'] == carryover_date:
+                        allocation_data['yearly_accrued_amount'] = 0
+                    allocation._process_accrual_start(allocation_data, accrual_level, next_accrual)
                 else:
-                    allocation._process_accrual_end(accrual_level, accrual_level_idx, lvls_intervals, first_level_start_date, leaves_taken)
+                    allocation._process_accrual_end(
+                        allocation_data, accrual_level, accrual_level_idx, lvls_boundaries, first_level_start_date)
+                    if carryover_date and allocation_data['nextcall'] == carryover_date:
+                        allocation_data['yearly_accrued_amount'] = 0
 
-                if carryover_date and allocation.nextcall == carryover_date:
-                    allocation.yearly_accrued_amount = 0
-
-                allocation.lastcall = allocation.nextcall
-                allocation.nextcall = nextcall
-                if force_period and allocation.nextcall > date_to:
-                    allocation.nextcall = date_to
-                    force_period = False
+                allocation_data['lastcall'] = allocation_data['nextcall']
+                allocation_data['nextcall'] = nextcall
+            if 'leaves_taken' not in allocation_data:
+                allocation_data['leaves_taken'] = _get_leaves_taken(allocation, allocation_data)
+        return allocations_data
 
     @api.model
     def _update_accrual(self, employee_ids=None):
@@ -620,7 +684,8 @@ class HrLeaveAllocation(models.Model):
             Domain.OR([Domain('date_to', '=', False), Domain('date_to', '>=', fields.Datetime.now())]),
             Domain.OR([Domain('nextcall', '=', False), Domain('nextcall', '<=', today)]),
         ]))
-        allocations._process_accrual_plans()
+        allocations_data = allocations._process_accrual_plans()
+        allocations._update_accrual_from_data(allocations_data)
 
     def _get_future_leaves_on(self, accrual_date):
         # As computing future accrual allocation days automatically updates the allocation,
@@ -637,13 +702,12 @@ class HrLeaveAllocation(models.Model):
                 and (not self.nextcall or self.nextcall <= accrual_date)):
             return 0
 
-        fake_allocation = self.env['hr.leave.allocation'].with_context(default_date_from=accrual_date).new(origin=self)
-        fake_allocation.sudo().with_context(default_date_from=accrual_date)._process_accrual_plans(accrual_date, log=False)
+        future_alloc_data = self.sudo().with_context(default_date_from=accrual_date)._process_accrual_plans(accrual_date, log=False)[self.id]
         if self.work_entry_type_id.unit_of_measure in ['hour']:
-            res = float_round(fake_allocation.number_of_hours_display - self.number_of_hours_display, precision_digits=2)
+            future_leave_hours = future_alloc_data['number_of_days'] * self._get_employee_hours_per_day(future_alloc_data)
+            res = float_round(future_leave_hours - self.number_of_hours_display, precision_digits=2)
         else:
-            res = round((fake_allocation.number_of_days - self.number_of_days), 2)
-        fake_allocation.invalidate_recordset()
+            res = round((future_alloc_data['number_of_days'] - self.number_of_days), 2)
         return res
 
     def _get_next_states_by_state(self):
@@ -904,7 +968,8 @@ class HrLeaveAllocation(models.Model):
         self.carried_over_days_expiration_date = None
         self.expiring_carryover_days = 0
         date_to = min(self.date_to, date.today()) if self.date_to else None
-        self._process_accrual_plans(date_to)
+        allocations_data = self._process_accrual_plans(date_to)
+        self._update_accrual_from_data(allocations_data)
 
     # ------------------------------------------------------------
     # Activity methods

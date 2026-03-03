@@ -164,8 +164,8 @@ class HrLeaveAccrualPlan(models.Model):
                 vals['name'] = self.env._("Unnamed Plan")
         return super().create(vals_list)
 
-    def _get_lvls_intervals(self, date_from) -> list[date]:
-        """ Returns a list containing intervals extrema of each level.
+    def _get_lvls_boundaries(self, date_from) -> list[date]:
+        """ Returns a list containing intervals boundaries of each level.
             The start of the level x is the end date of the previous level.
 
             For instance, if there are 2 levels, this function will return a list of 2 dates :
@@ -177,30 +177,30 @@ class HrLeaveAccrualPlan(models.Model):
             return None
         sorted_levels = self.level_ids.sorted('sequence')
 
-        intervals = [sorted_levels[0]._get_start_date(date_from)]
+        boundaries = [sorted_levels[0]._get_start_date(date_from)]
         if len(sorted_levels) == 1:
-            return intervals
+            return boundaries
 
         if self.transition_mode == 'immediately':
             for i in range(1, len(sorted_levels)):
-                intervals.append(sorted_levels[i]._get_start_date(date_from))
-            return intervals
+                boundaries.append(sorted_levels[i]._get_start_date(date_from))
+            return boundaries
 
         for i in range(1, len(sorted_levels)):
             expected_lvl_start = sorted_levels[i]._get_start_date(date_from)
             current_lvl = sorted_levels[i]
             lvl_start = current_lvl._get_next_date(expected_lvl_start + relativedelta(days=-1))
-            intervals.append(lvl_start)
-        return intervals
+            boundaries.append(lvl_start)
+        return boundaries
 
-    def _get_lvl_last_date(self, date_from, level_idx, lvls_intervals=None):
+    def _get_lvl_last_date(self, date_from, level_idx, lvls_boundaries=None):
         self.ensure_one()
-        lvls_intervals = lvls_intervals or self._get_lvls_intervals(date_from)
-        if level_idx == len(lvls_intervals) - 1:
+        lvls_boundaries = lvls_boundaries or self._get_lvls_boundaries(date_from)
+        if level_idx == len(lvls_boundaries) - 1:
             return None
-        return lvls_intervals[level_idx + 1]
+        return lvls_boundaries[level_idx + 1]
 
-    def _get_current_accrual_plan_levels(self, date, lvls_intervals) -> dict[str, tuple] | None:
+    def _get_current_accrual_plan_levels(self, date, lvls_boundaries) -> dict[str, tuple] | None:
         """ Returns a dict of tuples (lvl, idx) containing the level(s) we are currently in depending on `date` parameter.
             It can return up to 2 entries (during level transition), "current_level" and "previous_level" (optional).
             Return example:  {
@@ -209,13 +209,13 @@ class HrLeaveAccrualPlan(models.Model):
             }
         """
         self.ensure_one()
-        if not self.level_ids or lvls_intervals[0] > date:
+        if not self.level_ids or lvls_boundaries[0] > date:
             return None
 
         sorted_levels = self.level_ids.sorted('sequence')
         current_lvl_start = False
         current_lvl_idx = False
-        for lvl_idx, lvl_start in enumerate(lvls_intervals):
+        for lvl_idx, lvl_start in enumerate(lvls_boundaries):
             if date >= lvl_start:
                 current_lvl_idx = lvl_idx
                 current_lvl_start = lvl_start
