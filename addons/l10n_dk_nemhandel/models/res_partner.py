@@ -60,7 +60,9 @@ class ResPartner(models.Model):
         for partner in self:
             partner.nemhandel_identifier_type = partner.nemhandel_identifier_type
             country_code = partner._deduce_country_code()
-            if country_code == 'DK' and not partner.nemhandel_identifier_type:
+            if partner.parent_id and partner.parent_id.nemhandel_identifier_type:
+                partner.nemhandel_identifier_type = partner.parent_id.nemhandel_identifier_type
+            elif country_code == 'DK' and not partner.nemhandel_identifier_type:
                 partner.nemhandel_identifier_type = '0184'
             elif country_code != 'DK':
                 partner.nemhandel_identifier_type = ''
@@ -73,6 +75,8 @@ class ResPartner(models.Model):
                 partner.nemhandel_identifier_value = partner.nemhandel_identifier_value
                 continue
             country_code = partner._deduce_country_code()
+            if partner.parent_id and partner.parent_id.nemhandel_identifier_value:
+                partner.nemhandel_identifier_value = partner.parent_id.nemhandel_identifier_value
             if country_code == 'DK' and partner.nemhandel_identifier_type == '0184':
                 partner.nemhandel_identifier_value = partner.company_registry
             elif country_code == 'DK':
