@@ -7,7 +7,6 @@ import {
     onWillDestroy,
     onWillStart,
     onWillUnmount,
-    onWillUpdateProps,
     status,
 } from "@odoo/owl";
 import { useHotkey } from "@web/core/hotkeys/hotkey_hook";
@@ -25,7 +24,6 @@ import { getHtmlStyle } from "@html_editor/utils/formatting";
 import { isVisible } from "@html_builder/utils/utils";
 
 /**
- * @typedef {(() => void)[]} on_mobile_preview_clicked
  * @typedef {(() => void)[]} on_dom_updated_handlers
  * @typedef {{ Component: Component; props: object; }[]} lower_panel_entries
  */
@@ -72,7 +70,7 @@ export class Builder extends Component {
         });
         this.invisibleElementsPanelState = useState({
             invisibleEls: [],
-            invisibleSelector: this.getInvisibleSelector(),
+            invisibleSelector: this.getInvisibleSelector(false),
         });
         useHotkey("control+z", () => this.undo());
         useHotkey("control+y", () => this.redo());
@@ -131,9 +129,12 @@ export class Builder extends Component {
                     on_dom_updated_handlers: () => {
                         this.triggerDomUpdated();
                     },
-                    on_mobile_preview_clicked: withSequence(20, () => {
+                    on_device_view_switched_handlers: () => {
                         this.triggerDomUpdated();
-                    }),
+                        this.updateInvisibleEls();
+                        this.invisibleElementsPanelState.invisibleSelector =
+                            this.getInvisibleSelector();
+                    },
                     on_will_save_handlers: () => {
                         const snippetMenuEl = this.builder_sidebarRef.el;
                         const saveButton = snippetMenuEl.querySelector("[data-action='save']");
@@ -252,14 +253,6 @@ export class Builder extends Component {
         onWillUnmount(() => {
             this.editableEl.removeEventListener("dragstart", this.onDragStart);
         });
-        onWillUpdateProps((nextProps) => {
-            if (nextProps.isMobile !== this.props.isMobile) {
-                this.updateInvisibleEls(nextProps.isMobile);
-                this.invisibleElementsPanelState.invisibleSelector = this.getInvisibleSelector(
-                    nextProps.isMobile
-                );
-            }
-        });
     }
     async triggerDomUpdated() {
         this.lastTrigerUpdateId++;
@@ -272,7 +265,7 @@ export class Builder extends Component {
         resolve(isLastTriggerId);
     }
 
-    getInvisibleSelector(isMobile = this.props.isMobile) {
+    getInvisibleSelector(isMobile = this.editor.config.isMobileView(this.editor.editable)) {
         return `.o_snippet_invisible, ${
             isMobile ? ".o_snippet_mobile_invisible" : ".o_snippet_desktop_invisible"
         }`;
@@ -320,10 +313,10 @@ export class Builder extends Component {
 
     onMobilePreviewClick() {
         this.props.toggleMobile();
-        this.editor.resources["on_mobile_preview_clicked"].forEach((handler) => handler());
+        this.triggerDomUpdated();
     }
 
-    updateInvisibleEls(isMobile = this.props.isMobile) {
+    updateInvisibleEls(isMobile = this.editor.config.isMobileView(this.editor.editable)) {
         this.invisibleElementsPanelState.invisibleEls = [
             ...this.editor.editable.querySelectorAll(this.getInvisibleSelector(isMobile)),
         ];
