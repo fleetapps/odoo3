@@ -257,7 +257,7 @@ export class Composer extends Component {
             }
             setElementContent(this.editor.editable, composerHtml);
             this.editor.shared.selection.setCursorEnd(lastLeaf(this.editor.editable));
-            this.editor.shared.history.addStep();
+            this.editor.shared.domMutation.commit();
         });
         void composerProxy.composerHtml; // start observing
     }
@@ -307,7 +307,7 @@ export class Composer extends Component {
             onChange: () => this.onChangeWysiwygContent(),
             onEditorReady: () => {
                 this.editor.shared.selection.setCursorEnd(lastLeaf(this.editor.editable));
-                this.editor.shared.history.addStep();
+                this.editor.shared.domMutation.commit();
             },
         };
     }
@@ -864,7 +864,7 @@ export class Composer extends Component {
                 this.editor.shared.dom.insert(" ");
             }
             this.editor.shared.dom.insert("::");
-            this.editor.shared.history.addStep();
+            this.editor.shared.domMutation.commit();
         } else {
             const composerText = composer.composerText;
             const firstPart = composerText.slice(0, composer.selection.start);
@@ -896,7 +896,7 @@ export class Composer extends Component {
         const composer = toRaw(this.props.composer);
         if (this.editor) {
             this.editor.shared.dom.insert(str);
-            this.editor.shared.history.addStep();
+            this.editor.shared.domMutation.commit();
         } else {
             const composerText = composer.composerText;
             const firstPart = composerText.slice(0, composer.selection.start);
