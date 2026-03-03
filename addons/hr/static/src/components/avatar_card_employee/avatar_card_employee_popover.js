@@ -16,7 +16,17 @@ export class AvatarCardEmployeePopover extends AvatarCardResourcePopover {
     };
 
     get employee() {
-        return this.store[this.props.model].get(this.props.id);
+        if (this.props.model === "hr.employee.public") {
+            return this.publicEmployee?.employee_id;
+        }
+        return this.store["hr.employee"].get(this.props.id);
+    }
+
+    get publicEmployee() {
+        if (this.props.model === "hr.employee.public") {
+            return this.store["hr.employee.public"].get(this.props.id);
+        }
+        return undefined;
     }
 
     get user() {

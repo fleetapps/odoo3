@@ -59,6 +59,17 @@ export class AvatarCardPopover extends Component {
         return 60000 - (Date.now() % 60000);
     }
 
+    get avatarUrl() {
+        if (this.partner) {
+            return this.partner.avatarUrl;
+        }
+        return `/web/image/${this.props.model}/${this.props.id}/avatar_128`;
+    }
+
+    get displayAvatar() {
+        return ["res.users", "res.partner"].includes(this.props.model);
+    }
+
     get openChatModel() {
         return this.props.model;
     }
