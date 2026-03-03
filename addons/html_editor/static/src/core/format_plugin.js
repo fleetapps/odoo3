@@ -288,6 +288,10 @@ export class FormatPlugin extends Plugin {
                 )
         );
 
+        const unformattedTextNodes = selectedTextNodes.filter(
+            (n) => !closestElement(n, "code.o_inline_code")
+        );
+
         const tagetedFieldNodes = new Set(
             this.dependencies.selection
                 .getTargetedNodes()
@@ -295,7 +299,7 @@ export class FormatPlugin extends Plugin {
                 .filter((node) => node && this.dependencies.selection.isNodeEditable(node))
         );
         const formatSpec = formatsSpecs[formatName];
-        for (const node of selectedTextNodes) {
+        for (const node of unformattedTextNodes) {
             const inlineAncestors = [];
             /** @type { Node } */
             let currentNode = node;

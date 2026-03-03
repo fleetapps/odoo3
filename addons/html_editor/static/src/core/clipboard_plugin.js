@@ -250,11 +250,14 @@ export class ClipboardPlugin extends Plugin {
         this.dispatchTo("before_paste_handlers", selection);
         // refresh selection after potential changes from `before_paste` handlers
         selection = this.dependencies.selection.getEditableSelection();
-
-        this.handlePasteUnsupportedHtml(selection, ev.clipboardData) ||
-            this.handlePasteOdooEditorHtml(ev.clipboardData) ||
-            this.handlePasteHtml(selection, ev.clipboardData) ||
+        if (this.getResource("paste_text_predicates").some((p) => p(selection))) {
             this.handlePasteText(selection, ev.clipboardData);
+        } else {
+            this.handlePasteUnsupportedHtml(selection, ev.clipboardData) ||
+                this.handlePasteOdooEditorHtml(ev.clipboardData) ||
+                this.handlePasteHtml(selection, ev.clipboardData) ||
+                this.handlePasteText(selection, ev.clipboardData);
+        }
 
         this.dispatchTo("after_paste_handlers", selection);
         this.dependencies.history.addStep();
