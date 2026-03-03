@@ -89,22 +89,11 @@ export class DeviceSelect extends Component {
         }
     }
 
-    async showPermissionDialog(kind) {
-        const [permissionVar, permissionValue] =
-            kind === "videoinput"
-                ? ["cameraPermission", "camera"]
-                : ["microphonePermission", "microphone"];
-        if (this.store.rtc[permissionVar] === "denied") {
-            // Bypass the permission dialog in this case: we still need to do
-            // the potential thing that was supposed to be done once it closes.
-            this.props.mediaPermissionDialogConfiguration?.options?.onClose?.();
-            this.store.rtc.showMediaUnavailableWarning({ [permissionValue]: true });
-        } else {
-            this.store.rtc.showMediaPermissionDialog(
-                permissionValue,
-                this.props.mediaPermissionDialogConfiguration
-            );
-        }
+    showPermissionDialog(kind) {
+        this.store.rtc.showPermissionDialogOrUnavailableWarning(
+            kind,
+            this.props.mediaPermissionDialogConfiguration
+        );
     }
 
     isSelected(id) {
