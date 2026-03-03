@@ -4,11 +4,8 @@
         <div class="o_avatar_card card border-0 rounded">
             <div class="card-body bg-inherit rounded">
                 <div class="d-flex align-items-start gap-2 bg-inherit">
-                    <span class="o_avatar pt-1 position-relative o_card_avatar bg-inherit">
-                        <img t-if="props.id"
-                            t-attf-src="/web/image/{{props.model}}/{{props.id}}/avatar_128"
-                            class="rounded"
-                        />
+                    <span t-if="this.displayAvatar" class="o_avatar pt-1 position-relative o_card_avatar bg-inherit">
+                        <img t-if="props.id" t-att-src="this.avatarUrl" class="rounded"/>
                         <span t-if="partner?.im_status and partner.im_status !== 'im_partner'" name="icon" class="o_card_avatar_im_status position-absolute d-flex align-items-center justify-content-center bg-inherit">
                             <ImStatus persona="partner" />
                         </span>

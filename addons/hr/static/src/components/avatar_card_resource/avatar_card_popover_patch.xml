@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <t t-inherit="resource_mail.AvatarCardResourcePopover" t-inherit-mode="extension">
+    <t t-inherit="mail.AvatarCardPopover" t-inherit-mode="extension">
         <xpath expr="//span[hasclass('o_card_avatar_im_status')]" position="after">
             <span t-elif="employee?.show_hr_icon_display" name="icon" class="o_card_avatar_im_status position-absolute d-flex align-items-center justify-content-center o_employee_presence_status bg-inherit">
                 <!-- Employee is present/connected and it is normal according to his work schedule  -->

@@ -1,8 +1,6 @@
 import { AvatarCardPopover } from "@mail/discuss/web/avatar_card/avatar_card_popover";
 
 export class AvatarCardResourcePopover extends AvatarCardPopover {
-    static template = "resource_mail.AvatarCardResourcePopover";
-
     static props = {
         ...AvatarCardPopover.props,
         model: { type: String, optional: true },
