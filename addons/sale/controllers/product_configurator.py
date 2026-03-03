@@ -68,39 +68,40 @@ class SaleProductConfiguratorController(Controller):
             pricelist = request.env['product.pricelist'].browse(pricelist_id)
             so_date = datetime.fromisoformat(so_date)
 
-            return {
-                'products': [
-                    dict(
-                        **self._get_product_information(
-                            product_template,
-                            combination,
-                            currency,
-                            pricelist,
-                            so_date,
-                            quantity=quantity,
-                            product_uom_id=product_uom_id,
-                            **kwargs,
-                        ),
-                    )
-                ],
-                'optional_products': [
-                    dict(
-                        **self._get_product_information(
-                            optional_product_template,
-                            optional_product_template._get_first_possible_combination(),
-                            currency,
-                            pricelist,
-                            so_date,
-                            **kwargs,
-                        ),
-                        parent_product_tmpl_id=product_template.id,
-                    ) for optional_product_template in product_template.optional_product_ids if
-                    self._should_show_product(optional_product_template)
-                ] if not only_main_product else [],
-                'currency_id': currency_id,
-            }
-        else:
-            return res
+            res['products'] = [
+                dict(
+                    **self._get_product_information(
+                        product_template,
+                        combination,
+                        currency,
+                        pricelist,
+                        so_date,
+                        quantity=quantity,
+                        product_uom_id=product_uom_id,
+                        **kwargs,
+                    ),
+                )
+            ]
+
+            res['optional_products'] = [
+                dict(
+                    **self._get_product_information(
+                        optional_product_template,
+                        optional_product_template._get_first_possible_combination(),
+                        currency,
+                        pricelist,
+                        so_date,
+                        **kwargs,
+                    ),
+                    parent_product_tmpl_id=product_template.id,
+                )
+                for optional_product_template in product_template.optional_product_ids
+                if self._should_show_product(optional_product_template)
+            ] if not only_main_product else []
+
+            res['currency_id'] = currency_id
+
+        return res
 
     @route(
         route='/sale/product_configurator/create_product',
