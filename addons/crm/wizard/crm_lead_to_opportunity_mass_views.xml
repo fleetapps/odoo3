@@ -13,21 +13,15 @@
                     <field name="name" class="oe_inline" widget="selection_badge" nolabel="1" invisible="duplicated_opportunity_ids" options="{'excludedOptions': ['convert_and_merge']}"/>
                     <field name="name" class="oe_inline" widget="selection_badge" nolabel="1" invisible="not duplicated_opportunity_ids"/>
                 </group>
-                <group>
-                    <group string="Assign these opportunities to" invisible="name == 'deduplicate'">
+                <group invisible="name == 'deduplicate'">
+                    <group string="Assign these opportunities to">
                         <field name="user_ids" widget="many2many_avatar_user" domain="[('share', '=', False)]" placeholder="Keep current users"/>
                         <field name="team_id" context="{'kanban_view_ref': 'sales_team.crm_team_view_kanban'}" placeholder="Keep current teams"/>
                         <field name="force_assignment" invisible="not team_id and not user_ids"/>
                     </group>
-                    <group string="Customers" invisible="name == 'deduplicate'" col="1">
-                            <field name="action" widget="radio" nolabel="1" colspan="2"/>
-                            <field name="partner_id"
-                                widget="res_partner_many2one"
-                                invisible="action != 'exist'"
-                                required="action == 'exist'"
-                                context="{'show_vat': True }"
-                                placeholder="Select a Customer"
-                            />
+                    <group string="Customers" col="4">
+                        <label for="link_to_existing_customer" colspan="3"/>
+                        <field name="link_to_existing_customer" colspan="1" widget="boolean_toggle" nolabel="1"/>
                     </group>
                 </group>
                 <notebook>

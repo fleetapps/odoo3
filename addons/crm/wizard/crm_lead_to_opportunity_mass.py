@@ -8,11 +8,7 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
     _name = 'crm.lead2opportunity.partner.mass'
     _description = 'Convert Lead to Opportunity (in mass)'
 
-    action = fields.Selection([
-        ('create', 'Link to new/matching customer(s)'),
-        ('do_not_link', 'Do not link to customers'),
-        ('exist', 'Link to specific customer'),
-    ], string='Related Customer', default='create', required=True)
+    link_to_existing_customer = fields.Boolean(string="Link to matching customers", default=False)
     # the duplicate_count represents the number of leads from the selected `active_ids` which have any duplicates
     duplicate_count = fields.Integer(string='Duplicated leads', compute='_compute_duplicated_lead_ids',
         store=True, compute_sudo=False)
@@ -39,7 +35,6 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
         ('convert_and_merge', 'Convert & Merge with Opportunities'),
         ('deduplicate', 'Deduplicate leads')
     ], 'Conversion Action', default='convert', readonly=False)
-    partner_id = fields.Many2one('res.partner', 'Customer')
     team_id = fields.Many2one('crm.team', 'Sales Team', compute='_compute_team_id',
         readonly=False, store=True, compute_sudo=False)
     user_ids = fields.Many2many('res.users', string='Salespersons')
@@ -167,7 +162,7 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
         for lead in leads:
             if lead.active:
                 self._convert_handle_partner(
-                    lead, self.action, self.partner_id.id or lead.partner_id.id)
+                    lead, lead.partner_id.id)
 
                 lead.convert_opportunity(lead.partner_id, user_ids=False, team_id=False)
 
@@ -175,15 +170,11 @@ class CrmLead2opportunityPartnerMass(models.TransientModel):
             leads_to_allocate = leads if self.force_assignment else leads.filtered(lambda l: not l.user_id)
             leads_to_allocate._handle_salesmen_assignment(self.user_ids.ids, team_id=self.team_id.id)
 
-    def _convert_handle_partner(self, lead, action, partner_id):
-        if self.action == 'create':
+    def _convert_handle_partner(self, lead, partner_id):
+        if self.link_to_existing_customer:
             partner_id = lead._find_matching_partner().id
-
-        if self.action == 'do_not_link':
-            # reset partner_id in case the user set the field, then switched back to do_not_link
-            partner_id = False
 
         lead._handle_partner_assignment(
             force_partner_id=partner_id,
-            create_missing=action == 'create',
+            create_missing=self.link_to_existing_customer,
         )
