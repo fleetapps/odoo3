@@ -226,6 +226,7 @@ class TestUBLRO(TestUBLCommon):
             **kwargs
         )
 
+<<<<<<< 258e614605bc313caba1c71642a84bb9787ee6b9
     def get_attachment(self, move):
         self.assertTrue(move.ubl_cii_xml_id)
         self.assertEqual(move.ubl_cii_xml_id.name[-11:], "cius_ro.xml")
@@ -235,6 +236,35 @@ class TestUBLRO(TestUBLCommon):
     # Testing of the XML generation
     ####################################################
 
+||||||| 0df631380155423e51395612f27943b76b2d1b1c
+
+@tagged('post_install_l10n', 'post_install', '-at_install')
+class TestUBLRO(TestUBLROCommon):
+
+    ####################################################
+    # Test export - import
+    ####################################################
+
+    def get_attachment(self, move):
+        self.assertTrue(move.ubl_cii_xml_id)
+        self.assertEqual(move.ubl_cii_xml_id.name[-11:], "cius_ro.xml")
+        return move.ubl_cii_xml_id
+
+=======
+    def get_attachment(self, move):
+        self.assertTrue(move.ubl_cii_xml_id)
+        self.assertEqual(move.ubl_cii_xml_id.name[-11:], "cius_ro.xml")
+        return move.ubl_cii_xml_id
+
+
+@tagged('post_install_l10n', 'post_install', '-at_install')
+class TestUBLRO(TestUBLROCommon):
+
+    ####################################################
+    # Test export - import
+    ####################################################
+
+>>>>>>> ae92fa1002ce3ab783a60b3c7200d31e37fdb218
     def test_export_invoice(self):
         invoice = self.create_move("out_invoice", currency_id=self.company.currency_id.id)
         attachment = self.get_attachment(invoice)
