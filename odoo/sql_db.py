@@ -120,6 +120,9 @@ class Savepoint:
             self._close(rollback)
 
     def rollback(self):
+        # _check_savepoint create a savepoint without an instance of base cursor, so cache is not always available
+        if hasattr(self._cr, 'cache'):
+            self._cr.cache.clear()
         self._cr.execute('ROLLBACK TO SAVEPOINT "%s"' % self.name)
 
     def _close(self, rollback: bool):
