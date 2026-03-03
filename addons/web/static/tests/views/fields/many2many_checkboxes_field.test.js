@@ -315,7 +315,7 @@ test("Many2ManyCheckBoxesField with 100+ values", async () => {
 test("Many2ManyCheckBoxesField in a one2many", async () => {
     expect.assertions(3);
 
-    PartnerType._records.push({ id: 15, name: "bronze" });
+    PartnerType._records = [...PartnerType._records, { id: 15, name: "bronze" }];
     Partner._records[0].timmy = [14, 15];
 
     onRpc("web_save", ({ args }) => {
@@ -370,7 +370,7 @@ test("Many2ManyCheckBoxesField with default values", async () => {
         relation: "partner.type",
         default: [[4, 3]],
     });
-    PartnerType._records.push({ id: 3, name: "bronze" });
+    PartnerType._records = [...PartnerType._records, { id: 3, name: "bronze" }];
 
     onRpc("web_save", ({ args }) => {
         expect(args[1].timmy).toEqual([[4, 12]], {

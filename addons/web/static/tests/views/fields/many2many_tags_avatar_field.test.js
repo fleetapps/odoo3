@@ -84,19 +84,20 @@ test("widget many2many_tags_avatar img src", async () => {
 });
 
 test("widget many2many_tags_avatar in list view", async () => {
+    const newPartners = [];
     for (let id = 5; id <= 15; id++) {
-        Partner._records.push({
-            id,
-            name: `record ${id}`,
-            write_date: "2023-02-13 10:00:00",
-        });
+        newPartners.push({ id, name: `record ${id}`, write_date: "2023-02-13 10:00:00" });
     }
+    Partner._records = [...Partner._records, ...newPartners];
 
-    Turtle._records.push({
-        id: 4,
-        name: "crime master gogo",
-        partner_ids: [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-    });
+    Turtle._records = [
+        ...Turtle._records,
+        {
+            id: 4,
+            name: "crime master gogo",
+            partner_ids: [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        },
+    ];
     Turtle._records[0].partner_ids = [1];
     Turtle._records[1].partner_ids = [1, 2, 4, 5, 6, 7];
     Turtle._records[2].partner_ids = [1, 2, 4, 5, 7];
@@ -209,19 +210,20 @@ test("widget many2many_tags_avatar list view - don't crash on keyboard navigatio
 test("widget many2many_tags_avatar in kanban view", async () => {
     expect.assertions(21);
 
+    const newPartners = [];
     for (let id = 5; id <= 15; id++) {
-        Partner._records.push({
-            id,
-            name: `record ${id}`,
-            write_date: "2023-02-13 10:00:00",
-        });
+        newPartners.push({ id, name: `record ${id}`, write_date: "2023-02-13 10:00:00" });
     }
+    Partner._records = [...Partner._records, ...newPartners];
 
-    Turtle._records.push({
-        id: 4,
-        name: "crime master gogo",
-        partner_ids: [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-    });
+    Turtle._records = [
+        ...Turtle._records,
+        {
+            id: 4,
+            name: "crime master gogo",
+            partner_ids: [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        },
+    ];
     Turtle._records[0].partner_ids = [1];
     Turtle._records[1].partner_ids = [1, 2, 4];
     Turtle._records[2].partner_ids = [1, 2, 4, 5];

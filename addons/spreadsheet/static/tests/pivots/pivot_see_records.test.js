@@ -372,8 +372,11 @@ test("See records is not visible if the pivot is not loaded, even if the cell ha
 });
 
 test("See records with custom pivot groups", async function () {
-    Product._records.push({ id: 200, display_name: "chair", name: "chair" });
-    Partner._records.push({ id: 200, bar: false, product_id: 200, probability: 100 });
+    Product._records = [...Product._records, { id: 200, display_name: "chair", name: "chair" }];
+    Partner._records = [
+        ...Partner._records,
+        { id: 200, bar: false, product_id: 200, probability: 100 },
+    ];
 
     let doActionReceivedDomain = undefined;
     mockService("action", {

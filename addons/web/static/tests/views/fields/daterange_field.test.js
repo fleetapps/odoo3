@@ -601,12 +601,15 @@ test("Datetime field - open datepicker and toggle range with optional start date
 test.tags("desktop");
 test("Datetime field - open datepicker and switch page", async () => {
     Partner._records[0].datetime_end = "2017-03-13 00:00:00";
-    Partner._records.push({
-        id: 2,
-        date: "2017-03-04",
-        datetime: "2017-03-10 11:00:00",
-        datetime_end: "2017-04-15 00:00:00",
-    });
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 2,
+            date: "2017-03-04",
+            datetime: "2017-03-10 11:00:00",
+            datetime_end: "2017-04-15 00:00:00",
+        },
+    ];
 
     await mountView({
         type: "form",

@@ -395,9 +395,10 @@ test(`expand range of checkbox with shift+arrow`, async () => {
 
 test.tags("desktop");
 test(`multiple interactions to change the range of checked boxes`, async () => {
-    for (let i = 0; i < 5; i++) {
-        Foo._records.push({ id: 5 + i, bar: true, foo: "foo" + i });
-    }
+    Foo._records = [
+        ...Foo._records,
+        ...Array.from({ length: 5 }, (_, i) => ({ id: 5 + i, bar: true, foo: "foo" + i })),
+    ];
 
     await mountView({
         resModel: "foo",
@@ -755,7 +756,11 @@ test(`non-editable list in debug`, async () => {
 
 test(`editable readonly list with open_form_view`, async () => {
     Foo._fields.foo_o2m = fields.One2many({ relation: "foo" });
-    Foo._records.push({ id: 5, bar: true, foo: "xxx" }, { id: 6, bar: true, foo: "yyy" });
+    Foo._records = [
+        ...Foo._records,
+        { id: 5, bar: true, foo: "xxx" },
+        { id: 6, bar: true, foo: "yyy" },
+    ];
     Foo._records[0].foo_o2m = [5, 6];
 
     await mountView({
@@ -5725,7 +5730,7 @@ test(`deleting record which throws UserError should close confirmation dialog`, 
 
 test.tags("desktop");
 test(`delete all records matching the domain`, async () => {
-    Foo._records.push({ id: 5, bar: true, foo: "xxx" });
+    Foo._records = [...Foo._records, { id: 5, bar: true, foo: "xxx" }];
 
     mockService("notification", {
         add() {
@@ -5763,8 +5768,11 @@ test(`delete all records matching the domain`, async () => {
 
 test.tags("desktop");
 test(`delete all records matching the domain (limit reached)`, async () => {
-    Foo._records.push({ id: 5, bar: true, foo: "xxx" });
-    Foo._records.push({ id: 6, bar: true, foo: "yyy" });
+    Foo._records = [
+        ...Foo._records,
+        { id: 5, bar: true, foo: "xxx" },
+        { id: 6, bar: true, foo: "yyy" },
+    ];
 
     mockService("notification", {
         add() {
@@ -5898,7 +5906,7 @@ test.tags("desktop");
 test(`archive all records matching the domain`, async () => {
     // add active field on foo model and make all records active
     Foo._fields.active = fields.Boolean({ default: true });
-    Foo._records.push({ id: 5, bar: true, foo: "xxx" });
+    Foo._records = [...Foo._records, { id: 5, bar: true, foo: "xxx" }];
 
     mockService("notification", {
         add() {
@@ -5938,8 +5946,11 @@ test.tags("desktop");
 test(`archive all records matching the domain (limit reached)`, async () => {
     // add active field on foo model and make all records active
     Foo._fields.active = fields.Boolean({ default: true });
-    Foo._records.push({ id: 5, bar: true, foo: "xxx" });
-    Foo._records.push({ id: 6, bar: true, foo: "yyy" });
+    Foo._records = [
+        ...Foo._records,
+        { id: 5, bar: true, foo: "xxx" },
+        { id: 6, bar: true, foo: "yyy" },
+    ];
 
     mockService("notification", {
         add() {
@@ -6296,7 +6307,7 @@ test(`pager, ungrouped, with count limit reached, click next`, async () => {
 test.tags("desktop");
 test(`pager, ungrouped, with count limit reached, click next (2)`, async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
-    Foo._records.push({ id: 5, bar: true, foo: "xxx" });
+    Foo._records = [...Foo._records, { id: 5, bar: true, foo: "xxx" }];
 
     stepAllNetworkCalls();
     let expectedCountLimit = 4;
@@ -6338,7 +6349,7 @@ test(`pager, ungrouped, with count limit reached, click next (2)`, async () => {
 test.tags("desktop");
 test(`pager, ungrouped, with count limit reached, click previous`, async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
-    Foo._records.push({ id: 5, bar: true, foo: "xxx" });
+    Foo._records = [...Foo._records, { id: 5, bar: true, foo: "xxx" }];
 
     stepAllNetworkCalls();
     let expectedCountLimit = 4;
@@ -6373,7 +6384,7 @@ test(`pager, ungrouped, with count limit reached, click previous`, async () => {
 test.tags("desktop");
 test(`pager, ungrouped, with count limit reached, edit pager`, async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
-    Foo._records.push({ id: 5, bar: true, foo: "xxx" });
+    Foo._records = [...Foo._records, { id: 5, bar: true, foo: "xxx" }];
 
     stepAllNetworkCalls();
     let expectedCountLimit = 4;
@@ -6483,9 +6494,12 @@ test(`pager, ungrouped, reload while fetching count`, async () => {
 test.tags("desktop");
 test(`pager, ungrouped, next and fetch count simultaneously`, async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 5 });
-    Foo._records.push({ id: 11, foo: "r11", bar: true });
-    Foo._records.push({ id: 12, foo: "r12", bar: true });
-    Foo._records.push({ id: 13, foo: "r13", bar: true });
+    Foo._records = [
+        ...Foo._records,
+        { id: 11, foo: "r11", bar: true },
+        { id: 12, foo: "r12", bar: true },
+        { id: 13, foo: "r13", bar: true },
+    ];
 
     stepAllNetworkCalls();
     let deferred;
@@ -6523,7 +6537,7 @@ test(`pager, ungrouped, next and fetch count simultaneously`, async () => {
 test.tags("desktop");
 test(`pager, grouped, with groups count limit reached`, async () => {
     patchWithCleanup(RelationalModel, { DEFAULT_COUNT_LIMIT: 3 });
-    Foo._records.push({ id: 398, foo: "ozfijz" }); // to have 4 groups
+    Foo._records = [...Foo._records, { id: 398, foo: "ozfijz" }]; // to have 4 groups
 
     await mountView({
         resModel: "foo",
@@ -7050,14 +7064,16 @@ test(`use default_order on editable tree: sort on demand in page`, async () => {
     Bar._fields.name = fields.Char();
 
     const ids = [];
+    const newRecords = [];
     for (let i = 0; i < 45; i++) {
         const id = 4 + i;
         ids.push(id);
-        Bar._records.push({
+        newRecords.push({
             id: id,
             name: "Value " + (id < 10 ? "0" : "") + id,
         });
     }
+    Bar._records = [...Bar._records, ...newRecords];
     Foo._records[0].o2m = ids;
 
     await mountView({
@@ -8709,8 +8725,11 @@ test(`edit a row by clicking on a readonly field`, async () => {
 });
 
 test(`list view with nested groups`, async () => {
-    Foo._records.push({ id: 5, foo: "blip", int_field: -7, m2o: 1 });
-    Foo._records.push({ id: 6, foo: "blip", int_field: 5, m2o: 2 });
+    Foo._records = [
+        ...Foo._records,
+        { id: 5, foo: "blip", int_field: -7, m2o: 1 },
+        { id: 6, foo: "blip", int_field: 5, m2o: 2 },
+    ];
 
     onRpc("web_read_group", ({ kwargs }) => {
         if (kwargs.groupby[0] === "foo") {
@@ -8803,20 +8822,23 @@ test(`grouped list on selection field at level 2`, async () => {
         ],
         default: 1,
     });
-    Foo._records.push({
-        id: 5,
-        foo: "blip",
-        int_field: -7,
-        m2o: 1,
-        priority: 2,
-    });
-    Foo._records.push({
-        id: 6,
-        foo: "blip",
-        int_field: 5,
-        m2o: 1,
-        priority: 3,
-    });
+    Foo._records = [
+        ...Foo._records,
+        {
+            id: 5,
+            foo: "blip",
+            int_field: -7,
+            m2o: 1,
+            priority: 2,
+        },
+        {
+            id: 6,
+            foo: "blip",
+            int_field: 5,
+            m2o: 1,
+            priority: 3,
+        },
+    ];
 
     await mountView({
         resModel: "foo",
@@ -10965,10 +10987,13 @@ test(`multiple clicks on Add do not create invalid rows`, async () => {
 });
 
 test(`reference field rendering`, async () => {
-    Foo._records.push({
-        id: 5,
-        reference: "res.currency,2",
-    });
+    Foo._records = [
+        ...Foo._records,
+        {
+            id: 5,
+            reference: "res.currency,2",
+        },
+    ];
 
     await mountView({
         resModel: "foo",
@@ -11709,9 +11734,11 @@ test(`editable list view: multi edition error and cancellation handling`, async 
 
 test.tags("desktop");
 test(`multi edition: many2many_tags in many2many field`, async () => {
+    const newRecords = [];
     for (let i = 4; i <= 10; i++) {
-        Bar._records.push({ id: i, name: "Value" + i });
+        newRecords.push({ id: i, name: "Value" + i });
     }
+    Bar._records = [...Bar._records, ...newRecords];
     Bar._views = {
         list: `<list><field name="name"/></list>`,
     };
@@ -12824,20 +12851,23 @@ test(`grouped list view, indentation for empty group`, async () => {
         ],
         default: 1,
     });
-    Foo._records.push({
-        id: 5,
-        foo: "blip",
-        int_field: -7,
-        m2o: 1,
-        priority: 2,
-    });
-    Foo._records.push({
-        id: 6,
-        foo: "blip",
-        int_field: 5,
-        m2o: 1,
-        priority: 3,
-    });
+    Foo._records = [
+        ...Foo._records,
+        {
+            id: 5,
+            foo: "blip",
+            int_field: -7,
+            m2o: 1,
+            priority: 2,
+        },
+        {
+            id: 6,
+            foo: "blip",
+            int_field: 5,
+            m2o: 1,
+            priority: 3,
+        },
+    ];
 
     onRpc("web_read_group", ({ kwargs }) => {
         // Override of the web_read_group to display the row even if there is no record in it,
@@ -13027,8 +13057,7 @@ test(`grouped list view move to previous page of group when all records from las
 
 test.tags("desktop");
 test(`grouped list view move to previous page of group when all records from last page deleted with more pages`, async () => {
-    Foo._records.push({ id: 6, foo: "foo", m2o: 1 });
-    Foo._records.push({ id: 7, foo: "foo", m2o: 1 });
+    Foo._records = [...Foo._records, { id: 6, foo: "foo", m2o: 1 }, { id: 7, foo: "foo", m2o: 1 }];
     onRpc("web_search_read", ({ kwargs }) => {
         expect.step(`web_search_read ${kwargs.limit} - ${kwargs.offset}`);
     });
@@ -13154,9 +13183,11 @@ test(`list view move to previous page when all records from last page archive/un
 test.tags("desktop");
 test(`list should ask to scroll to top on page changes`, async () => {
     // add records to be able to scroll
+    const newRecords = [];
     for (let i = 5; i < 55; i++) {
-        Foo._records.push({ id: i, foo: "foo" });
+        newRecords.push({ id: i, foo: "foo" });
     }
+    Foo._records = [...Foo._records, ...newRecords];
     patchWithCleanup(ListController.prototype, {
         onPageChangeScroll() {
             super.onPageChangeScroll(...arguments);
@@ -13372,9 +13403,11 @@ test(`grouped list with groups_limit attribute, then ungroup`, async () => {
 
 test.tags("desktop");
 test(`multi level grouped list with groups_limit attribute`, async () => {
+    const newRecords = [];
     for (let i = 50; i < 55; i++) {
-        Foo._records.push({ id: i, foo: "foo", int_field: i });
+        newRecords.push({ id: i, foo: "foo", int_field: i });
     }
+    Foo._records = [...Foo._records, ...newRecords];
     await mountView({
         resModel: "foo",
         type: "list",
@@ -13476,9 +13509,11 @@ test(`grouped list (two levels) with expand attribute`, async () => {
 
 test.tags("desktop");
 test(`grouped lists with expand attribute and a lot of groups`, async () => {
+    const newRecords = [];
     for (let i = 0; i < 15; i++) {
-        Foo._records.push({ foo: "record " + i, int_field: i });
+        newRecords.push({ foo: "record " + i, int_field: i });
     }
+    Foo._records = [...Foo._records, ...newRecords];
 
     onRpc("web_read_group", () => {
         expect.step("web_read_group");
@@ -15222,20 +15257,23 @@ test(`add a new row in (selection) grouped editable list`, async () => {
         ],
         default: 1,
     });
-    Foo._records.push({
-        id: 5,
-        foo: "blip",
-        int_field: -7,
-        m2o: 1,
-        priority: 2,
-    });
-    Foo._records.push({
-        id: 6,
-        foo: "blip",
-        int_field: 5,
-        m2o: 1,
-        priority: 3,
-    });
+    Foo._records = [
+        ...Foo._records,
+        {
+            id: 5,
+            foo: "blip",
+            int_field: -7,
+            m2o: 1,
+            priority: 2,
+        },
+        {
+            id: 6,
+            foo: "blip",
+            int_field: 5,
+            m2o: 1,
+            priority: 3,
+        },
+    ];
 
     onRpc("onchange", ({ kwargs }) => expect.step(kwargs.context.default_priority.toString()));
     await mountView({
@@ -18255,10 +18293,11 @@ test(`context keys not passed down the stack and not to fields`, async () => {
         list: `<list><field name="name"/></list>`,
     };
 
-    Bar._records = [];
+    const newRecords = [];
     for (let i = 1; i < 50; i++) {
-        Bar._records.push({ id: i, name: `Value ${i}` });
+        newRecords.push({ id: i, name: `Value ${i}` });
     }
+    Bar._records = newRecords;
 
     onRpc(["foo", "bar"], "*", ({ model, method, kwargs }) => {
         expect.step({ model, method, context: kwargs.context });
@@ -19868,9 +19907,11 @@ test(`basic open record with allowOpenAction`, async () => {
 
 test.tags("desktop");
 test(`multi edition: many2many_tags add few tags in one time`, async () => {
+    const newRecords = [];
     for (let i = 4; i <= 10; i++) {
-        Bar._records.push({ id: i, name: "Value" + i });
+        newRecords.push({ id: i, name: "Value" + i });
     }
+    Bar._records = [...Bar._records, ...newRecords];
     Bar._views = {
         list: `<list><field name="name"/></list>`,
     };
@@ -19953,9 +19994,11 @@ test("scroll position is restored when coming back to list view", async () => {
         search: `<search />`,
     };
 
+    const newRecords = [];
     for (let i = 1; i < 30; i++) {
-        Foo._records.push({ id: 100 + i, foo: `Record ${i}` });
+        newRecords.push({ id: 100 + i, foo: `Record ${i}` });
     }
+    Foo._records = [...Foo._records, ...newRecords];
 
     let def;
     onRpc("web_search_read", () => def);

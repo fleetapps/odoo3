@@ -316,7 +316,8 @@ const checkFilterItems = async (amount) => {
 test.tags("desktop");
 test(`simple calendar rendering on desktop`, async () => {
     Event._fields.partner_id = fields.Many2one({ relation: "calendar.partner" });
-    Event._records.push(
+    Event._records = [
+        ...Event._records,
         {
             id: 8,
             user_id: serverState.userId,
@@ -344,8 +345,8 @@ test(`simple calendar rendering on desktop`, async () => {
             start: "2016-12-16 11:45:00",
             stop: false,
             attendee_ids: [1, 2, 3],
-        }
-    );
+        },
+    ];
 
     await mountView({
         resModel: "event",
@@ -428,7 +429,8 @@ test(`simple calendar rendering on desktop`, async () => {
 test.tags("mobile");
 test(`simple calendar rendering on mobile`, async () => {
     Event._fields.partner_id = fields.Many2one({ relation: "calendar.partner" });
-    Event._records.push(
+    Event._records = [
+        ...Event._records,
         {
             id: 8,
             user_id: serverState.userId,
@@ -447,8 +449,8 @@ test(`simple calendar rendering on mobile`, async () => {
             stop: "2016-12-11 05:30:00",
             attendee_ids: [1, 2, 3],
             delay: 0.25,
-        }
-    );
+        },
+    ];
 
     await mountView({
         resModel: "event",
@@ -572,7 +574,8 @@ test(`check the avatar of the attendee in the calendar filter panel`, async () =
         list: `<list><field name="name"/></list>`,
         kanban: `<kanban><templates><t name="card"><field name="name"/></t></templates></kanban>`,
     };
-    CalendarPartner._records.push(
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
         { id: 5, name: "foo partner 5" },
         { id: 6, name: "foo partner 6" },
         { id: 7, name: "foo partner 7" },
@@ -581,8 +584,8 @@ test(`check the avatar of the attendee in the calendar filter panel`, async () =
         { id: 10, name: "foo partner 10" },
         { id: 11, name: "foo partner 11" },
         { id: 12, name: "foo partner 12" },
-        { id: 13, name: "foo partner 13" }
-    );
+        { id: 13, name: "foo partner 13" },
+    ];
 
     await mountView({
         resModel: "event",
@@ -616,7 +619,8 @@ test(`Select multiple attendees in the calendar filter panel autocomplete on des
     CalendarPartner._views = {
         list: `<list><field name="name"/></list>`,
     };
-    CalendarPartner._records.push(
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
         { id: 5, name: "foo partner 5" },
         { id: 6, name: "foo partner 6" },
         { id: 7, name: "foo partner 7" },
@@ -626,8 +630,8 @@ test(`Select multiple attendees in the calendar filter panel autocomplete on des
         { id: 11, name: "foo partner 11" },
         { id: 12, name: "foo partner 12" },
         { id: 13, name: "foo partner 13" },
-        { id: 14, name: "foo partner 14" }
-    );
+        { id: 14, name: "foo partner 14" },
+    ];
 
     await mountView({
         resModel: "event",
@@ -682,7 +686,8 @@ test(`add a filter with the search more dialog on desktop`, async () => {
     CalendarPartner._views = {
         list: `<list><field name="name"/></list>`,
     };
-    CalendarPartner._records.push(
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
         { id: 5, name: "foo partner 5" },
         { id: 6, name: "foo partner 6" },
         { id: 7, name: "foo partner 7" },
@@ -692,8 +697,8 @@ test(`add a filter with the search more dialog on desktop`, async () => {
         { id: 11, name: "foo partner 11" },
         { id: 12, name: "foo partner 12" },
         { id: 13, name: "foo partner 13" },
-        { id: 14, name: "foo partner 14" }
-    );
+        { id: 14, name: "foo partner 14" },
+    ];
 
     await mountView({
         resModel: "event",
@@ -851,7 +856,8 @@ test(`add a filter with the search more dialog (field with a context)`, async ()
     CalendarPartner._views = {
         list: `<list><field name="name"/></list>`,
     };
-    CalendarPartner._records.push(
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
         { id: 5, name: "foo partner 5" },
         { id: 6, name: "foo partner 6" },
         { id: 7, name: "foo partner 7" },
@@ -861,8 +867,8 @@ test(`add a filter with the search more dialog (field with a context)`, async ()
         { id: 11, name: "foo partner 11" },
         { id: 12, name: "foo partner 12" },
         { id: 13, name: "foo partner 13" },
-        { id: 14, name: "foo partner 14" }
-    );
+        { id: 14, name: "foo partner 14" },
+    ];
 
     await mountView({
         resModel: "event",
@@ -896,7 +902,8 @@ test(`add a filter with the search more dialog on mobile`, async () => {
         list: `<list><field name="name"/></list>`,
         kanban: `<kanban><templates><t t-name="card"><field class="o_data_row" name="name"/></t></templates></kanban>`,
     };
-    CalendarPartner._records.push(
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
         { id: 5, name: "foo partner 5" },
         { id: 6, name: "foo partner 6" },
         { id: 7, name: "foo partner 7" },
@@ -906,8 +913,8 @@ test(`add a filter with the search more dialog on mobile`, async () => {
         { id: 11, name: "foo partner 11" },
         { id: 12, name: "foo partner 12" },
         { id: 13, name: "foo partner 13" },
-        { id: 14, name: "foo partner 14" }
-    );
+        { id: 14, name: "foo partner 14" },
+    ];
 
     await mountView({
         resModel: "event",
@@ -2087,7 +2094,10 @@ test(`rendering, with many2many on desktop`, async () => {
         default: [[6, 0, [1]]],
     });
     Event._records[0].attendee_ids = [1, 2, 3, 4, 5];
-    CalendarPartner._records.push({ id: 5, name: "partner 5", image: "EEE" });
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
+        { id: 5, name: "partner 5", image: "EEE" },
+    ];
 
     await mountView({
         resModel: "event",
@@ -2117,7 +2127,10 @@ test(`rendering, with many2many on mobile`, async () => {
         default: [[6, 0, [1]]],
     });
     Event._records[0].attendee_ids = [1, 2, 3, 4, 5];
-    CalendarPartner._records.push({ id: 5, name: "partner 5", image: "EEE" });
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
+        { id: 5, name: "partner 5", image: "EEE" },
+    ];
 
     await mountView({
         resModel: "event",
@@ -2148,7 +2161,10 @@ test(`set filter with many2many field on desktop`, async () => {
         default: [[6, 0, [1]]],
     });
     Event._records[0].attendee_ids = [1, 2, 3, 4, 5];
-    CalendarPartner._records.push({ id: 5, name: "partner 5", image: "EEE" });
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
+        { id: 5, name: "partner 5", image: "EEE" },
+    ];
     await mountView({
         resModel: "event",
         type: "calendar",
@@ -2178,7 +2194,10 @@ test(`set filter with many2many field on mobile`, async () => {
         default: [[6, 0, [1]]],
     });
     Event._records[0].attendee_ids = [1, 2, 3, 4, 5];
-    CalendarPartner._records.push({ id: 5, name: "partner 5", image: "EEE" });
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
+        { id: 5, name: "partner 5", image: "EEE" },
+    ];
     await mountView({
         resModel: "event",
         type: "calendar",
@@ -2206,11 +2225,14 @@ test(`set filter with many2many field on mobile`, async () => {
 test.tags("desktop");
 test("many2many filter handles archived records without crashing on desktop", async () => {
     CalendarPartner._fields.active = fields.Boolean({ default: true });
-    CalendarPartner._records.push({
-        id: 99,
-        name: "Joni",
-        active: false,
-    });
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
+        {
+            id: 99,
+            name: "Joni",
+            active: false,
+        },
+    ];
     Event._records[0].attendee_ids = [99];
 
     await mountView({
@@ -2228,11 +2250,14 @@ test("many2many filter handles archived records without crashing on desktop", as
 test.tags("mobile");
 test("many2many filter handles archived records without crashing on mobile", async () => {
     CalendarPartner._fields.active = fields.Boolean({ default: true });
-    CalendarPartner._records.push({
-        id: 99,
-        name: "Joni",
-        active: false,
-    });
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
+        {
+            id: 99,
+            name: "Joni",
+            active: false,
+        },
+    ];
     Event._records[0].attendee_ids = [99];
 
     await mountView({
@@ -2255,7 +2280,10 @@ test(`set filter with one2many field on desktop`, async () => {
         default: [[6, 0, [1]]],
     });
     Event._records[0].attendee_ids = [1, 2, 3, 4, 5];
-    CalendarPartner._records.push({ id: 5, name: "partner 5", image: "EEE" });
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
+        { id: 5, name: "partner 5", image: "EEE" },
+    ];
     await mountView({
         resModel: "event",
         type: "calendar",
@@ -2285,7 +2313,10 @@ test(`set filter with one2many field on mobile`, async () => {
         default: [[6, 0, [1]]],
     });
     Event._records[0].attendee_ids = [1, 2, 3, 4, 5];
-    CalendarPartner._records.push({ id: 5, name: "partner 5", image: "EEE" });
+    CalendarPartner._records = [
+        ...CalendarPartner._records,
+        { id: 5, name: "partner 5", image: "EEE" },
+    ];
     await mountView({
         resModel: "event",
         type: "calendar",
@@ -2724,12 +2755,16 @@ test(`Colors: use available colors when attr is not number on mobile`, async () 
 });
 
 test(`Add filters and specific color`, async () => {
-    EventType._records.push({
-        id: 4,
-        name: "Event Type no color",
-        color: 0,
-    });
-    Event._records.push(
+    EventType._records = [
+        ...EventType._records,
+        {
+            id: 4,
+            name: "Event Type no color",
+            color: 0,
+        },
+    ];
+    Event._records = [
+        ...Event._records,
         {
             id: 8,
             user_id: 4,
@@ -2762,8 +2797,8 @@ test(`Add filters and specific color`, async () => {
             is_all_day: false,
             attendee_ids: [1, 2, 3],
             type_id: 4,
-        }
-    );
+        },
+    ];
 
     onRpc(({ model, method, kwargs }) => {
         let step = `${method} (${model})`;
@@ -3163,7 +3198,7 @@ test(`Colors: dynamic filters with no color source`, async () => {
 test(`create event with filters`, async () => {
     Event._fields.user_id = fields.Many2one({ relation: "calendar.users", default: 5 });
     Event._fields.partner_id = fields.Many2one({ relation: "calendar.partner", default: 3 });
-    CalendarUsers._records.push({ id: 5, name: "user 5", partner_id: 3 });
+    CalendarUsers._records = [...CalendarUsers._records, { id: 5, name: "user 5", partner_id: 3 }];
 
     await mountView({
         resModel: "event",
@@ -3223,7 +3258,7 @@ test(`create event with filters (no quickCreate)`, async () => {
     };
     Event._fields.user_id = fields.Many2one({ relation: "calendar.users", default: 5 });
     Event._fields.partner_id = fields.Many2one({ relation: "calendar.partner", default: 3 });
-    CalendarUsers._records.push({ id: 5, name: "user 5", partner_id: 3 });
+    CalendarUsers._records = [...CalendarUsers._records, { id: 5, name: "user 5", partner_id: 3 }];
 
     await mountView({
         resModel: "event",
@@ -3272,7 +3307,7 @@ test(`Toggle multiple values at once in a filter with filter_field`, async () =>
 
 test.tags("desktop");
 test(`Update event with filters on desktop`, async () => {
-    CalendarUsers._records.push({ id: 5, name: "user 5", partner_id: 3 });
+    CalendarUsers._records = [...CalendarUsers._records, { id: 5, name: "user 5", partner_id: 3 }];
     Event._views = {
         form: `
             <form>
@@ -3340,7 +3375,7 @@ test(`Update event with filters on desktop`, async () => {
 
 test.tags("mobile");
 test(`Update event with filters on mobile`, async () => {
-    CalendarUsers._records.push({ id: 5, name: "user 5", partner_id: 3 });
+    CalendarUsers._records = [...CalendarUsers._records, { id: 5, name: "user 5", partner_id: 3 }];
     CalendarUsers._views = {
         kanban: `<kanban><templates><t t-name="card"><field name="name"/></t></templates></kanban>`,
     };
@@ -3412,8 +3447,9 @@ test(`Update event with filters on mobile`, async () => {
 
 test.tags("desktop");
 test(`change pager with filters`, async () => {
-    CalendarUsers._records.push({ id: 5, name: "user 5", partner_id: 3 });
-    Event._records.push(
+    CalendarUsers._records = [...CalendarUsers._records, { id: 5, name: "user 5", partner_id: 3 }];
+    Event._records = [
+        ...Event._records,
         {
             id: 8,
             user_id: 5,
@@ -3443,8 +3479,8 @@ test(`change pager with filters`, async () => {
             stop: "2016-12-08 08:00:00",
             is_all_day: false,
             attendee_ids: [1, 2, 3],
-        }
-    );
+        },
+    ];
 
     await mountView({
         resModel: "event",
@@ -5299,19 +5335,25 @@ test(`calendar sidebar filters are ASC sorted (not valued @end)`, async () => {
 
     Event._records = [];
     for (let i = 1; i <= 18; i++) {
-        Event._records.push({
-            user_id: i,
-            name: `event ${i}`,
+        Event._records = [
+            ...Event._records,
+            {
+                user_id: i,
+                name: `event ${i}`,
+                start: "2023-12-11 00:00:00",
+                stop: "2023-12-11 00:00:00",
+            },
+        ];
+    }
+    Event._records = [
+        ...Event._records,
+        {
+            user_id: false,
+            name: `event X`,
             start: "2023-12-11 00:00:00",
             stop: "2023-12-11 00:00:00",
-        });
-    }
-    Event._records.push({
-        user_id: false,
-        name: `event X`,
-        start: "2023-12-11 00:00:00",
-        stop: "2023-12-11 00:00:00",
-    });
+        },
+    ];
 
     CalendarUsers._records = [
         { id: 1, name: "Zoooro" },
@@ -6113,7 +6155,8 @@ test("Revert to the previous state if updateRecord fails (onEventDrop)", async (
 
 test.tags("desktop");
 test(`drag and drop events from side panel to schedule them`, async () => {
-    Event._records.push(
+    Event._records = [
+        ...Event._records,
         {
             id: 8,
             user_id: serverState.userId,
@@ -6127,8 +6170,8 @@ test(`drag and drop events from side panel to schedule them`, async () => {
             name: "event 9",
             start: false,
             stop: false,
-        }
-    );
+        },
+    ];
     let expectedDate = null;
     onRpc("event", "search_read", () => {
         expect.step("search_read");
@@ -6179,13 +6222,16 @@ test(`drag and drop events from side panel to schedule them`, async () => {
 test.tags("desktop");
 test(`load more events to schedule`, async () => {
     for (let i = 8; i <= 40; i++) {
-        Event._records.push({
-            id: i,
-            user_id: serverState.userId,
-            name: `event ${i}`,
-            start: false,
-            stop: false,
-        });
+        Event._records = [
+            ...Event._records,
+            {
+                id: i,
+                user_id: serverState.userId,
+                name: `event ${i}`,
+                start: false,
+                stop: false,
+            },
+        ];
     }
     onRpc("event", "search_read", () => {
         expect.step("search_read");

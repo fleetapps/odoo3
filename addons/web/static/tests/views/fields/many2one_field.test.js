@@ -536,7 +536,7 @@ test("show_address works in a view embedded in a view of another type", async ()
 
 test("many2ones in form views with search more", async () => {
     for (let i = 5; i < 11; i++) {
-        Partner._records.push({ id: i, name: `Partner ${i}` });
+        Partner._records = [...Partner._records, { id: i, name: `Partner ${i}` }];
     }
     Partner._fields.datetime.searchable = true;
     Partner._views = {
@@ -577,7 +577,7 @@ test("many2ones in form views with search more", async () => {
 
 test("many2ones: Open the selection dialog several times using the 'Search more...' button with a context containing 'search_default_...'", async () => {
     for (let i = 5; i < 11; i++) {
-        Partner._records.push({ id: i, name: `Partner ${i}` });
+        Partner._records = [...Partner._records, { id: i, name: `Partner ${i}` }];
     }
     Partner._fields.name.searchable = true;
     Partner._views = {
@@ -1082,7 +1082,7 @@ test("many2one in edit mode", async () => {
     // create 10 partners to have the 'Search more' option in the autocomplete dropdown
     for (let i = 0; i < 10; i++) {
         const id = 20 + i;
-        Partner._records.push({ id, name: `Partner ${id}` });
+        Partner._records = [...Partner._records, { id, name: `Partner ${id}` }];
     }
 
     Partner._views = {
@@ -3321,7 +3321,7 @@ test("search more in many2one: no text in input", async () => {
     expect.assertions(2);
 
     for (let i = 0; i < 8; i++) {
-        Partner._records.push({ id: 100 + i, name: `test_${i}` });
+        Partner._records = [...Partner._records, { id: 100 + i, name: `test_${i}` }];
     }
     Partner._views = {
         list: `
@@ -3366,7 +3366,7 @@ test("search more in many2one: text in input", async () => {
     expect.assertions(5);
 
     for (let i = 0; i < 8; i++) {
-        Partner._records.push({ id: 100 + i, name: `test_${i}` });
+        Partner._records = [...Partner._records, { id: 100 + i, name: `test_${i}` }];
     }
     Partner._views = {
         list: `
@@ -3417,7 +3417,7 @@ test("search more in many2one: text in input", async () => {
 
 test("search more in many2one: dropdown click", async () => {
     for (let i = 0; i < 8; i++) {
-        Partner._records.push({ id: 100 + i, name: `test_${i}` });
+        Partner._records = [...Partner._records, { id: 100 + i, name: `test_${i}` }];
     }
     Partner._views = {
         list: `
@@ -3498,7 +3498,7 @@ test("search more in many2one: cannot resequence inside dialog", async () => {
     // the dialog works
     Partner._fields.sequence = fields.Integer();
     for (let i = 0; i < 8; i++) {
-        Partner._records.push({ id: 100 + i, name: `test_${i}` });
+        Partner._records = [...Partner._records, { id: 100 + i, name: `test_${i}` }];
     }
     Partner._views = {
         list: `
@@ -3569,7 +3569,8 @@ test("many2one dropdown disappears on scroll", async () => {
 });
 
 test("search more in many2one: group and use the pager", async () => {
-    Partner._records.push(
+    Partner._records = [
+        ...Partner._records,
         {
             id: 5,
             name: "Partner 4",
@@ -3593,8 +3594,8 @@ test("search more in many2one: group and use the pager", async () => {
         {
             id: 10,
             name: "Partner 9",
-        }
-    );
+        },
+    ];
 
     Partner._views = {
         list: `
@@ -3674,7 +3675,10 @@ test("focus when closing many2one modal in many2one modal", async () => {
 
 test("search more pager is reset when doing a new search", async () => {
     Partner._fields.datetime = fields.Datetime({ string: "Datetime Field", searchable: true });
-    Partner._records.push(...range(170).map((i) => ({ id: i + 10, name: `Partner ${i}` })));
+    Partner._records = [
+        ...Partner._records,
+        ...range(170).map((i) => ({ id: i + 10, name: `Partner ${i}` })),
+    ];
     Partner._views = {
         list: `
             <list>

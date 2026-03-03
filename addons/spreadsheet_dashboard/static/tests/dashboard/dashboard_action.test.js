@@ -599,7 +599,7 @@ describe("Quick search bar", () => {
 
     test("Can load more records in the quick search", async function () {
         for (let i = 0; i < 15; i++) {
-            Product._records.push({ id: i, display_name: "name" + i });
+            Product._records = [...Product._records, { id: i, display_name: "name" + i }];
         }
         const serverData = getServerData({ globalFilters: [productFilter] });
         await createSpreadsheetDashboard({ serverData });

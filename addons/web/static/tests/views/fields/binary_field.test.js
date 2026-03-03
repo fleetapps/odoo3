@@ -378,10 +378,11 @@ test("filename doesn't exceed 255 bytes", async () => {
 });
 
 test("filename is updated when using the pager", async () => {
-    Partner._records.push(
+    Partner._records = [
+        ...Partner._records,
         { id: 1, document: "abc", foo: "abc.txt" },
-        { id: 2, document: "def", foo: "def.txt" }
-    );
+        { id: 2, document: "def", foo: "def.txt" },
+    ];
     await mountView({
         resModel: "res.partner",
         resIds: [1, 2],
@@ -407,7 +408,7 @@ test("filename is updated when using the pager", async () => {
 test("isUploading state should be set to false after upload", async () => {
     expect.errors(1);
 
-    Partner._records.push({ id: 1 });
+    Partner._records = [...Partner._records, { id: 1 }];
     Partner._onChanges.document = (record) => {
         if (record.document) {
             throw makeServerError({ type: "ValidationError" });
@@ -473,7 +474,7 @@ test("doesn't crash if value is not a string", async () => {
         _applyComputesAndValidate() {}
     }
     defineModels([Dummy]);
-    Dummy._records.push({ id: 1, document: {} });
+    Dummy._records = [...Dummy._records, { id: 1, document: {} }];
     await mountView({
         type: "form",
         resModel: "dummy",

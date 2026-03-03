@@ -926,10 +926,11 @@ test("use two categories to refine search", async () => {
 });
 
 test("category with parent_field", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 40, name: "child company 1", parent_id: 5 },
-        { id: 41, name: "child company 2", parent_id: 5 }
-    );
+        { id: 41, name: "child company 2", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 40;
     Partner._views = {
         search: /* xml */ `
@@ -1025,10 +1026,11 @@ test("category with no parent_field", async () => {
 });
 
 test("can (un)fold parent category values", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 40, name: "child company 1", parent_id: 5 },
-        { id: 41, name: "child company 2", parent_id: 5 }
-    );
+        { id: 41, name: "child company 2", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 40;
     Partner._views = {
         search: /* xml */ `
@@ -1070,10 +1072,11 @@ test("can (un)fold parent category values", async () => {
 });
 
 test("fold status is kept at reload", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 40, name: "child company 1", parent_id: 5 },
-        { id: 41, name: "child company 2", parent_id: 5 }
-    );
+        { id: 41, name: "child company 2", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 40;
     Partner._views = {
         search: /* xml */ `
@@ -1640,7 +1643,7 @@ test("category selection without counters", async () => {
 });
 
 test("filter with groupby", async () => {
-    Company._records.push({ id: 11, name: "camptocamp", category_id: 7 });
+    Company._records = [...Company._records, { id: 11, name: "camptocamp", category_id: 7 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -1722,7 +1725,7 @@ test("filter with groupby", async () => {
 });
 
 test("filter with domain", async () => {
-    Company._records.push({ id: 40, name: "child company 1", parent_id: 3 });
+    Company._records = [...Company._records, { id: 40, name: "child company 1", parent_id: 3 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -1869,7 +1872,7 @@ test("retrieved filter value from context does not exist", async () => {
 });
 
 test("filter with groupby and default values in context", async () => {
-    Company._records.push({ id: 11, name: "camptocamp", category_id: 7 });
+    Company._records = [...Company._records, { id: 11, name: "camptocamp", category_id: 7 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -1933,10 +1936,11 @@ test('Does not confuse false and "false" groupby values', async () => {
 });
 
 test("tests conservation of category record order", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 56, name: "highID", category_id: 6 },
-        { id: 2, name: "lowID", category_id: 6 }
-    );
+        { id: 2, name: "lowID", category_id: 6 },
+    ];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2176,15 +2180,16 @@ test("categories and filters are loaded when switching from a view without the s
 });
 
 test("scroll kanban view with searchpanel and kept scroll position", async () => {
+    const newCategories = [];
     for (let i = 10; i < 20; i++) {
-        Category._records.push({ id: i, name: "Cat " + i });
-        for (let j = 0; j < 9; j++) {
-            Partner._records.push({
-                id: 100 + i * 10 + j,
-                foo: `Record ${i * 10 + j}`,
-            });
-        }
+        newCategories.push({ id: i, name: "Cat " + i });
+        const newPartners = Array.from({ length: 10 }, (_, j) => ({
+            id: 100 + i * 10 + j,
+            foo: `Record ${i * 10 + j}`,
+        }));
+        Partner._records = [...Partner._records, ...newPartners];
     }
+    Category._records = [...Category._records, ...newCategories];
 
     class WebClientContainer extends Component {
         static props = ["*"];
@@ -2211,7 +2216,7 @@ test("scroll kanban view with searchpanel and kept scroll position", async () =>
 
 test("scroll position is kept when switching between controllers", async () => {
     for (let i = 10; i < 20; i++) {
-        Category._records.push({ id: i, name: "Cat " + i });
+        Category._records = [...Category._records, { id: i, name: "Cat " + i }];
     }
 
     class WebClientContainer extends Component {
@@ -2295,10 +2300,11 @@ test("Reload categories with counters when filter values are selected", async ()
 });
 
 test("many2one: select one, expand, hierarchize, counters", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 50, name: "agrobeurre", parent_id: 5 },
-        { id: 51, name: "agrocrèmefraiche", parent_id: 5 }
-    );
+        { id: 51, name: "agrocrèmefraiche", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 50;
     Partner._views = {
         search: /* xml */ `
@@ -2324,10 +2330,11 @@ test("many2one: select one, expand, hierarchize, counters", async () => {
 });
 
 test("many2one: select one, no expand, hierarchize, counters", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 50, name: "agrobeurre", parent_id: 5 },
-        { id: 51, name: "agrocrèmefraiche", parent_id: 5 }
-    );
+        { id: 51, name: "agrocrèmefraiche", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 50;
     Partner._views = {
         search: /* xml */ `
@@ -2353,10 +2360,11 @@ test("many2one: select one, no expand, hierarchize, counters", async () => {
 });
 
 test("many2one: select one, expand, no hierarchize, counters", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 50, name: "agrobeurre", parent_id: 5 },
-        { id: 51, name: "agrocrèmefraiche", parent_id: 5 }
-    );
+        { id: 51, name: "agrocrèmefraiche", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 50;
     Partner._views = {
         search: /* xml */ `
@@ -2378,10 +2386,11 @@ test("many2one: select one, expand, no hierarchize, counters", async () => {
 });
 
 test("many2one: select one, no expand, no hierarchize, counters", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 50, name: "agrobeurre", parent_id: 5 },
-        { id: 51, name: "agrocrèmefraiche", parent_id: 5 }
-    );
+        { id: 51, name: "agrocrèmefraiche", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 50;
     Partner._views = {
         search: /* xml */ `
@@ -2403,10 +2412,11 @@ test("many2one: select one, no expand, no hierarchize, counters", async () => {
 });
 
 test("many2one: select one, expand, hierarchize, no counters", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 50, name: "agrobeurre", parent_id: 5 },
-        { id: 51, name: "agrocrèmefraiche", parent_id: 5 }
-    );
+        { id: 51, name: "agrocrèmefraiche", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 50;
     Partner._views = {
         search: /* xml */ `
@@ -2432,10 +2442,11 @@ test("many2one: select one, expand, hierarchize, no counters", async () => {
 });
 
 test("many2one: select one, no expand, hierarchize, no counters", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 50, name: "agrobeurre", parent_id: 5 },
-        { id: 51, name: "agrocrèmefraiche", parent_id: 5 }
-    );
+        { id: 51, name: "agrocrèmefraiche", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 50;
     Partner._views = {
         search: /* xml */ `
@@ -2461,10 +2472,11 @@ test("many2one: select one, no expand, hierarchize, no counters", async () => {
 });
 
 test("many2one: select one, expand, no hierarchize, no counters", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 50, name: "agrobeurre", parent_id: 5 },
-        { id: 51, name: "agrocrèmefraiche", parent_id: 5 }
-    );
+        { id: 51, name: "agrocrèmefraiche", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 50;
     Partner._views = {
         search: /* xml */ `
@@ -2486,10 +2498,11 @@ test("many2one: select one, expand, no hierarchize, no counters", async () => {
 });
 
 test("many2one: select one, no expand, no hierarchize, no counters", async () => {
-    Company._records.push(
+    Company._records = [
+        ...Company._records,
         { id: 50, name: "agrobeurre", parent_id: 5 },
-        { id: 51, name: "agrocrèmefraiche", parent_id: 5 }
-    );
+        { id: 51, name: "agrocrèmefraiche", parent_id: 5 },
+    ];
     Partner._records[1].company_id = 50;
     Partner._views = {
         search: /* xml */ `
@@ -2511,7 +2524,7 @@ test("many2one: select one, no expand, no hierarchize, no counters", async () =>
 });
 
 test("many2one: select multi, expand, groupby, counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2532,7 +2545,7 @@ test("many2one: select multi, expand, groupby, counters", async () => {
 });
 
 test("many2one: select multi, no expand, groupby, counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2553,7 +2566,7 @@ test("many2one: select multi, no expand, groupby, counters", async () => {
 });
 
 test("many2one: select multi, expand, no groupby, counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2574,7 +2587,7 @@ test("many2one: select multi, expand, no groupby, counters", async () => {
 });
 
 test("many2one: select multi, no expand, no groupby, counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2595,7 +2608,7 @@ test("many2one: select multi, no expand, no groupby, counters", async () => {
 });
 
 test("many2one: select multi, expand, groupby, no counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2616,7 +2629,7 @@ test("many2one: select multi, expand, groupby, no counters", async () => {
 });
 
 test("many2one: select multi, no expand, groupby, no counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2637,7 +2650,7 @@ test("many2one: select multi, no expand, groupby, no counters", async () => {
 });
 
 test("many2one: select multi, expand, no groupby, no counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2658,7 +2671,7 @@ test("many2one: select multi, expand, no groupby, no counters", async () => {
 });
 
 test("many2one: select multi, no expand, no groupby, no counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2679,7 +2692,7 @@ test("many2one: select multi, no expand, no groupby, no counters", async () => {
 });
 
 test("many2many: select multi, expand, groupby, counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2700,7 +2713,7 @@ test("many2many: select multi, expand, groupby, counters", async () => {
 });
 
 test("many2many: select multi, no expand, groupby, counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2721,7 +2734,7 @@ test("many2many: select multi, no expand, groupby, counters", async () => {
 });
 
 test("many2many: select multi, expand, no groupby, counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2742,7 +2755,7 @@ test("many2many: select multi, expand, no groupby, counters", async () => {
 });
 
 test("many2many: select multi, no expand, no groupby, counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2763,7 +2776,7 @@ test("many2many: select multi, no expand, no groupby, counters", async () => {
 });
 
 test("many2many: select multi, expand, groupby, no counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2784,7 +2797,7 @@ test("many2many: select multi, expand, groupby, no counters", async () => {
 });
 
 test("many2many: select multi, no expand, groupby, no counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2805,7 +2818,7 @@ test("many2many: select multi, no expand, groupby, no counters", async () => {
 });
 
 test("many2many: select multi, expand, no groupby, no counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>
@@ -2826,7 +2839,7 @@ test("many2many: select multi, expand, no groupby, no counters", async () => {
 });
 
 test("many2many: select multi, no expand, no groupby, no counters", async () => {
-    Company._records.push({ id: 666, name: "Mordor Inc.", category_id: 6 });
+    Company._records = [...Company._records, { id: 666, name: "Mordor Inc.", category_id: 6 }];
     Partner._views = {
         search: /* xml */ `
             <search>

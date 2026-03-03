@@ -1108,7 +1108,7 @@ test(`freeze widths: toggle a filter, vertical scrollbar appears`, async () => {
     await resize({ height: 500 });
 
     for (let i = 10; i < 20; i++) {
-        Foo._records.push({ id: i, bar: true, foo: `Foo ${i}` });
+        Foo._records = [...Foo._records, { id: i, bar: true, foo: `Foo ${i}` }];
     }
     await mountView({
         resModel: "foo",

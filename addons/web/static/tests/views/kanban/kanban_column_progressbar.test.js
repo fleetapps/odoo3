@@ -221,15 +221,8 @@ test("Ensuring each progress bar has some space", async () => {
             foo: "blip",
             state: "abc",
         },
+        ...Array.from({ length: 20 }, (_, i) => ({ id: 3 + i, foo: "blip", state: "ghi" })),
     ];
-
-    for (let i = 0; i < 20; i++) {
-        Partner._records.push({
-            id: 3 + i,
-            foo: "blip",
-            state: "ghi",
-        });
-    }
 
     await mountView({
         type: "kanban",
@@ -328,13 +321,16 @@ test("filter on progressbar in new groups", async () => {
 });
 
 test('column progressbars: "false" bar is clickable', async () => {
-    Partner._records.push({
-        id: 5,
-        bar: true,
-        foo: false,
-        product_id: 5,
-        state: "ghi",
-    });
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 5,
+            bar: true,
+            foo: false,
+            product_id: 5,
+            state: "ghi",
+        },
+    ];
 
     stepAllNetworkCalls();
 
@@ -383,14 +379,17 @@ test('column progressbars: "false" bar is clickable', async () => {
 });
 
 test('column progressbars: "false" bar with sum_field', async () => {
-    Partner._records.push({
-        id: 5,
-        bar: true,
-        foo: false,
-        int_field: 15,
-        product_id: 5,
-        state: "ghi",
-    });
+    Partner._records = [
+        ...Partner._records,
+        {
+            id: 5,
+            bar: true,
+            foo: false,
+            int_field: 15,
+            product_id: 5,
+            state: "ghi",
+        },
+    ];
 
     stepAllNetworkCalls();
 
@@ -583,11 +582,12 @@ test("column progressbars are working with load more", async () => {
 });
 
 test("column progressbars with an active filter are working with load more", async () => {
-    Partner._records.push(
+    Partner._records = [
+        ...Partner._records,
         { id: 5, bar: true, foo: "blork" },
         { id: 6, bar: true, foo: "blork" },
-        { id: 7, bar: true, foo: "blork" }
-    );
+        { id: 7, bar: true, foo: "blork" },
+    ];
 
     stepAllNetworkCalls();
 
@@ -1057,9 +1057,12 @@ test("progress bar recompute after d&d to and from other column", async () => {
 });
 
 test("progress bar recompute after filter selection", async () => {
-    Partner._records.push({ foo: "yop", bar: true, float_field: 100 });
-    Partner._records.push({ foo: "yop", bar: true, float_field: 100 });
-    Partner._records.push({ foo: "yop", bar: true, float_field: 100 });
+    Partner._records = [
+        ...Partner._records,
+        { foo: "yop", bar: true, float_field: 100 },
+        { foo: "yop", bar: true, float_field: 100 },
+        { foo: "yop", bar: true, float_field: 100 },
+    ];
 
     stepAllNetworkCalls();
 
@@ -1109,9 +1112,12 @@ test("progress bar recompute after filter selection", async () => {
 });
 
 test("progress bar recompute after filter selection (aggregates)", async () => {
-    Partner._records.push({ foo: "yop", bar: true, float_field: 100, int_field: 100 });
-    Partner._records.push({ foo: "yop", bar: true, float_field: 100, int_field: 200 });
-    Partner._records.push({ foo: "yop", bar: true, float_field: 100, int_field: 300 });
+    Partner._records = [
+        ...Partner._records,
+        { foo: "yop", bar: true, float_field: 100, int_field: 100 },
+        { foo: "yop", bar: true, float_field: 100, int_field: 200 },
+        { foo: "yop", bar: true, float_field: 100, int_field: 300 },
+    ];
 
     stepAllNetworkCalls();
 
@@ -1176,8 +1182,11 @@ test("progress bar with monetary aggregate and multi currencies", async () => {
         rate_date: "2017-03-17",
     };
     serverState.currencies = serverState.currencies.concat([aed]);
-    Currency._records.push(aed);
-    Partner._records.push({ id: 99, foo: "bar", salary: 300, currency_id: 3, product_id: 3 });
+    Currency._records = [...Currency._records, aed];
+    Partner._records = [
+        ...Partner._records,
+        { id: 99, foo: "bar", salary: 300, currency_id: 3, product_id: 3 },
+    ];
     await mountView({
         type: "kanban",
         resModel: "partner",
@@ -1876,7 +1885,7 @@ test("filter groups kept when leaving/coming back", async () => {
 });
 
 test("Color '200' (gray) can be used twice (for false value and another value) in progress bar", async () => {
-    Partner._records.push({ id: 5, bar: true }, { id: 6, bar: false });
+    Partner._records = [...Partner._records, { id: 5, bar: true }, { id: 6, bar: false }];
 
     stepAllNetworkCalls();
 
@@ -1939,7 +1948,7 @@ test("Color '200' (gray) can be used twice (for false value and another value) i
 });
 
 test("update field on which progress bars are computed", async () => {
-    Partner._records.push({ id: 5, state: "abc", bar: true });
+    Partner._records = [...Partner._records, { id: 5, state: "abc", bar: true }];
 
     stepAllNetworkCalls();
 
@@ -2033,7 +2042,7 @@ test("update field on which progress bars are computed", async () => {
 });
 
 test("load more button shouldn't be visible when unfiltering column", async () => {
-    Partner._records.push({ id: 5, state: "abc", bar: true });
+    Partner._records = [...Partner._records, { id: 5, state: "abc", bar: true }];
 
     let def;
     onRpc("web_search_read", () => def);

@@ -533,9 +533,10 @@ test("stores and restores scroll position (in kanban)", async () => {
             views: [[false, "kanban"]],
         },
     ]);
-    for (let i = 0; i < 60; i++) {
-        Partner._records.push({ id: 100 + i, display_name: `Record ${i}` });
-    }
+    Partner._records = [
+        ...Partner._records,
+        ...Array.from({ length: 60 }, (_, i) => ({ id: 100 + i, display_name: `Record ${i}` })),
+    ];
     const container = document.createElement("div");
     container.classList.add("o_web_client");
     container.style.height = "250px";
@@ -556,9 +557,10 @@ test("stores and restores scroll position (in kanban)", async () => {
 
 test.tags("desktop");
 test("stores and restores scroll position (in list)", async () => {
-    for (let i = 0; i < 60; i++) {
-        Partner._records.push({ id: 100 + i, display_name: `Record ${i}` });
-    }
+    Partner._records = [
+        ...Partner._records,
+        ...Array.from({ length: 60 }, (_, i) => ({ id: 100 + i, display_name: `Record ${i}` })),
+    ];
     const container = document.createElement("div");
     container.classList.add("o_web_client");
     container.style.height = "250px";

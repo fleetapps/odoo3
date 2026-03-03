@@ -223,7 +223,7 @@ test("Many2ManyTagsField with color: rendering and edition on desktop", async ()
     expect.assertions(26);
 
     Partner._records[0].timmy = [12, 14];
-    PartnerType._records.push({ id: 13, name: "red", color: 8 });
+    PartnerType._records = [...PartnerType._records, { id: 13, name: "red", color: 8 }];
     onRpc("partner", "web_save", ({ args }) => {
         const commands = args[1].timmy;
         expect(commands).toHaveLength(2);
@@ -401,7 +401,7 @@ test("Many2ManyTagsField view a domain on desktop", async () => {
         domain: [["id", "<", 50]],
     });
     Partner._records[0].timmy = [12];
-    PartnerType._records.push({ id: 99, name: "red", color: 8 });
+    PartnerType._records = [...PartnerType._records, { id: 99, name: "red", color: 8 }];
     onRpc("web_name_search", (args) => {
         expect(args.kwargs.domain).toEqual([["id", "<", 50]]);
     });
@@ -442,7 +442,7 @@ test("Many2ManyTagsField view a domain on mobile", async () => {
         domain: [["id", "<", 50]],
     });
     Partner._records[0].timmy = [12];
-    PartnerType._records.push({ id: 99, name: "red", color: 8 });
+    PartnerType._records = [...PartnerType._records, { id: 99, name: "red", color: 8 }];
     onRpc("web_search_read", (args) => {
         expect(args.kwargs.domain).toEqual([["id", "<", 50]]);
     });
@@ -478,7 +478,7 @@ test("use binary field as the domain on desktop", async () => {
     Partner._fields.domain = fields.Binary();
     Partner._records[0].domain = '[["id", "<", 50]]';
     Partner._records[0].timmy = [12];
-    PartnerType._records.push({ id: 99, name: "red", color: 8 });
+    PartnerType._records = [...PartnerType._records, { id: 99, name: "red", color: 8 }];
 
     await mountView({
         type: "form",
@@ -515,7 +515,7 @@ test("use binary field as the domain on mobile", async () => {
     Partner._fields.domain = fields.Binary();
     Partner._records[0].domain = '[["id", "<", 50]]';
     Partner._records[0].timmy = [12];
-    PartnerType._records.push({ id: 99, name: "red", color: 8 });
+    PartnerType._records = [...PartnerType._records, { id: 99, name: "red", color: 8 }];
 
     await mountView({
         type: "form",
@@ -753,7 +753,7 @@ test("Many2ManyTagsField can load more than 40 records", async () => {
     });
     Partner._records[0].partner_ids = [];
     for (let id = 15; id < 115; id++) {
-        Partner._records.push({ id, name: "walter" + id });
+        Partner._records = [...Partner._records, { id, name: "walter" + id }];
         Partner._records[0].partner_ids.push(id);
     }
     await mountView({
@@ -919,7 +919,7 @@ test("Many2ManyTagsField: quick create a new record on desktop", async () => {
 
 test.tags("desktop");
 test("select a many2many value by pressing tab on desktop", async () => {
-    PartnerType._records.push({ id: 13, name: "red", color: 8 });
+    PartnerType._records = [...PartnerType._records, { id: 13, name: "red", color: 8 }];
     await mountView({
         type: "form",
         resModel: "partner",
@@ -945,7 +945,7 @@ test("select a many2many value by pressing tab on desktop", async () => {
 
 test.tags("desktop");
 test("input and remove text without selecting any tag or option on desktop", async () => {
-    PartnerType._records.push({ id: 13, name: "red", color: 8 });
+    PartnerType._records = [...PartnerType._records, { id: 13, name: "red", color: 8 }];
 
     await mountView({
         type: "form",
@@ -1053,7 +1053,7 @@ test("Many2ManyTagsField: select multiple records on desktop", async () => {
     };
 
     for (let id = 101; id <= 110; id++) {
-        PartnerType._records.push({ id, name: "Partner" + id });
+        PartnerType._records = [...PartnerType._records, { id, name: "Partner" + id }];
     }
 
     await mountView({
@@ -1093,7 +1093,7 @@ test("Many2ManyTagsField: select multiple records doesn't show already added tag
     };
 
     for (let id = 101; id <= 110; id++) {
-        PartnerType._records.push({ id, name: "Partner" + id });
+        PartnerType._records = [...PartnerType._records, { id, name: "Partner" + id }];
     }
 
     await mountView({
@@ -1122,7 +1122,7 @@ test("Many2ManyTagsField: select multiple records doesn't show already added tag
 test.tags("desktop");
 test("Many2ManyTagsField: save&new in edit mode doesn't close edit window on desktop", async () => {
     for (let id = 101; id <= 110; id++) {
-        PartnerType._records.push({ id, name: "Partner" + id });
+        PartnerType._records = [...PartnerType._records, { id, name: "Partner" + id }];
     }
 
     PartnerType._views = {
@@ -1248,7 +1248,7 @@ test.tags("desktop");
 test("Many2ManyTagsField: conditional create/delete attrs on desktop", async () => {
     Turtle._records[0].partner_ids = [2];
     for (let id = 101; id <= 110; id++) {
-        Partner._records.push({ id, name: "Partner" + id });
+        Partner._records = [...Partner._records, { id, name: "Partner" + id }];
     }
 
     Partner._views = {

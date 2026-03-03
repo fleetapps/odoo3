@@ -91,9 +91,12 @@ test("color picker on list view", async () => {
 });
 
 test("color picker in editable list view", async () => {
-    Partner._records.push({
-        int_field: 1,
-    });
+    Partner._records = [
+        ...Partner._records,
+        {
+            int_field: 1,
+        },
+    ];
     await mountView({
         type: "list",
         resModel: "res.partner",

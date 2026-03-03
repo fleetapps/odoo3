@@ -853,13 +853,14 @@ test("SelectCreateDialog empty list, noContentHelp props", async () => {
 
 test.tags("desktop");
 test("SelectCreateDialog with open action", async () => {
-    Instrument._records = [];
+    const newRecords = [];
     for (let i = 0; i < 25; i++) {
-        Instrument._records.push({
+        newRecords.push({
             id: i + 1,
             name: "Instrument " + i,
         });
     }
+    Instrument._records = newRecords;
     mockService("action", {
         doActionButton(params) {
             const { name } = params;

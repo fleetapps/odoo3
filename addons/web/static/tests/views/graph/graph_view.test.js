@@ -339,8 +339,8 @@ test("bar chart many2many groupBy", async () => {
 });
 
 test("differentiate many2many values with same label", async () => {
-    Color._records.push({ id: 3, name: "red" });
-    Foo._records.push({ color_ids: [3], revenue: 14 });
+    Color._records = [...Color._records, { id: 3, name: "red" }];
+    Foo._records = [...Foo._records, { color_ids: [3], revenue: 14 }];
 
     const view = await mountView({
         type: "graph",
@@ -1655,8 +1655,8 @@ test("use a many2one as a measure and as a groupby should work", async () => {
 });
 
 test("differentiate many2one values with same label", async () => {
-    Product._records.push({ id: 300, name: "xphone" });
-    Foo._records.push({ product_id: 300 });
+    Product._records = [...Product._records, { id: 300, name: "xphone" }];
+    Foo._records = [...Foo._records, { product_id: 300 }];
 
     const view = await mountView({
         type: "graph",
@@ -2155,7 +2155,7 @@ test("graph view with invisible attribute on field", async () => {
 
 test("graph view reserved word", async () => {
     // Check that the use of reserved words does not interfere with the view.
-    Product._records.push({ id: 150, name: "constructor" });
+    Product._records = [...Product._records, { id: 150, name: "constructor" }];
     Foo._records.at(-1).product_id = 150;
 
     const view = await mountView({
@@ -2173,7 +2173,7 @@ test("graph view reserved word", async () => {
 
 test("graph view sort by measure", async () => {
     // change last record from foo as there are 4 records count for each product
-    Product._records.push({ id: 150, name: "zphone" });
+    Product._records = [...Product._records, { id: 150, name: "zphone" }];
     Foo._records.at(-1).product_id = 150;
 
     const view = await mountView({
@@ -2233,7 +2233,7 @@ test("graph view sort by measure", async () => {
 
 test("graph view sort by measure for grouped data", async () => {
     // change last record from foo as there are 4 records count for each product
-    Product._records.push({ id: 150, name: "zphone" });
+    Product._records = [...Product._records, { id: 150, name: "zphone" }];
     Foo._records.at(-1).product_id = 150;
 
     const view = await mountView({
@@ -2269,7 +2269,7 @@ test("graph view sort by measure for grouped data", async () => {
 
 test("graph view sort by measure for multiple grouped data", async () => {
     // change last record from foo as there are 4 records count for each product
-    Product._records.push({ id: 150, name: "zphone" });
+    Product._records = [...Product._records, { id: 150, name: "zphone" }];
     Foo._records.at(-1).product_id = 150;
     Foo._records.splice(
         0,

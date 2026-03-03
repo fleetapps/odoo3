@@ -51,9 +51,12 @@ test("Char Field: Copy to clipboard button", async () => {
 });
 
 test("Show copy button even on empty field", async () => {
-    Partner._records.push({
-        char_field: false,
-    });
+    Partner._records = [
+        ...Partner._records,
+        {
+            char_field: false,
+        },
+    ];
 
     await mountView({ type: "form", resModel: "res.partner", resId: 2 });
 

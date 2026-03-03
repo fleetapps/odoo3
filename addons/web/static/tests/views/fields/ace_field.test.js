@@ -73,7 +73,7 @@ test("AceEditorField mark as dirty as soon at onchange", async () => {
 
 test("AceEditorField on html fields works", async () => {
     Partner._fields.html_field = fields.Html();
-    Partner._records.push({ id: 3, html_field: `<p>My little HTML Test</p>` });
+    Partner._records = [...Partner._records, { id: 3, html_field: `<p>My little HTML Test</p>` }];
 
     onRpc(({ method }) => expect.step(method));
 

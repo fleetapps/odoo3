@@ -1498,6 +1498,13 @@ export class Model extends Array {
         this.definition._inherit = value;
     }
 
+    static get _lastRecId() {
+        return this.definition._lastRecId;
+    }
+    static set _lastRecId(value) {
+        this.definition._lastRecId = value;
+    }
+
     static get _name() {
         return this.definition._name;
     }
@@ -1538,6 +1545,10 @@ export class Model extends Array {
     }
     static set _records(value) {
         assignArray(this.definition._records, value);
+        this.definition._lastRecId = Math.max(
+            this.definition._lastRecId,
+            ...value.map((record) => record?.id || 0)
+        );
     }
 
     static get _toolbar() {
@@ -1591,6 +1602,7 @@ export class Model extends Array {
     _fold_name = "fold";
     /** @type {string | null} */
     _inherit = null;
+    _lastRecId = 0;
     /** @type {string} */
     _name = "";
     /** @type {Record<string, (record: ModelRecord) => any>} */
@@ -1649,6 +1661,11 @@ export class Model extends Array {
             this._rec_name = modelInstance._rec_name;
             this._related = modelInstance._related;
             this._views = modelInstance._views;
+
+            this._lastRecId = Math.max(
+                this._lastRecId,
+                ...modelInstance._records.map((record) => record?.id || 0)
+            );
         }
     }
 
@@ -3315,7 +3332,7 @@ export class Model extends Array {
      * @private
      */
     _getNextId() {
-        return Math.max(0, ...this.map((record) => record?.id || 0)) + 1;
+        return ++this.constructor._lastRecId;
     }
 
     /**
