@@ -16,7 +16,13 @@
                     <field name="time_total" widget="float_time" options="{'unit': 'minutes'}" string="Total Duration" optional="hide"/>
                     <field name="company_id" optional="hide" groups="base.group_multi_company"/>
                     <field name="possible_bom_product_template_attribute_value_ids" column_invisible="True"/>
-                    <field name="bom_product_template_attribute_value_ids" optional="hide" widget="many2many_tags" options="{'no_create': True}" groups="product.group_product_variant"/>
+                    <field
+                        name="bom_product_template_attribute_value_ids"
+                        widget="many2many_tags_color_dot"
+                        options="{'no_create': True, 'color_field': 'html_color'}"
+                        groups="product.group_product_variant"
+                        optional="hide"
+                    />
                     <field name="blocked_by_operation_ids" widget="many2many_tags" optional="hide" groups="mrp.group_mrp_workorder_dependencies"/>
                 </list>
             </field>
@@ -93,7 +99,12 @@
                                 <field name="bom_id" invisible="context.get('bom_id_invisible', False)" domain="[]" readonly="context.get('default_bom_id', False)"/>
                                 <field name="workcenter_id"/>
                                 <field name="possible_bom_product_template_attribute_value_ids" invisible="1"/>
-                                <field name="bom_product_template_attribute_value_ids" widget="many2many_tags" options="{'no_create': True}" groups="product.group_product_variant"/>
+                                <field
+                                    name="bom_product_template_attribute_value_ids"
+                                    widget="many2many_tags_color_dot"
+                                    options="{'no_create': True, 'color_field': 'html_color'}"
+                                    groups="product.group_product_variant"
+                                />
                                 <field name="cost_mode" widget="radio" options="{'horizontal': true}"/>
                                 <field name="allow_operation_dependencies" invisible="1"/>
                                 <field name="blocked_by_operation_ids" widget="many2many_tags" context="{'default_bom_id':bom_id}" invisible="not allow_operation_dependencies"/>
