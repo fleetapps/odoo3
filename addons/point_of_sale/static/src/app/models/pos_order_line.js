@@ -326,13 +326,20 @@ export class PosOrderline extends PosOrderlineAccounting {
         );
         const price = ProductPrice.round(this.price_unit || 0);
         const product = orderline.getProduct();
-        const order_line_price = product.getPrice(
-            orderline.order_id.pricelist_id,
-            this.getQuantity(),
-            0,
-            false,
-            product
-        );
+        let order_line_price;
+
+        if (this.price_type === "override" && this.getProduct().id === product.id) {
+            order_line_price = price;
+            orderline.price_type = this.price_type;
+        } else {
+            order_line_price = product.getPrice(
+                orderline.order_id.pricelist_id,
+                this.getQuantity(),
+                0,
+                false,
+                product
+            );
+        }
 
         const isSameCustomerNote =
             (Boolean(orderline.getCustomerNote()) === false &&
