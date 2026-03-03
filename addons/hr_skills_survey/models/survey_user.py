@@ -20,12 +20,13 @@ class SurveyUser_Input(models.Model):
 
         certification_user_inputs = self.filtered(lambda user_input: user_input.survey_id.certification and user_input.scoring_success)
         user_inputs_by_partner = certification_user_inputs.grouped('partner_id')
-        employees = self.env['hr.employee'].search(
-            [('user_id.partner_id', 'in', certification_user_inputs.partner_id.ids)])
+        employees = self.env['res.partner'].search([
+            ('id', 'in', certification_user_inputs.partner_id.ids)
+        ]).employee_ids
         resume_lines = self.env['hr.resume.line'].search(
             Domain.OR(
                 Domain('employee_id', '=', employee.id)
-                & Domain('survey_id', 'in', user_inputs_by_partner[employee.user_id.partner_id].survey_id.ids)
+                & Domain('survey_id', 'in', user_inputs_by_partner[employee._get_related_partners()].survey_id.ids)
                 for employee in employees
             ))
         resume_survey_by_ids = resume_lines.grouped(
@@ -35,7 +36,7 @@ class SurveyUser_Input(models.Model):
         lines_to_create = []
         today = fields.Date.today()
         for employee in employees:
-            for user_input in user_inputs_by_partner[employee.user_id.partner_id]:
+            for user_input in user_inputs_by_partner[employee._get_related_partners()]:
                 survey = user_input.survey_id
                 date_start = today
                 validity_month = survey.certification_validity_months
