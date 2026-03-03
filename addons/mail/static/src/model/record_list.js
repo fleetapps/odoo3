@@ -173,10 +173,13 @@ export class RecordListInternal {
                 function recordList_DeleteNoInv_Insert(record) {
                     const index = recordList.data.indexOf(record.localId);
                     if (index !== -1) {
-                        const old = recordList._proxy.at(-1);
+                        const oldRecordLocalId = recordList.data[recordList.data.length - 1];
+                        const oldRecord = toRaw(
+                            toRaw(recordList._store.recordByLocalId).get(oldRecordLocalId)
+                        )._raw;
                         recordList.splice.call(recordList._proxy, index, 1);
                         self.syncLength(recordList);
-                        old._.uses.delete(recordList);
+                        oldRecord._.uses.delete(recordList);
                     }
                 },
                 { inv: false }
@@ -479,10 +482,9 @@ export class RecordList extends Array {
         const recordListFullProxy = recordList._.downgradeProxy(recordList, this);
         const store = recordList._store;
         return store.MAKE_UPDATE(function recordListSplice() {
-            const oldRecordsProxy = recordList._proxyInternal.slice.call(
-                recordListFullProxy,
-                start,
-                start + deleteCount
+            const oldRecordLocalIds = recordList.data.slice(start, start + deleteCount);
+            const oldRecords = oldRecordLocalIds.map(
+                (localId) => toRaw(toRaw(recordList._store.recordByLocalId).get(localId))._raw
             );
             const list = recordListFullProxy.data.slice(); // splice on copy of list so that reactive observers not triggered while splicing
             list.splice(
@@ -501,8 +503,7 @@ export class RecordList extends Array {
                 recordList._proxy.data = list;
             }
             recordList._.syncLength(recordList);
-            for (const oldRecordProxy of oldRecordsProxy) {
-                const oldRecord = toRaw(oldRecordProxy)._raw;
+            for (const oldRecord of oldRecords) {
                 oldRecord._.uses.delete(recordList);
                 store._.ADD_QUEUE("onDelete", recordList._.owner, recordList._.name, oldRecord);
                 const inverse = getInverse(recordList);
