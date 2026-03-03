@@ -339,6 +339,13 @@ export class Thread extends Component {
          */
         this.loadNewer = undefined;
         /**
+         * The scrollTop value when a smooth scrolling is triggered,
+         * useful to re-apply it when the smooth scrolling is interrupted
+         * by a re-render before it can end.
+         * This value is reset to undefined whenever another scroll is detected.
+         */
+        this.smoothScrollTargetTop = undefined;
+        /**
          * These states need to be immediately reset when the value changes on
          * the record, because the transition is important, not only the final
          * value. If resetting is depending on the update cycle, it can happen
@@ -377,6 +384,9 @@ export class Thread extends Component {
         });
         const observer = new ResizeObserver(() => {
             this.computeJumpPresentPosition();
+            if (this.smoothScrollTargetTop > this.scrollableRef.el.scrollHeight) {
+                this.smoothScrollTargetTop = this.scrollableRef.el.scrollHeight;
+            }
             this.applyScroll();
         });
         useEffect(
@@ -415,6 +425,10 @@ export class Thread extends Component {
 
     /** @param {import("models").Thread} thread */
     applyScrollContextually(thread) {
+        // A smooth scrolling was interrupted by a re-rendering before it could end, we should try to apply it again
+        if (this.smoothScrollTargetTop && !this.isSmoothScrolling) {
+            this.setScroll(this.smoothScrollTargetTop, { smooth: true });
+        }
         const olderMessages = thread.oldestPersistentMessage?.id < this.oldestPersistentMessage?.id;
         const newerMessages = thread.newestPersistentMessage?.id > this.newestPersistentMessage?.id;
         const messagesAtTop =
@@ -596,6 +610,9 @@ export class Thread extends Component {
         ) {
             thread.markAsRead();
         }
+        if (!this.isSmoothScrolling) {
+            this.smoothScrollTargetTop = undefined;
+        }
         this.saveScroll();
     }
 
@@ -652,10 +669,19 @@ export class Thread extends Component {
             clearTimeout(this.smoothScrollingTimeout);
             this.isSmoothScrolling = true;
             this.smoothScrollingDeferred = new Deferred();
+            this.smoothScrollTargetTop = value;
             const onSmoothScrollingEnd = () => {
                 this.smoothScrollingDeferred.resolve();
                 this.smoothScrollingDeferred = undefined;
                 this.isSmoothScrolling = false;
+                // Ensure the scroll has actually reached the target value, it might have been interrupted or not applied correctly
+                // This ensure next automatic scroll will not have the wrong values to calculate the new scroll position from thread.scrollTop
+                if (
+                    this.scrollableRef.el.scrollTop === value &&
+                    this.smoothScrollTargetTop === value
+                ) {
+                    this.smoothScrollTargetTop = undefined;
+                }
             };
             if ("onscrollend" in window) {
                 document.addEventListener("scrollend", onSmoothScrollingEnd, {
