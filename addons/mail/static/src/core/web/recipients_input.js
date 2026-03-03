@@ -85,14 +85,33 @@ export class RecipientsInput extends Component {
                         "res.partner",
                         [
                             ["id", "not in", Array.from(partnerIds)],
+<<<<<<< 641fae49c5b1906a68fb5345d36632f4741c79da
                             ["display_name", "ilike", term],
+||||||| 3263a7f54948d57f13176cf0416b1419150e9d87
+                            "|",
+                            ["name", "ilike", name],
+                            email ? ["email_normalized", "ilike", email] : [0, "=", 1], // if no email, use a false leaf
+=======
+                            "|",
+                            ["display_name", "ilike", name],
+                            email ? ["email_normalized", "ilike", email] : [0, "=", 1], // if no email, use a false leaf
+>>>>>>> 3266a53450594e37ab5b2232fda73c3516cbdc53
                         ],
+<<<<<<< 641fae49c5b1906a68fb5345d36632f4741c79da
                         ["email", "id", "lang", "name", "parent_name", "display_name"],
                         { limit, context: { formatted_display_name: true, show_email: true } }
+||||||| 3263a7f54948d57f13176cf0416b1419150e9d87
+                        ["email", "id", "lang", "name"],
+                        { limit }
+=======
+                        ["display_name", "email", "id", "lang", "name"],
+                        { limit }
+>>>>>>> 3266a53450594e37ab5b2232fda73c3516cbdc53
                     );
 
                     options.push(
                         ...matches.map((match) => ({
+<<<<<<< 641fae49c5b1906a68fb5345d36632f4741c79da
                             label: match.display_name
                                 ? highlightText(
                                       term,
@@ -100,8 +119,25 @@ export class RecipientsInput extends Component {
                                       "fw-bolder text-primary"
                                   )
                                 : _t("Unnamed"),
+||||||| 3263a7f54948d57f13176cf0416b1419150e9d87
+                            label: match.email
+                                ? _t("%(partner_name)s <%(partner_email)s>", {
+                                      partner_name: match.name || _t("Unnamed"),
+                                      partner_email: match.email,
+                                  })
+                                : match.name || _t("Unnamed"),
+=======
+                            label: match.email
+                                ? _t("%(partner_name)s <%(partner_email)s>", {
+                                      partner_name:
+                                          match.name || match.display_name || _t("Unnamed"),
+                                      partner_email: match.email,
+                                  })
+                                : match.name || match.display_name || _t("Unnamed"),
+>>>>>>> 3266a53450594e37ab5b2232fda73c3516cbdc53
                             onSelect: () => {
                                 this.insertAdditionalRecipient({
+                                    display_name: match.display_name,
                                     email: match.email,
                                     name: match.name,
                                     partner_id: match.id,
@@ -171,15 +207,15 @@ export class RecipientsInput extends Component {
     getTagsFromMailThread() {
         const tags = [];
         const createTagForRecipient = (recipient, recipientField) => {
-            const tooltip = `${recipient.name || _t("Unnamed")} ${
+            const tooltip = `${recipient.name || recipient.display_name || _t("Unnamed")} ${
                 recipient.email ? "<" + recipient.email + ">" : ""
             }`;
             tooltip.trim();
             tags.push({
                 id: uniqueId("tag_"),
                 resId: recipient.partner_id,
-                text: recipient.name || recipient.email || _t("Unnamed"),
-                name: recipient.name || _t("Unnamed"),
+                text: recipient.name || recipient.display_name || recipient.email || _t("Unnamed"),
+                name: recipient.name || recipient.display_name || _t("Unnamed"),
                 email: recipient.email || "",
                 tooltip,
                 onDelete: () => {
