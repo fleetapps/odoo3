@@ -75,6 +75,7 @@ export class FormOption extends BaseOptionComponent {
             return {
                 models,
                 activeForm,
+                isSignupForm: el.id === "o_signup_form",
             };
         });
     }

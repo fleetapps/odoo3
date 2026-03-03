@@ -117,7 +117,8 @@ export class FormOptionPlugin extends Plugin {
         clone_disabled_reason_providers: (el) => {
             if (
                 el.classList.contains("s_website_form_field") &&
-                !el.classList.contains("s_website_form_custom")
+                (!el.classList.contains("s_website_form_custom") ||
+                    el.classList.contains("oe_unremovable"))
             ) {
                 return _t("You cannot duplicate this field.");
             }
@@ -129,13 +130,13 @@ export class FormOptionPlugin extends Plugin {
                 const model = models?.find((model) => model.model === modelName);
                 const fieldName = getFieldName(el);
                 return model
-                        ? _t(
-                              'The field "%(fieldName)s" is mandatory for the action "%(actionName)s".',
-                              { fieldName, actionName: model.website_form_label }
-                          )
-                        : _t("The field “%(fieldName)s” is mandatory for the selected action.", {
-                              fieldName,
-                          });
+                    ? _t(
+                          'The field "%(fieldName)s" is mandatory for the action "%(actionName)s".',
+                          { fieldName, actionName: model.website_form_label }
+                      )
+                    : _t("The field “%(fieldName)s” is mandatory for the selected action.", {
+                          fieldName,
+                      });
             }
         },
         builder_options: [FormOption, FormFieldOptionRedraw, WebsiteFormSubmitOption],

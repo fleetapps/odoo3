@@ -58,6 +58,18 @@ registerWebsitePreviewTour(
             run: "edit field_1",
         },
         ...clickOnSave(),
+        {
+            content: "Verify that the 'zip' field persists after save",
+            trigger: ":iframe input[name='zip']",
+        },
+        {
+            content: "Verify that the 'city' field persists after save",
+            trigger: ":iframe input[name='city']",
+        },
+        {
+            content: "Verify that the 'field_1' field persists after save",
+            trigger: ":iframe input[name='field_1']",
+        },
     ]
 );
 

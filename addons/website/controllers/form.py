@@ -343,6 +343,12 @@ class WebsiteAuthSignupHome(AuthSignupHome):
 
     @http.route()
     def web_auth_signup(self, *args, **kwargs):
+        """Override to handle the signup form submitted via the website form
+        builder. Returns a JSON response so the JS form handler can process
+        the result (redirect on success, display inline errors on failure).
+        Custom fields (not in res.users) are logged as chatter messages on
+        the related res.partner.
+        """
         response = super().web_auth_signup(*args, **kwargs)
 
         if "error" in response.qcontext:
@@ -350,47 +356,49 @@ class WebsiteAuthSignupHome(AuthSignupHome):
             if isinstance(error_data, str):
                 with contextlib.suppress(json.JSONDecodeError):
                     error_data = json.loads(error_data)
-            error_response = {
-                "error": error_data.get("error") if isinstance(error_data, dict) else error_data
-            }
-            if isinstance(error_data, dict) and error_data.get("field"):
-                error_response.update({"error_fields": {error_data.get("field"): error_data.get("field")}})
+            if isinstance(error_data, dict):
+                error_response = {"error": error_data.get("error")}
+                if error_data.get("field"):
+                    error_response["error_fields"] = {
+                        error_data["field"]: error_data["field"]
+                    }
+            else:
+                error_response = {"error": error_data}
             return request.make_response(
                 json.dumps(error_response),
                 headers=[("Content-Type", "application/json")]
             )
 
         login = kwargs.get("login")
-        Users = self.env['res.users']
-        users = Users.sudo().search(Users._get_login_domain(login), limit=1)
-        if not users:
+        User = self.env['res.users']
+        user = User.sudo().search(User._get_login_domain(login), limit=1)
+        if not user:
             return response
 
-        # Prepare message for non-existing fields.
-        partner = users.partner_id
+        # Prepare and log message for fields not in res.users.
+        partner = user.partner_id
         message_body, attachment_vals_list = self._prepare_message_for_non_existing_field(partner, kwargs)
 
-        # Create attachments.
+        attachment_ids = []
         if attachment_vals_list:
-            attachments = self.env["ir.attachment"].sudo().create(attachment_vals_list).ids
+            attachment_ids = self.env["ir.attachment"].sudo().create(attachment_vals_list).ids
 
-        # Log the message in the chatter.
-        if message_body or attachment_vals_list:
+        if message_body or attachment_ids:
             partner._message_log(
                 body=message_body,
-                attachment_ids=[(6, 0, attachments)] if attachment_vals_list else [],
+                attachment_ids=[(6, 0, attachment_ids)] if attachment_ids else [],
                 message_type="comment",
             )
 
         return request.make_response(
-            json.dumps({"id": users.id}),
+            json.dumps({"id": user.id}),
             headers=[("Content-Type", "application/json")]
         )
 
     def _prepare_signup_values(self, qcontext):
         if qcontext.get('password') != qcontext.get('confirm_password'):
-            error_data = {"error": request.env._("Passwords do not match."), "field": "confirm_password"}
-            raise UserError(error_data)
+            error_data = {"error": _("Passwords do not match."), "field": "confirm_password"}
+            raise UserError(json.dumps(error_data))
 
         values = super()._prepare_signup_values(qcontext)
         # This method is also called when the user is redirected to the reset
@@ -400,8 +408,7 @@ class WebsiteAuthSignupHome(AuthSignupHome):
 
         existing_fields = self.env["res.users"]._fields.keys()
         filtered_params = {}
-        params = request.params
-        for key, value in params.items():
+        for key, value in request.params.items():
             if isinstance(value, werkzeug.datastructures.FileStorage):
                 # Normalize the key to remove any indexing (e.g.,
                 # image_1920[0][0] → image_1920/image_1024[0][0] → image_1024).
@@ -418,45 +425,46 @@ class WebsiteAuthSignupHome(AuthSignupHome):
         return values
 
     def _prepare_message_for_non_existing_field(self, partner, kwargs):
-        """
-        Prepare the message body and attachments for fields in kwargs that do not
-        exist on res.users.
-        Returns (message_body_parts, attachments).
+        """Prepare the message body and attachment values for fields in kwargs
+        that do not exist on res.users.  These non-existing fields are logged
+        as a chatter message on the related res.partner.
+
+        :param partner: res.partner record
+        :param kwargs: dict of form values
+        :returns: tuple (Markup body, list of ir.attachment value dicts)
         """
         existing_fields = set(self.env["res.users"]._fields.keys())
-        non_existing_fields = {}
+        text_fields = {}
+        attachment_vals_list = []
+
         for key, value in kwargs.items():
             if key == "confirm_password":
                 continue
             if isinstance(value, werkzeug.datastructures.FileStorage):
-                # Normalize the key to remove the index pattern (e.g.,
-                # 'image_1920[1][0]' → 'image_1920').
+                # Normalize key to remove index pattern
+                # (e.g., 'image_1920[0][0]' → 'image_1920').
                 normalized_key = key.split('[')[0]
-                if normalized_key in existing_fields:
-                    continue
-            # Keep all other unknown fields.
-            if key not in existing_fields:
-                non_existing_fields[key] = value
-
-        # Separate text fields and file attachments.
-        attachment_vals_list, text_fields = [], {}
-        for key, value in non_existing_fields.items():
-            if isinstance(value, werkzeug.datastructures.FileStorage):
-                attachment_vals_list.append({
-                    "name": value.filename,
-                    "datas": base64.b64encode(value.read()).decode("utf-8"),
-                    "res_model": "res.partner",
-                    "res_id": partner.id,
-                    "mimetype": value.content_type,
-                })
-            else:
+                if normalized_key not in existing_fields:
+                    attachment_vals_list.append({
+                        "name": value.filename,
+                        "datas": base64.b64encode(value.read()).decode("utf-8"),
+                        "res_model": "res.partner",
+                        "res_id": partner.id,
+                        "mimetype": value.content_type,
+                    })
+            elif key not in existing_fields:
                 text_fields[key] = value
 
-        # Prepare message body.
+        # Build message body.
         message_body = Markup("")
         if text_fields:
-            message_body += Markup("<p><strong>Other Information:</strong></p><ul>%s</ul>") % \
-                    Markup().join([Markup("<li><strong>%s:</strong> %s</li>") % (key, value) for key, value in text_fields.items()])
+            items = Markup().join(
+                Markup("<li><strong>%s:</strong> %s</li>") % (key, value)
+                for key, value in text_fields.items()
+            )
+            message_body += Markup("<p><strong>%s</strong></p><ul>%s</ul>") % (
+                _("Other Information:"), items
+            )
         if attachment_vals_list:
-            message_body += Markup("<p><strong>📎 Attachment Files</strong></p>")
+            message_body += Markup("<p><strong>📎</strong></p>") % _("Attachment Files")
         return message_body, attachment_vals_list

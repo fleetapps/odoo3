@@ -2,7 +2,10 @@
 
     <t t-inherit="website.s_website_form_form_option" t-inherit-mode="extension">
         <xpath expr="//BuilderRow[@label.translate=&quot;On Success&quot;]" position="attributes">
-            <attribute name="t-if">this.formId !== 'o_signup_form'</attribute>
+            <attribute name="t-if">!this.state.isSignupForm</attribute>
+        </xpath>
+        <xpath expr="//BuilderRow[@label.translate=&quot;URL&quot;]" position="attributes">
+            <attribute name="t-if">!this.state.isSignupForm</attribute>
         </xpath>
     </t>
 
