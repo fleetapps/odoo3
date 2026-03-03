@@ -2,7 +2,17 @@ import { Transition } from "@web/core/transition";
 import { MainComponentsContainer } from "@web/core/main_components_container";
 import { Navbar } from "@point_of_sale/app/components/navbar/navbar";
 import { usePos } from "@point_of_sale/app/hooks/pos_hook";
+<<<<<<< 1eb2578bea64387c70200dd34f748a3c033c10eb
 import { reactive, Component, onMounted, onWillStart } from "@odoo/owl";
+||||||| a220fb71c036c93fa1e75d4d37127e5eda0118f9
+import { reactive, Component, onMounted, onWillStart } from "@odoo/owl";
+import { effect } from "@web/core/utils/reactive";
+import { batched } from "@web/core/utils/timing";
+=======
+import { Component, onMounted, onWillStart } from "@odoo/owl";
+import { effect } from "@web/core/utils/reactive";
+import { batched } from "@web/core/utils/timing";
+>>>>>>> a996366805e4ce15bde43c3ea83c14618f518a2a
 import { useOwnDebugContext } from "@web/core/debug/debug_context";
 import { CustomerDisplayPosAdapter } from "@point_of_sale/app/customer_display/customer_display_adapter";
 import { useIdleTimer } from "./utils/use_idle_timer";
@@ -32,8 +42,7 @@ export class Chrome extends Component {
             this.pos.navigateToFirstPage();
         }
 
-        const reactivePos = reactive(this.pos);
-        window.posmodel = reactivePos;
+        window.posmodel = this.pos;
         useOwnDebugContext();
         if (this.env.debug) {
             initDebugFormatters();
