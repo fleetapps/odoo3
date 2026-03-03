@@ -317,5 +317,9 @@
                 </BuilderSelectItem>
             </BuilderSelect>
         </BuilderRow>
+        <BuilderRow label.translate="Show Disclaimer">
+            <BuilderCheckbox action="'websiteConfig'" preview="false"
+                actionParam="{ views: ['website.option_header_disclaimer'] }"/>
+        </BuilderRow>
     </t>
 </templates>
