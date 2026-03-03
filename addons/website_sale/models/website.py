@@ -108,8 +108,12 @@ class Website(models.Model):
         string="Link URL", translate=True, default='/contactus',
     )
     cart_abandoned_delay = fields.Float(string="Abandoned Delay", default=10.0)
+    send_abandoned_cart_followup = fields.Boolean(string="Send Follow-up", default=False)
     send_abandoned_cart_email = fields.Boolean(
         string="Send email to customers who abandoned their cart.",
+    )
+    send_abandoned_cart_whatsapp = fields.Boolean(
+        string="Send WhatsApp messages to customers who abandoned their cart.",
     )
     send_abandoned_cart_email_activation_time = fields.Datetime(
         string="Time when the 'Send abandoned cart email' feature was activated.",
@@ -338,10 +342,10 @@ class Website(models.Model):
                 or website.company_id.sudo().currency_id
             )
 
-    @api.depends('send_abandoned_cart_email')
+    @api.depends('send_abandoned_cart_email', 'send_abandoned_cart_whatsapp')
     def _compute_send_abandoned_cart_email_activation_time(self):
         for website in self:
-            if website.send_abandoned_cart_email:
+            if website.send_abandoned_cart_email or website.send_abandoned_cart_whatsapp:
                 website.send_abandoned_cart_email_activation_time = fields.Datetime.now()
 
     @api.depends('company_id.account_fiscal_country_id')
@@ -968,7 +972,7 @@ class Website(models.Model):
     @api.model
     def _send_abandoned_cart_email(self):
         for website in self.search([]):
-            if not website.send_abandoned_cart_email:
+            if not (website.send_abandoned_cart_email or website.send_abandoned_cart_whatsapp):
                 continue
             all_abandoned_carts = self.env['sale.order'].search([
                 ('is_abandoned_cart', '=', True),
@@ -982,14 +986,23 @@ class Website(models.Model):
             abandoned_carts = all_abandoned_carts._filter_can_send_abandoned_cart_mail()
             # Mark abandoned carts that failed the filter as sent to avoid rechecking them again and again.
             (all_abandoned_carts - abandoned_carts).cart_recovery_email_sent = True
-            for sale_order in abandoned_carts:
-                template = self.env.ref('website_sale.mail_template_sale_cart_recovery')
-                # fallback email_vals in case partner_to and email_to were emptied
-                email_vals = {} if template.email_to or template.partner_to else {
-                    'email_to': sale_order.partner_id.email_formatted
-                }
-                template.send_mail(sale_order.id, email_values=email_vals)
-                sale_order.cart_recovery_email_sent = True
+
+            # Send emails if the setting is enable and the email is set.
+            if website.send_abandoned_cart_email and abandoned_carts.mapped('partner_id.email')[0]:
+                abandoned_carts._cart_recovery_email_send()
+
+            # Send Whatsapp messages if the setting is enabled and the phone number is set on the partner.
+            if website.send_abandoned_cart_whatsapp and abandoned_carts.mapped('partner_id.phone')[0]:
+                print("W"*20)
+                print(abandoned_carts.mapped('partner_id.phone'))
+                website._send_abandoned_cart_whatsapp(abandoned_carts)
+
+            # Keep using cart_recovery_email_sent as a follow-up sent marker for all channels.
+            if not website.send_abandoned_cart_email:
+                abandoned_carts.cart_recovery_email_sent = True
+
+    def _send_abandoned_cart_whatsapp(self, abandoned_carts):
+        return
 
     @api.model_create_multi
     def create(self, vals_list):

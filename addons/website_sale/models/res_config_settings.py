@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ResConfigSettings(models.TransientModel):
@@ -40,9 +41,22 @@ class ResConfigSettings(models.TransientModel):
         related='website_id.cart_abandoned_delay',
         readonly=False,
     )
+    send_abandoned_cart_followup = fields.Boolean(
+        related='website_id.send_abandoned_cart_followup',
+        readonly=False,
+    )
     send_abandoned_cart_email = fields.Boolean(
-        string="Abandoned Email",
+        string="Send Email",
         related='website_id.send_abandoned_cart_email',
+        readonly=False,
+    )
+    whatsapp_installed = fields.Boolean(
+        compute="_compute_whatsapp_installed",
+        store=False
+    )
+    send_abandoned_cart_whatsapp = fields.Boolean(
+        string="Send WhatsApp messages",
+        related='website_id.send_abandoned_cart_whatsapp',
         readonly=False,
     )
     salesperson_id = fields.Many2one(
@@ -90,6 +104,20 @@ class ResConfigSettings(models.TransientModel):
         readonly=False,
     )
 
+    # === Constraints ===
+
+    @api.constrains('send_abandoned_cart_followup', 'send_abandoned_cart_email', 'send_abandoned_cart_whatsapp')
+    def _check_abandoned_cart_followup_channels(self):
+        for settings in self:
+            if settings.send_abandoned_cart_followup and not (
+                settings.send_abandoned_cart_email or settings.send_abandoned_cart_whatsapp
+            ):
+                raise ValidationError(
+                    self.env._(
+                        "You must select at least one follow-up channel if you want to send follow-ups when a cart is abandoned."
+                    )
+                )
+
     # === COMPUTE METHODS === #
 
     @api.depends('website_id.account_on_checkout')
@@ -108,6 +136,14 @@ class ResConfigSettings(models.TransientModel):
                 else:
                     record.website_id.auth_signup_uninvited = 'b2b'
             record.website_id.account_on_checkout = record.account_on_checkout
+
+    def _compute_whatsapp_installed(self):
+        whatsapp_module = self.env['ir.module.module'].sudo().search(
+            [('name', '=', 'whatsapp'), ('state', '=', 'installed')],
+            limit=1,
+        )
+        for record in self:
+            record.whatsapp_installed = bool(whatsapp_module)
 
     # === CRUD METHODS === #
 
@@ -144,6 +180,18 @@ class ResConfigSettings(models.TransientModel):
             'view_id': False,
             'view_mode': 'form',
             'res_id': self.env['ir.model.data']._xmlid_to_res_id("website_sale.mail_template_sale_cart_recovery"),
+        }
+
+    @api.readonly
+    def action_open_abandoned_cart_whatsapp_template(self):
+        return {
+            'name': self.env._("Customize WhatsApp Template"),
+            'type': 'ir.actions.act_window',
+            'res_model': 'whatsapp.template',
+            'view_mode': 'form',
+            'res_id': self.env['ir.model.data']._xmlid_to_res_id(
+                "whatsapp_sale.whatsapp_template_abandoned_cart"
+            ),
         }
 
     @api.readonly
