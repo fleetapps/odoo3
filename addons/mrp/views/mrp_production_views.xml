@@ -258,9 +258,9 @@
                             class="oe_stat_button" icon="fa-list"
                             invisible="not show_allocation"
                             groups="mrp.group_mrp_reception_report"/>
-                        <button class="oe_stat_button" name="action_view_mrp_production_childs" type="object" icon="fa-wrench" invisible="mrp_production_child_count == 0">
+                        <button class="oe_stat_button" name="action_view_mrp_production_all_childs" type="object" icon="fa-wrench" invisible="mrp_production_all_child_count == 0">
                             <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value"><field name="mrp_production_child_count"/></span>
+                                <span class="o_stat_value"><field name="mrp_production_all_child_count"/></span>
                                 <span class="o_stat_text">Child MO</span>
                             </div>
                         </button>
@@ -595,26 +595,52 @@
             <field name="name">mrp.production.kanban</field>
             <field name="model">mrp.production</field>
             <field name="arch" type="xml">
-                <kanban class="o_kanban_mobile" sample="1">
+                <kanban class="o_kanban_mobile" sample="1" default_group_by="date_deadline:week" js_class="mrp_production_kanban">
                     <field name="date_start"/>
                     <field name="state"/>
-                    <progressbar field="activity_state" colors='{"planned": "success", "today": "warning", "overdue": "danger"}'/>
+                    <progressbar field="state" colors='{"draft": "light", "confirmed": "info", "progress": "warning", "to_close": "success", "done": "success", "cancel": "danger"}'/>
                     <templates>
                         <t t-name="card">
                             <div class="d-flex mb-1">
-                                <field name="priority" widget="priority"/>
-                                <field name="product_id" class="fw-bolder fs-6 ms-1"/>
+                                <field name="name" class="fw-bolder fs-6 ms-1"/>
+                                <field name="product_default_code" class="fs-6 ms-1"/>
+                                <span t-attf-class="ms-auto badge #{['text-bg-light', 'text-bg-info', 'text-bg-warning', 'text-bg-success', 'text-bg-success', 'text-bg-danger'][['draft', 'confirmed', 'progress', 'to_close', 'done', 'cancel'].indexOf(record.state.raw_value)]}"><field name="state"/></span>
+                            </div>
+                            <div class="d-flex">
+                                <field name="product_name" class="me-1"/>
                                 <field name="product_qty" class="ms-auto flex-shrink-0"/>
                                 <field name="uom_id" class="small ms-1 flex-shrink-0" groups="uom.group_uom"/>
                             </div>
+                            <div class="d-flex">
+                                <field name="active_workcenter_ids"/>
+                            </div>
                             <footer class="text-muted">
-                                <div class="d-flex">
-                                    <field name="name" class="me-1"/>
-                                    <field name="date_start" widget="datetime" options="{'show_time': false}"/>
+                                <div class="d-flex w-100 ">
+                                    <field name="priority" widget="priority"/>
                                     <field name="activity_ids" widget="kanban_activity"/>
+                                    <field name="json_popover" widget="stock_rescheduling_popover" invisible="not json_popover"/>
+                                    <div t-if="record.date_deadline.raw_value" class="d-flex">
+                                        <i class="fa fa-calendar-o mx-1 mt-1" role="img" title="Deadline Time"></i>
+                                        <field name="date_deadline" widget="datetime" options="{'show_time': false}" decoration-danger="is_delayed" decoration-warning="is_due_today"/>
+                                    </div>
+                                    <div class="d-flex">
+                                        <i class="fa fa-hourglass-half mx-1 mt-1" role="img" title="Remaining Time"></i>
+                                        <field name="remaining_time" widget="float_time" options="{'unit': 'minutes'}"/>
+                                    </div>
+                                    <div class="d-flex">
+                                        <i class="fa fa-cubes mx-1 mt-1" role="img" title="Remaining Time"></i>
+                                        <field name="components_availability_state"/>
+                                    </div>
+                                    <div t-if="record.mrp_production_all_child_count.raw_value &gt; 0">
+                                        <a name="action_view_mrp_production_all_childs" type="object" role="button">
+                                            <i class="fa fa-wrench mx-1 mt-1" role="img" title="All Children"></i>
+                                            <field name="mrp_production_all_child_done_count" class=""/>
+                                            /
+                                            <field name="mrp_production_all_child_count" class=""/>
+                                        </a>
+                                    </div>
+                                    <field name="user_id" widget="many2one_avatar_user" readonly="state in ['cancel', 'done']" class="ms-auto"/>
                                 </div>
-                                <field name="json_popover" widget="stock_rescheduling_popover" invisible="not json_popover"/>
-                                <span t-attf-class="ms-auto badge #{['cancel'].indexOf(record.state.raw_value) > -1 ? 'text-bg-danger' : ['draft'].indexOf(record.state.raw_value) > -1 ? 'bg-200' : ['progress'].indexOf(record.state.raw_value) > -1 ? 'text-bg-warning' : ['done', 'to_close'].indexOf(record.state.raw_value) > -1 ? 'text-bg-success' : 'text-bg-primary'}"><field name="state"/></span>
                             </footer>
                         </t>
                     </templates>
@@ -735,6 +761,7 @@
                         <filter string="Status" name="status" domain="[]" context="{'group_by': 'state'}"/>
                         <filter string="Material Availability" name="groupby_reservation_state" domain="[]" context="{'group_by': 'reservation_state'}"/>
                         <filter string="Date" name="date" domain="[]" context="{'group_by': 'date_start'}" help="Date by Month"/>
+                        <filter string="Deadline" name="deadline_week" domain="[]" context="{'group_by': 'date_deadline:week'}" help="Deadline by Week"/>
                     </group>
                </search>
             </field>

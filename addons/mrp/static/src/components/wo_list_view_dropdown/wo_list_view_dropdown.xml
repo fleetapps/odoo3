@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <t t-name="mrp.MOViewListDropdown" style="btn" t-if="this.props.record.data.state !== 'done' and !['draft', 'done', 'cancel'].includes(this.props.record.data.production_state)">
+    <t t-name="mrp.MOViewListDropdown" style="btn">
         <Dropdown>
             <button t-attf-class="btn btn-link d-flex p-0 {{!this.props.record.resId ? 'invisible': ''}}">
                 <div class="d-flex align-items-center">
