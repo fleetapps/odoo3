@@ -214,7 +214,7 @@ patch(PosStore.prototype, {
         const sourceLines = this.getLinesToMerge(sourceOrder, destOrder);
         for (const orphanLine of sourceLines) {
             const destinationLine = destOrder?.lines?.find((l) => l.canBeMergedWith(orphanLine));
-            const uuid = this._mergeLines(
+            const uuid = await this._mergeLines(
                 orphanLine,
                 destinationLine,
                 destOrder,
