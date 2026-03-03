@@ -64,10 +64,7 @@ test("fieldmany2many tags email (edition)", async () => {
         count: 2,
     });
     expect(tags[0].innerText).toBe("gold");
-    expect(tags[0]).toHaveAttribute(
-        "data-tooltip",
-        "coucou@petite.perruche"
-    );
+    expect(tags[0]).toHaveAttribute("data-tooltip", "coucou@petite.perruche");
     // should have read Partner_2 2 times: when opening the dropdown and when saving the new email.
     await expect.waitForSteps([`web_read [${partnerId_2}]`, `web_save [${partnerId_2}]`]);
 });
@@ -112,7 +109,10 @@ test("many2many_tags_email widget can load more than 40 records", async () => {
     const messageId = pyEnv["mail.message"].create({ partner_ids: partnerIds });
     await start();
     await openFormView("mail.message", messageId, {
-        arch: "<form><field name='partner_ids' widget='many2many_tags'/></form>",
+        arch: `
+            <form>
+            <field name='partner_ids' widget='many2many_tags' options="{'visibleItemsLimit': 0}"/>
+            </form>`,
     });
     await contains('.o_field_widget[name="partner_ids"] .badge', { count: 100 });
     await contains(".o_form_editable");
