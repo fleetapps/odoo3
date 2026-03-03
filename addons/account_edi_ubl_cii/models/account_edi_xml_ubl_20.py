@@ -877,6 +877,34 @@ class AccountEdiXmlUBL20(models.AbstractModel):
             else 'CreditNoteLine'
         )
         invoice_line_vals, line_logs = self._import_invoice_lines(invoice, tree, './{*}' + line_tag, qty_factor)
+        """# Group lines
+        if invoice.journal_id.type == 'sale':
+            move_types = invoice.get_sale_types(include_receipts=True)
+        else:
+            move_types = invoice.get_purchase_types(include_receipts=True)
+        if not self.env.context.get('ungroup_lines'):
+
+            def aggregate_function(target_base_line, base_line):
+                target_base_line.setdefault('_aggregated_quantity', 0.0)
+                target_base_line['_aggregated_quantity'] += base_line['quantity']
+
+            def grouping_function(base_line):
+                return {
+                    '_grouping_key': frozendict(AccountTax._prepare_base_line_grouping_key(base_line)),
+                }
+
+            last_bill_from_vendor = self.env['account.move'].search([
+                ('move_type', 'in', move_types),
+                ('partner_id', '=', invoice.partner_id.id),
+                ('state', '=', 'posted'),
+                ('id', '!=', invoice.id),
+            ], order='create_date desc', limit=1)
+            if last_bill_from_vendor and last_bill_from_vendor._has_lines_grouped():
+                base_lines = self.env['account.tax']._reduce_base_lines_with_grouping_function(
+                    invoice_line_vals,
+                    grouping_function=grouping_function,
+                    aggregate_function=aggregate_function,
+                )"""
         rounding_line_vals, rounding_logs = self._import_rounding_amount(invoice, tree, './{*}LegalMonetaryTotal/{*}PayableRoundingAmount', qty_factor)
         line_vals = allowance_charges_line_vals + invoice_line_vals + rounding_line_vals
 
@@ -885,6 +913,25 @@ class AccountEdiXmlUBL20(models.AbstractModel):
             'invoice_line_ids': [Command.create(line_value) for line_value in line_vals],
         }
         invoice.write(invoice_values)
+        # Group lines
+        if invoice.journal_id.type == 'sale':
+            move_types = invoice.get_sale_types(include_receipts=True)
+        else:
+            move_types = invoice.get_purchase_types(include_receipts=True)
+        if not self.env.context.get('ungroup_lines'):
+            # Group lines
+            if invoice.journal_id.type == 'sale':
+                move_types = invoice.get_sale_types(include_receipts=True)
+            else:
+                move_types = invoice.get_purchase_types(include_receipts=True)
+            last_bill_from_vendor = self.env['account.move'].search([
+                ('move_type', 'in', move_types),
+                ('partner_id', '=', invoice.partner_id.id),
+                ('state', '=', 'posted'),
+                ('id', '!=', invoice.id),
+            ], order='create_date desc', limit=1)
+            if last_bill_from_vendor and last_bill_from_vendor._has_lines_grouped():
+                invoice._group_lines_by_tax()
         logs += partner_logs + currency_logs + line_logs + allowance_charges_logs + rounding_logs
         return logs
 
