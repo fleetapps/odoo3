@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<template id="ThemeColorsPreview" inherit_id="web.layout" primary="True">
+    <xpath expr="//head/link[last()]" position="after">
+        <t t-call-assets="web.assets_frontend" t-js="false"/>
+        <t t-call-assets="website.assets_wysiwyg" t-js="false"/>
+        <t t-call-assets="website.assets_theme_colors_preview"/>
+    </xpath>
+    <xpath expr="//body" position="inside">
+        <section class="o_colored_level pt-5">
+            <div class="container pb-5">
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-6">
+                        <div class="shadow-sm border px-4 py-2 rounded-1 d-flex flex-column align-items-center h-100">
+                            <nav class="breadcrumb mb-0">
+                                <li class="breadcrumb-item"><a href="#">Breadcrumb</a></li>
+                                <li class="breadcrumb-item"><a href="#">Category</a></li>
+                                <li class="breadcrumb-item active"><span>Current item</span></li>
+                            </nav>
+                            <div class="input-group mb-3">
+                                <input type="search" name="search" class="form-control border-0 bg-light" placeholder="Search..."/>
+                                <button type="submit" aria-label="Search" title="Search" class="btn btn-light">
+                                    <i class="oi oi-search"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex w-100 flex-wrap align-items-center gap-2 mb-3">
+                                <div class="dropdown">
+                                    <button class="btn btn-light dropdown-toggle" type="button">
+                                        Dropdown
+                                    </button>
+                                </div>
+                                <a class="btn btn-light text-nowrap me-auto" href="#">
+                                    Button
+                                </a>
+                                <ul class="pagination pagination-sm mb-0">
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#" aria-label="Next">
+                                            <span class="oi oi-chevron-left" role="img" aria-label="Next" title="Next"></span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item"><a class="page-link" href="#">1</a></li>
+                                    <li class="page-item active"><a class="page-link" href="#">2</a></li>
+                                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="#" aria-label="Next">
+                                            <span class="oi oi-chevron-right" role="img" aria-label="Next" title="Next"></span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="row g-3 align-items-center w-100 mb-3">
+                                <div class="col-auto">
+                                    <label class="form-label mb-0">Label</label>
+                                </div>
+                                <div class="col">
+                                    <input type="text" class="form-control" placeholder="Placeholder"/>
+                                </div>
+                            </div>
+                            <p class="mb-1">Checkboxes &amp; Radios</p>
+                            <div class="d-flex w-100 gap-2 mb-2 justify-content-center align-items-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" checked=""/>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" checked=""/>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="demo_radio" checked=""/>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="demo_radio"/>
+                                </div>
+                            </div>
+                            <hr class="w-100 mx-auto m-0 mb-3"/>
+                            <div class="d-flex w-100 gap-2 mb-3 justify-content-center align-items-center">
+                                <span class="badge text-bg-success">Success</span>
+                                <span class="badge text-bg-info">Info</span>
+                                <span class="badge text-bg-warning">Warning</span>
+                                <span class="badge text-bg-danger">Danger</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="shadow-sm border px-4 py-2 rounded-1 h-100">
+                            <t t-foreach="[('success', 'check-circle', 'Success'),
+                                        ('info', 'info-circle', 'Info'),
+                                        ('warning', 'exclamation-triangle', 'Warning'),
+                                        ('danger', 'exclamation-circle', 'Danger')]" t-as="alert">
+                                <div t-attf-class="s_alert alert alert-#{alert[0]} clearfix s_alert_sm" data-vcss="001">
+                                    <i t-attf-class="fa fa-#{alert[1]} fa-stack d-flex align-items-center justify-content-center me-3 p-2 rounded-1 s_alert_icon fa-lg"></i>
+                                    <div class="s_alert_content">
+                                        <p>This is an example of an alert using the <strong><t t-out="alert[2]"/></strong> color.</p>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <t t-foreach="range(1, 6)" t-as="preset_id">
+                        <div class="col-lg-4">
+                            <div t-attf-class="o_colored_level o_cc o_cc#{preset_id} shadow-sm border p-4 pb-2 rounded-1">
+                                <h4>Preset # <t t-out="preset_id"/></h4>
+                                <p>Lorem ipsum dolor sit amet, consectetur <a href="#">adipiscing elit</a>. Sed do eiusmod tempor incididunt ut labore.</p>
+                                <p class="mb-0">
+                                    <a class="btn btn-primary mb-2" href="#">Primary</a>
+                                    <a class="btn btn-secondary mb-2" href="#">Secondary</a>
+                                </p>
+                                <p class="mb-0">
+                                    <a class="btn btn-outline-primary mb-2" href="#">Primary</a>
+                                    <a class="btn btn-outline-secondary mb-2" href="#">Secondary</a>
+                                </p>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </section>
+    </xpath>
+</template>
+
+</odoo>
