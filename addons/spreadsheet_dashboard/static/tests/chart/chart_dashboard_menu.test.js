@@ -14,11 +14,13 @@ test("can change granularity", async () => {
     const env = await makeSpreadsheetMockEnv();
     const setupModel = new Model({}, { custom: { odooDataProvider: new OdooDataProvider(env) } });
     const chartId = insertChartInSpreadsheet(setupModel, "line", {
-        metaData: {
-            groupBy: ["date:month"],
-            resModel: "partner",
-            measure: "__count",
-            order: null,
+        dataSource: {
+            metaData: {
+                groupBy: ["date:month"],
+                resModel: "partner",
+                measure: "__count",
+                order: null,
+            },
         },
     });
     const { model } = await createDashboardActionWithData(setupModel.exportData());

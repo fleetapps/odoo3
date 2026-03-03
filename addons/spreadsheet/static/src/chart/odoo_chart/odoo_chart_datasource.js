@@ -35,9 +35,7 @@ chartDataSourceRegistry.add("odoo", {
     fromRangeStr: (dataSource) => dataSource,
     validate: (dataSource) => CommandResult.Success,
     transform: (dataSource) => dataSource,
-    extractData: (dataSource, getters) => {
-        const sheetId = getters.getActiveSheetId();
-        const [chartId] = getters.getChartIds(sheetId);
+    extractData: (dataSource, chartId, getters) => {
         const { datasets, labels } = getters.getChartDataSource(chartId).getData();
         for (const ds of datasets) {
             if (ds.cumulatedStart) {
@@ -53,9 +51,7 @@ chartDataSourceRegistry.add("odoo", {
             labelValues: labels.map((l) => ({ value: l })),
         };
     },
-    extractHierarchicalData: (dataSource, getters) => {
-        const sheetId = getters.getActiveSheetId();
-        const [chartId] = getters.getChartIds(sheetId);
+    extractHierarchicalData: (dataSource, chartId, getters) => {
         const { datasets, labels } = getters.getChartDataSource(chartId).getHierarchicalData();
         return {
             dataSetsValues: datasets.map((ds) => ({

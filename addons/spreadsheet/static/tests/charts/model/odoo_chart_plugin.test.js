@@ -1413,16 +1413,28 @@ test("Can configure the chart datasets", async () => {
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     let definition = model.getters.getChartDefinition(chartId);
-    expect(definition.dataSets).toEqual([{}, {}]);
 
     model.dispatch("UPDATE_CHART", {
-        definition: { ...definition, dataSets: [{ label: "My dataset" }, { label: "Second" }] },
+        definition: {
+            ...definition,
+            // This is the legacy way to style datasets (before saas-19.3).
+            // we still need to support it because there's no way to upgrade.
+            dataSets: [
+                { label: "My dataset", backgroundColor: "#FF0000" },
+                { label: "Second", backgroundColor: "#00FF00" },
+            ],
+        },
         chartId,
         figureId: model.getters.getFigureIdFromChartId(chartId),
         sheetId,
     });
     definition = model.getters.getChartDefinition(chartId);
-    expect(definition.dataSets).toEqual([{ label: "My dataset" }, { label: "Second" }]);
+    let runtime = model.getters.getChartRuntime(chartId);
+    expect(runtime.chartJsConfig.data.datasets.length).toBe(2);
+    expect(runtime.chartJsConfig.data.datasets[0].label).toBe("My dataset");
+    expect(runtime.chartJsConfig.data.datasets[0].backgroundColor).toBe("#FF0000");
+    expect(runtime.chartJsConfig.data.datasets[1].label).toBe("Second");
+    expect(runtime.chartJsConfig.data.datasets[1].backgroundColor).toBe("#00FF00");
 
     model.dispatch("UPDATE_CHART", {
         definition: {
@@ -1440,7 +1452,10 @@ test("Can configure the chart datasets", async () => {
     await waitForDataLoaded(model);
     definition = model.getters.getChartDefinition(chartId);
     // the second dataset was dropped from the definition since there is now only a single dataset in the data source
-    expect(definition.dataSets).toEqual([{ label: "My dataset" }]);
+    runtime = model.getters.getChartRuntime(chartId);
+    expect(runtime.chartJsConfig.data.datasets.length).toBe(1);
+    expect(runtime.chartJsConfig.data.datasets[0].label).toBe("My dataset");
+    expect(runtime.chartJsConfig.data.datasets[0].backgroundColor).toBe("#FF0000");
 });
 
 test("Chart data source is updated when changing chart type", async () => {
