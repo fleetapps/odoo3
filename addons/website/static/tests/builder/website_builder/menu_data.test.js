@@ -7,13 +7,21 @@ import {
 import { setupEditor } from "@html_editor/../tests/_helpers/editor";
 import { setSelection } from "@html_editor/../tests/_helpers/selection";
 import { expectElementCount } from "@html_editor/../tests/_helpers/ui_expectations";
-import { patchWithCleanup, mockService, onRpc, contains } from "@web/../tests/web_test_helpers";
+import {
+    patchWithCleanup,
+    mockService,
+    onRpc,
+    contains,
+    defineActions,
+} from "@web/../tests/web_test_helpers";
 import { MAIN_PLUGINS } from "@html_editor/plugin_sets";
 import { MenuDataPlugin } from "@website/builder/plugins/menu_data_plugin";
 import { MenuDialog } from "@website/components/dialog/edit_menu";
 import { SavePlugin } from "@html_builder/core/save_plugin";
 import { insertText } from "@html_editor/../tests/_helpers/user_actions";
 import { browser } from "@web/core/browser/browser";
+import { Component, xml } from "@odoo/owl";
+import { registry } from "@web/core/registry";
 
 defineWebsiteModels();
 
@@ -454,6 +462,56 @@ describe("EditMenuDialog", () => {
             await expect.waitForSteps(["check existing"]);
             await animationFrame();
             expect("button:contains('Create Page')").toHaveCount(1);
+        });
+
+        test("'Create Page' sets the url of the created page and redirect to it", async () => {
+            await setupWebsiteBuilder("", { headerContent: `<header>header</header>` });
+            await contains(":iframe header").click();
+
+            onRpc("website.menu", "get_tree", () => sampleMenuData);
+            onRpc("/website/check_existing_link", async (request) => {
+                const { params } = await request.json();
+                expect(params.link).toEqual("/top-menu-url");
+                return false;
+            });
+            await contains("button:contains('Edit Menu')").click();
+
+            onRpc("/website/get_new_page_templates", async () => [
+                { id: "basic", title: "Basic", templates: [] },
+            ]);
+            await contains("button:contains('Create Page')").click();
+
+            // See note above about the `window.location.origin` that gives us
+            // this ugly url, but we don't care, we just check the behavior
+            // when it is changed
+            onRpc(`/website/add/${encodeURIComponent(topMenuUrl)}`, async () => ({
+                url: "another-url",
+            }));
+            onRpc("website.menu", "save", ({ args: [id, { data }] }) => {
+                expect(data[0].url).toBe("another-url");
+                expect.step("save menu");
+                return true;
+            });
+
+            class MockCreatePageAction extends Component {
+                static props = ["*"];
+                static template = xml`<div class="mock-create-page"></div>`;
+                setup() {
+                    expect(this.props.path).toBe("another-url");
+                    expect.step("mock redirect preview");
+                }
+            }
+            defineActions([
+                {
+                    tag: "__test__create_page__action__",
+                    xml_id: "website.website_preview",
+                    type: "ir.actions.client",
+                },
+            ]);
+            registry.category("actions").add("__test__create_page__action__", MockCreatePageAction);
+
+            await contains(".o_page_template button", { visible: false }).click();
+            await expect.waitForSteps(["save menu", "mock redirect preview"]);
         });
     });
 });
