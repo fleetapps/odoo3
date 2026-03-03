@@ -30,13 +30,18 @@
                 --mandatory-day-color: #{nth($o-colors, $size)};
             }
         }
-
-        .o_event_half_left {
-          clip-path: polygon(0 0, 50% 0, 50% 100%, 0% 100%);
-        }
-
-        .o_event_half_right {
-          clip-path: polygon(100% 0, 50% 0, 50% 100%, 100% 100%);
-        }
+        @for $start from 0 through 100 {
+            @for $end from 0 through 100 {
+                .fc-event-start.o_event_half_#{$start}_#{$end}{
+                clip-path: polygon(#{$start}% 0%, 100% 0%, 100% 100%, #{$start}% 100%);
+                }
+                .fc-event-end.o_event_half_#{$start}_#{$end}{   
+                    clip-path: polygon(0% 0%, #{$end}% 0%, #{$end}% 100%, 0% 100%);
+                }
+                .fc-event-start.fc-event-end.o_event_half_#{$start}_#{$end} {
+                    clip-path: polygon(#{$start}% 0%, #{$end}% 0%, #{$end}% 100%, #{$start}% 100%);
+                }
+                }
+        }     
     }
 }
