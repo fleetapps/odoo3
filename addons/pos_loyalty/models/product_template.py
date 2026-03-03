@@ -18,6 +18,7 @@ class ProductTemplate(models.Model):
         fields = self.env['product.template']._load_pos_data_fields(config)
 
         missing_product_templates = self.env['product.template'].browse(missing_product_tmpl_ids).read(fields=fields, load=False)
+<<<<<<< a6e10db0fbb9829fddb1fa434c0d520ad8e6e68c
         product_ids_to_hide = reward_products.product_tmpl_id - self.env['product.template'].browse(already_loaded_product_tmpl_ids)
 
         if self.env.context.get('pos_limited_loading', True):
@@ -26,6 +27,14 @@ class ProductTemplate(models.Model):
 
         config_data = data['pos.config'][0]
         config_data['_pos_special_products_ids'] += product_ids_to_hide.product_variant_id.ids
+||||||| cce4c951a0a2ee18946213d148a20ae2877c5a6e
+        product_ids_to_hide = reward_products.product_tmpl_id - self.env['product.template'].browse(already_loaded_product_tmpl_ids)
+        if self.env.context.get('pos_limited_loading', True):
+            # Filter out products that can be loaded in the PoS but are not loaded yet
+            product_ids_to_hide = product_ids_to_hide - product_ids_to_hide.filtered_domain(self._load_pos_data_domain(data))
+        data['pos.session'][0]['_pos_special_products_ids'] += product_ids_to_hide.product_variant_id.ids
+=======
+>>>>>>> fbefe34d1153df96129031f123f8e8b52064f865
 
         # Identify special loyalty products (e.g., gift cards, e-wallets) to be displayed in the POS
         loyality_products = config.get_record_by_ref([
