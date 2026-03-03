@@ -576,6 +576,7 @@ class TestUBLBE(TestUBLCommon, TestAccountMoveSendCommon):
 
         # Send.
         wizard.action_send_and_print()
+        template = wizard.template_id
         self.assertTrue(invoice.invoice_pdf_report_id)
         self.assertTrue(invoice.ubl_cii_xml_id)
         invoice_attachments = self.env['ir.attachment'].search([
@@ -587,6 +588,7 @@ class TestUBLBE(TestUBLCommon, TestAccountMoveSendCommon):
 
         # Send again.
         wizard = self.create_send_and_print(invoice, sending_methods=['manual'])
+        wizard.template_id = template
         self.assertRecordValues(wizard, [{
             'sending_methods': ['manual'],
             'invoice_edi_format': 'ubl_bis3',
