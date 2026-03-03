@@ -10,7 +10,7 @@ import odoo
 from odoo import models
 from odoo.exceptions import MissingError
 from odoo.http import request
-from odoo.tools import groupby
+from odoo.tools import frozendict, groupby
 from odoo.addons.bus.websocket import wsrequest
 
 def add_guest_to_context(func):
@@ -91,6 +91,7 @@ class Store:
         self.data = {}
         self.data_id = None
         self.target = Store.Target(bus_channel, bus_subchannel)
+        self.done = set()
 
     def add(self, records, fields, *, as_thread=False, fields_params=None):
         """Add records to the store. Data is coming from _to_store() method of the model if it is
@@ -153,6 +154,15 @@ class Store:
         if not field_list or not field_list.records:
             return self
         for record, record_data_list in self._get_records_data_list(field_list).items():
+            identity = (record, field_list._identity())
+            try:
+                if identity in self.done:
+                    print("identity already in", identity)
+                    continue
+            except TypeError:
+                print("error", identity)
+                raise
+            self.done.add(identity)
             for record_data in record_data_list:
                 if as_thread:
                     self.add_model_values(
@@ -265,7 +275,7 @@ class Store:
             fields(field_list)
         elif isinstance(fields, dict):
             field_list.extend(Store.Attr(key, value) for key, value in fields.items())
-        elif isinstance(fields, (list, Store.FieldList)):
+        elif isinstance(fields, (list, tuple, Store.FieldList)):
             field_list.extend(fields)  # prevent mutation of original list
         else:
             raise TypeError(f"unexpected fields format: '{fields}' for records: '{records}'")
@@ -350,6 +360,9 @@ class Store:
             self.channel = channel
             self.subchannel = subchannel
 
+        def _identity(self):
+            return ("Target", self.channel, self.subchannel)
+
     class Attr:
         """Attribute to be added for each record. The value can be a static value or a function
         to compute the value, receiving the record as argument.
@@ -363,6 +376,9 @@ class Store:
             self.predicate = predicate
             self.sudo = sudo
             self.value = value
+
+        def _identity(self):
+            return (self.__class__, self.field_name, self.predicate, self.sudo, self.value)
 
         def _get_value(self, record, *, target=None):
             if self.value is NO_VALUE and record is not None and self.field_name in record._fields:
@@ -407,9 +423,22 @@ class Store:
             )
             self.as_thread = as_thread
             self.dynamic_fields = dynamic_fields
-            self.fields = fields
-            self.fields_params = fields_params
+            self.fields = tuple(fields) if isinstance(fields, list) else fields
+            self.fields_params = (
+                frozendict(fields_params) if isinstance(fields_params, dict) else fields_params
+            )
             self.only_data = only_data
+
+        def _identity(self):
+            return (
+                *super()._identity(),
+                self.records,
+                self.as_thread,
+                self.dynamic_fields,
+                self.fields,
+                self.fields_params,
+                self.only_data,
+            )
 
         def _get_value(self, record, *, target=None):
             records = super()._get_value(record, target=target)
@@ -519,6 +548,9 @@ class Store:
             )
             self.mode = mode
             self.sort = sort
+
+        def _identity(self):
+            return (*super()._identity(), self.mode, self.sort)
 
         def _copy_with_records(self, records, calling_record, target):
             if records is None:
@@ -654,3 +686,10 @@ class Store:
             if self.target.channel is None and self.target.subchannel is None:
                 records = env.user
             return records if isinstance(records, env.registry["res.users"]) else env["res.users"]
+
+        def _identity(self):
+            return (
+                "FieldList",
+                self.target._identity(),
+                tuple(f if isinstance(f, str) else f._identity() for f in self),
+            )

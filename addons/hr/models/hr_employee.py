@@ -2102,7 +2102,7 @@ class HrEmployee(models.Model):
 
     def _store_avatar_card_fields(self, res: Store.FieldList):
         res.one("department_id", ["name"])
-        res.attr("resource_id")
+        res.one("resource_id", "_store_avatar_card_fields")
         res.one(
             "user_id",
             lambda res: (
