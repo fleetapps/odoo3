@@ -10,7 +10,12 @@
             <TagsList t-props="this.tagsListProps" t-slot-scope="tag">
                 <Tag t-props="tag.props"/>
             </TagsList>
-            <div t-if="showM2OSelectionField" class="o_field_many2many_selection d-inline-flex w-100" t-ref="autoComplete">
+            <div t-if="showM2OSelectionField"
+                class="o_field_many2many_selection d-inline-flex w-100"
+                t-ref="autoComplete"
+                t-on-focusin="() => this.state.isFocused = true"
+                t-on-focusout="() => this.state.isFocused = false"
+            >
                 <Many2XAutocomplete
                     id="props.id"
                     placeholder="tags.length ? '' : props.placeholder"

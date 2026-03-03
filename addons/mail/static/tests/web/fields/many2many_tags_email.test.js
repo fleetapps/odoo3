@@ -93,8 +93,9 @@ test("fieldmany2many tags email popup close without filling", async () => {
     await insertText(".o-mail-RecipientsInputTagsListPopover input", "coucou@petite.perruche");
     // Close the modal dialog without saving (should remove partner from invalid records)
     await click(".o-mail-RecipientsInputTagsListPopover .btn-secondary");
-    // Selecting a partner with a valid email shouldn't open the modal dialog for the previous partner
+    await contains(".o-mail-RecipientsInputTagsListPopover", { count: 0 });
     await contains(".o_field_widget[name='partner_ids'] .badge", { count: 0 });
+    // Selecting a partner with a valid email shouldn't open the modal dialog for the previous partner
     await clickFieldDropdown("partner_ids");
     await clickFieldDropdownItem("partner_ids", "Valid Valeria");
     await contains(".o-mail-RecipientsInputTagsListPopover", { count: 0 });

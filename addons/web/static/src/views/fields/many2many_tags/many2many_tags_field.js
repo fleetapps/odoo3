@@ -1,4 +1,4 @@
-import { useRef } from "@web/owl2/utils";
+import { useRef, useState } from "@web/owl2/utils";
 import { _t } from "@web/core/l10n/translation";
 import { CheckBox } from "@web/core/checkbox/checkbox";
 import { ColorList } from "@web/core/colorlist/colorlist";
@@ -79,6 +79,7 @@ export class Many2ManyTagsField extends Component {
     static DEFAULT_LIMIT = 8; // Maximum number of tags to display, override with options
 
     setup() {
+        this.state = useState({ isFocused: false });
         this.orm = useService("orm");
         this.previousColorsMap = {};
         this.popover = usePopover(this.constructor.components.Popover);
@@ -156,7 +157,9 @@ export class Many2ManyTagsField extends Component {
     }
 
     get tagsListProps() {
-        const limit = this.props.visibleItemsLimit ?? this.constructor.DEFAULT_LIMIT;
+        let limit = this.props.visibleItemsLimit ?? this.constructor.DEFAULT_LIMIT;
+        limit = this.state.isFocused ? 0 : limit; // Show all if editing
+
         return {
             tags: this.tags,
             visibleItemsLimit: limit === 0 ? Number.POSITIVE_INFINITY : limit,
