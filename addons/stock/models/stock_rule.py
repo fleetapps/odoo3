@@ -571,9 +571,15 @@ class StockRule(models.Model):
         while locations[-1].location_id:
             locations |= locations[-1].location_id
         domain = self._get_rule_domain(locations, values)
+        route_domain = [('warehouse_selectable', '=', True), ('rule_ids.action', 'in', ['buy', 'manufacture'])]
+        routes = self.env['stock.route'].search(route_domain)
+        # Not ideal but needed to filter out the routes with no warehouse set within the current company
+        # since searching for empty `warehouse_ids` won't yield to a result if there's another company that
+        # has `warehouse_ids` on its route, because it directly performs a search on the link table between warehouse-route.
+        routes.filtered(lambda route: not route.warehouse_ids)
         # Get a mapping (location_id, route_id) -> warehouse_id -> rule_id
         rule_dict = self._search_rule_for_warehouses(
-            values.get("route_ids", False),
+            (values.get("route_ids", self.env['stock.route']) or self.env['stock.route']) | routes,
             values.get("packaging_uom_id", False),
             product_id,
             values.get("warehouse_id", locations.warehouse_id),
@@ -622,7 +628,7 @@ class StockRule(models.Model):
             for candidate_location in candidate_locations:
                 result = get_rule_for_routes(
                     rule_dict,
-                    values.get("route_ids", self.env['stock.route']),
+                    (values.get("route_ids", self.env['stock.route']) or self.env['stock.route']) | routes,  # To check
                     values.get("packaging_uom_id", self.env['uom.uom']),
                     product_id,
                     values.get("warehouse_id", candidate_location.warehouse_id),
