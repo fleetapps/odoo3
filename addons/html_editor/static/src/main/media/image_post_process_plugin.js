@@ -98,7 +98,13 @@ export class ImagePostProcessPlugin extends Plugin {
         const originalImg = await loadImage(data.originalSrc);
         const originalSrc = originalImg.getAttribute("src");
 
-        if (shouldPreventGifTransformation(data)) {
+        if (
+            !(await isImageSupportedForProcessing(
+                img,
+                formatMimetype || mimetypeBeforeConversion,
+                data
+            ))
+        ) {
             const [postUrl, postDataset] = await this.postProcessImage(
                 await loadImageDataURL(originalSrc),
                 newDataset,
@@ -337,6 +343,18 @@ export const defaultImageFilterOptions = {
     brightness: "0",
     sepia: "0",
 };
+
+export async function isImageSupportedForProcessing(
+    imgEl,
+    originalImgMimetype,
+    data = imgEl.dataset
+) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(originalImgMimetype)) {
+        return false;
+    }
+    const { originalSrc } = data.originalSrc ? data : await loadImageInfo(imgEl);
+    return !!originalSrc;
+}
 
 // webgl color filters
 const _applyAll = (result, filter, filters) => {

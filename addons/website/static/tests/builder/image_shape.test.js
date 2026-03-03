@@ -2,7 +2,7 @@ import { describe, expect, test } from "@odoo/hoot";
 import { queryFirst, setInputRange } from "@odoo/hoot-dom";
 import { contains } from "@web/../tests/web_test_helpers";
 import { defineWebsiteModels, setupWebsiteBuilder } from "./website_helpers";
-import { testImg } from "./image_test_helpers";
+import { testImg, testSvgImg } from "./image_test_helpers";
 
 defineWebsiteModels();
 
@@ -52,12 +52,11 @@ test("Should set a shape on a GIF", async () => {
     >`;
 
     // Set up the website builder with the test GIF.
-    const { getEditor, waitSidebarUpdated } = await setupWebsiteBuilder(`
+    const { waitSidebarUpdated } = await setupWebsiteBuilder(`
         <div class="test-options-target">
             ${testGif}
         </div>
         `);
-    const editor = getEditor();
 
     // Click the GIF to activate the image options in the sidebar.
     await contains(":iframe .test-options-target img").click();
@@ -66,8 +65,7 @@ test("Should set a shape on a GIF", async () => {
     // Select and apply a shape.
     await contains("[data-label='Shape'] .dropdown").click();
     await contains("[data-action-value='html_builder/geometric/geo_shuriken']").click();
-    // Wait for the editor to process the change.
-    await editor.shared.operation.next(() => {});
+    await waitSidebarUpdated();
 
     const gif = queryFirst(":iframe .test-options-target img");
 
@@ -96,6 +94,10 @@ test("Should set a shape on a GIF", async () => {
         "data-shape",
         "html_builder/geometric/geo_shuriken"
     );
+
+    // 6. The stretch option should not be visible as it works with a canvas
+    // transformation that is not compatible with a gif.
+    expect("[data-action-id='toggleImageShapeRatio']").not.toHaveCount();
 });
 
 test("Should change the shape color of an image", async () => {
@@ -591,4 +593,26 @@ test("Should keep colors when changing speed and vice versa", async () => {
     });
 
     expect(imgSelector).toHaveAttribute("data-shape-animation-speed", "2");
+});
+
+test("Check that the stretch option does not appear when applying a shape on a svg image", async () => {
+    const { waitSidebarUpdated } = await setupWebsiteBuilder(
+        `<div class="test-options-target">
+            ${testSvgImg}
+        </div>`,
+        {
+            loadIframeBundles: true,
+        }
+    );
+
+    // Select image and apply shape
+    await contains(":iframe .test-options-target img").click();
+    await waitSidebarUpdated();
+
+    await contains("[data-label='Shape'] .dropdown").click();
+    await contains("[data-action-value='html_builder/geometric/geo_shuriken']").click();
+    await waitSidebarUpdated();
+    // The stretch option should not be visible as it works with a canvas
+    // transformation that is not compatible with a svg.
+    expect("[data-action-id='toggleImageShapeRatio']").not.toHaveCount();
 });

@@ -1,5 +1,6 @@
 import { BaseOptionComponent, useDomState } from "@html_builder/core/utils";
-import { shouldPreventGifTransformation } from "@html_editor/main/media/image_post_process_plugin";
+import { getMimetypeBeforeShape } from "@html_builder/utils/image";
+import { isImageSupportedForProcessing } from "@html_editor/main/media/image_post_process_plugin";
 import { loadImageInfo, isWebGLEnabled } from "@html_editor/utils/image_processing";
 import { _t } from "@web/core/l10n/translation";
 
@@ -19,9 +20,11 @@ export class ImageFilterOption extends BaseOptionComponent {
                 ...data,
             }));
             const canUseGlFilter = isWebGLEnabled();
+            const mimetype = await getMimetypeBeforeShape(editingElement, data);
+            const showFilter = await isImageSupportedForProcessing(editingElement, mimetype, data);
             return {
                 isCustomFilter: editingElement.dataset.glFilter === "custom",
-                showFilter: data.mimetypeBeforeConversion && !shouldPreventGifTransformation(data),
+                showFilter,
                 disableFilter: !canUseGlFilter,
                 tooltip: !canUseGlFilter ? _t("WebGL is not enabled on your browser.") : undefined,
             };
