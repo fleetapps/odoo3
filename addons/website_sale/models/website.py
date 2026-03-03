@@ -841,18 +841,19 @@ class Website(models.Model):
         partner_sudo = self.env.user.partner_id
         fpos_sudo = AccountFiscalPositionSudo
 
-        # If the current user is the website public user, the fiscal position
-        # is computed according to geolocation.
-        if request and request.geoip.country_code and self.partner_id.id == partner_sudo.id:
+        if not (request and request.geoip.country_code):
+            # If the current user is the connected use the user country.
+            # If they are no request, the website user can be used.
+            fpos_sudo = AccountFiscalPositionSudo._get_fiscal_position(partner_sudo)
+        elif self.partner_id.id == partner_sudo.id:
+            # If the current user is the website public user, the fiscal position
+            # is computed according to geolocation.
             country = self.env['res.country'].search(
                 [('code', '=', request.geoip.country_code)],
                 limit=1,
             )
             partner_geoip = self.env['res.partner'].sudo().new({'country_id': country.id})
             fpos_sudo = AccountFiscalPositionSudo._get_fiscal_position(partner_geoip)
-            request.session[FISCAL_POSITION_SESSION_CACHE_KEY] = fpos_sudo.id
-
-            return fpos_sudo
 
         if request:
             request.session[FISCAL_POSITION_SESSION_CACHE_KEY] = fpos_sudo.id
