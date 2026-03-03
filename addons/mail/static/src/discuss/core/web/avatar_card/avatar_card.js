@@ -9,10 +9,11 @@ import { useDynamicInterval } from "@mail/utils/common/misc";
 import { formatLocalDateTime } from "@mail/utils/common/dates";
 import { useChannelMemberActions } from "@mail/discuss/core/common/channel_member_actions";
 import { ActionList } from "@mail/core/common/action_list";
-import { user } from "@web/core/user";
 
-export class AvatarCardPopover extends Component {
-    static template = "mail.AvatarCardPopover";
+export const allowedModels = ["res.users", "res.partner"];
+
+export class AvatarCard extends Component {
+    static template = "mail.AvatarCard";
     static components = { ActionList, Dropdown, DropdownItem, ImStatus };
     static props = {
         id: { type: Number, required: true },
@@ -20,12 +21,8 @@ export class AvatarCardPopover extends Component {
         close: { type: Function, required: true },
         model: {
             type: String,
-            validate: (m) => ["res.users", "res.partner"].includes(m),
-            optional: true,
+            validate: (m) => allowedModels.includes(m),
         },
-    };
-    static defaultProps = {
-        model: "res.users",
     };
 
     setup() {
@@ -59,8 +56,23 @@ export class AvatarCardPopover extends Component {
         return 60000 - (Date.now() % 60000);
     }
 
+    get avatarUrl() {
+        if (this.partner) {
+            return this.partner.avatarUrl;
+        }
+        return `/web/image/${this.props.model}/${this.props.id}/avatar_128`;
+    }
+
+    get displayAvatar() {
+        return Boolean(this.partner || this.user);
+    }
+
     get openChatModel() {
         return this.props.model;
+    }
+
+    get openChatId() {
+        return this.props.id;
     }
 
     get canOpenSettingMenu() {
@@ -69,6 +81,9 @@ export class AvatarCardPopover extends Component {
     get user() {
         if (this.props.model === "res.users") {
             return this.store["res.users"].get(this.props.id);
+        }
+        if (this.props.model === "res.partner") {
+            return this.partner?.main_user_id;
         }
         return undefined;
     }
@@ -93,11 +108,15 @@ export class AvatarCardPopover extends Component {
     }
 
     get showViewProfileBtn() {
-        return this.partner && user.isInternalUser;
+        return Boolean(this.partner);
     }
 
     get hasFooter() {
         return false;
+    }
+
+    get userInfoTemplate() {
+        return undefined;
     }
 
     async getProfileAction() {
@@ -110,7 +129,7 @@ export class AvatarCardPopover extends Component {
     }
 
     onSendClick() {
-        this.openChat(this.props.id);
+        this.openChat(this.openChatId);
         this.props.close();
     }
 
