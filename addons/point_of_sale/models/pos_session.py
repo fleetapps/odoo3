@@ -1104,13 +1104,17 @@ class PosSession(models.Model):
         if float_compare(amounts['amount'], 0, precision_rounding=self.currency_id.rounding) < 0:
             # revert the accounts because account.payment doesn't accept negative amount.
             account_payment.write({
+                'force_outstanding_account_id': account_payment.destination_account_id,
+                'payment_type': 'outbound',
                 'outstanding_account_id': account_payment.destination_account_id,
                 'destination_account_id': account_payment.outstanding_account_id,
-                'payment_type': 'outbound',
             })
 
         account_payment.action_post()
-
+        if float_compare(amounts['amount'], 0, precision_rounding=self.currency_id.rounding) < 0:
+            account_payment.invalidate_recordset(['is_reconciled', 'state'])
+            account_payment._compute_reconciliation_status()
+            account_payment._compute_state()
         diff_amount_compare_to_zero = self.currency_id.compare_amounts(diff_amount, 0)
         if diff_amount_compare_to_zero != 0:
             self._apply_diff_on_account_payment_move(account_payment, payment_method, diff_amount)
