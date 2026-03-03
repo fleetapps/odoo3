@@ -1,7 +1,7 @@
 from odoo import _, models, Command
 from odoo.addons.base.models.res_bank import sanitize_account_number
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import float_is_zero, float_repr, find_xml_value
+from odoo.tools import float_is_zero, float_repr, find_xml_value, html2plaintext
 from odoo.tools.float_utils import float_round
 from odoo.tools.misc import clean_context, formatLang
 from odoo.tools.zeep import Client
@@ -192,6 +192,11 @@ class AccountEdiCommon(models.AbstractModel):
                 return create_dict(tax_category_code='L')
             if customer.zip[:2] in ('51', '52'):
                 return create_dict(tax_category_code='M')  # Ceuta & Mellila
+
+        if customer.country_id.code == 'BE' and customer.property_account_position_id.name == 'Co-Contractant':
+            html_note = customer.property_account_position_id.note
+            note = html2plaintext(html_note) if html_note else ''
+            return create_dict(tax_category_code='AE', tax_exemption_reason_code='VATEX-EU-AE - Reverse charge', tax_exemption_reason=note)
 
         if supplier.country_id == customer.country_id:
             if not tax or tax.amount == 0:
