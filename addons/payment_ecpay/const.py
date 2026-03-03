@@ -1,5 +1,12 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+# Routes for ECPay redirection and webhook.
+PAYMENT_RETURN_ROUTE = '/payment/ecpay/return'
+PAYMENT_WEBHOOK_ROUTE = '/payment/ecpay/webhook'
+
+# The currency supported by ECPay, in ISO 4217 format.
+SUPPORTED_CURRENCY = 'TWD'
+
 # The codes of the payment methods to activate when ECPay is activated.
 DEFAULT_PAYMENT_METHOD_CODES = {
     # Primary payment methods.
@@ -26,18 +33,13 @@ PAYMENT_METHODS_MAPPING = {
     'twqr': ['TWQR'],
 }
 
-# Mapping IETF language tags (e.g.: 'fr-BE') to ECPay
-# language codes. If a language tag is not listed, the country code prefix can serve as fallback.
+# Mapping IETF language tags (e.g.: 'fr-BE') to ECPay language codes.
+# If a language tag is not listed, the country code prefix can serve as fallback.
 LANGUAGE_CODES_MAPPING = {
-    'en_US': 'ENG',
-    'en_AU': 'ENG',
-    'en_CA': 'ENG',
-    'en_IN': 'ENG',
-    'en_GB': 'ENG',
+    'en': 'ENG',
     'ja_JP': 'JPN',
-    'ko_KP': 'KOR',
-    'ko_KR': 'KOR',
-    'zh_CN': 'CHI',
+    'ko': 'KOR',
+    'zh': 'CHI',
 }
 
 # Mapping of transaction states to ECPay success codes.

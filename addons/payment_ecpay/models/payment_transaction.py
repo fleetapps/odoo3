@@ -1,20 +1,17 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from datetime import datetime
-
 from odoo import api, models
 from odoo.tools.urls import urljoin
 
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment_ecpay import const
-from odoo.addons.payment_ecpay.controllers.main import EcpayController
 
 
 class PaymentTransaction(models.Model):
     _inherit = "payment.transaction"
 
     @api.model
-    def _compute_reference(self, provider_code, prefix=None, **kwargs):
+    def _compute_reference(self, provider_code, prefix=None, separator='-', **kwargs):
         """Override of `payment` to ensure that ECPay requirements for references are satisfied.
 
         ECPay requirements for references are as follows:
@@ -32,9 +29,10 @@ class PaymentTransaction(models.Model):
         :return: The unique reference for the transaction.
         :rtype: str
         """
-        if provider_code == 'ecpay':
-            prefix = payment_utils.singularize_reference_prefix(separator="", max_length=20)
+        if provider_code != 'ecpay':
+            return super()._compute_reference(provider_code, prefix=prefix, separator=separator, **kwargs)
 
+        prefix = payment_utils.singularize_reference_prefix(separator="", max_length=20)
         return super()._compute_reference(provider_code, prefix=prefix, separator="", **kwargs)
 
     def _get_specific_rendering_values(self, processing_values):
@@ -47,9 +45,8 @@ class PaymentTransaction(models.Model):
         :return: The dict of provider-specific processing values.
         :rtype: dict
         """
-        res = super()._get_specific_rendering_values(processing_values)
         if self.provider_code != "ecpay":
-            return res
+            return super()._get_specific_rendering_values(processing_values)
 
         base_url = self.provider_id.get_base_url()
         all_payment_methods = {
@@ -77,26 +74,27 @@ class PaymentTransaction(models.Model):
         rendering_values = {
             "MerchantID": self.provider_id.ecpay_merchant_id,
             "MerchantTradeNo": self.reference,
-            "MerchantTradeDate": datetime.now().strftime("%Y/%m/%d %H:%M:%S"),
+            "MerchantTradeDate": self.create_date.strftime("%Y/%m/%d %H:%M:%S"),
+            "PaymentType": "aio",
             "TotalAmount": int(self.amount),
             "TradeDesc": "ECPay from Odoo",
             "ItemName": item_name,
-            "ReturnURL": urljoin(base_url, EcpayController._webhook_url),
-            "OrderResultURL": urljoin(base_url, EcpayController._return_url),
-            "PaymentInfoURL": urljoin(base_url, EcpayController._webhook_url),
+            "ReturnURL": urljoin(base_url, const.PAYMENT_WEBHOOK_ROUTE),
             "ChoosePayment": "ALL",
-            "IgnorePayment": ignore_payment_methods,
-            "Remark": self.invoice_ids.display_name or self.sale_order_ids.display_name or " ",
-            "PaymentType": "aio",
             "EncryptType": "1",
+            "Remark": self.invoice_ids.display_name or self.sale_order_ids.display_name or " ",
+            "OrderResultURL": urljoin(base_url, const.PAYMENT_RETURN_ROUTE),
+            "IgnorePayment": ignore_payment_methods,
+            "Language": payment_utils.get_language_code(
+                self.env.context.get("lang", "en_US"),
+                const.LANGUAGE_CODES_MAPPING,
+            ),
         }
-        if language_code := const.LANGUAGE_CODES_MAPPING.get(self.env.context.get("lang", "en_US")):
-            rendering_values["Language"] = language_code
 
         rendering_values.update({
-            "CheckMacValue": self.provider_id._ecpay_calculate_signature(rendering_values)
+            "CheckMacValue": self.provider_id._ecpay_calculate_signature(rendering_values),
+            "api_url": self.provider_id._ecpay_get_api_url(),
         })
-        rendering_values.update({"api_url": self.provider_id._ecpay_get_api_url()})
         return rendering_values
 
     @api.model

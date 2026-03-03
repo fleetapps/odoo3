@@ -1,23 +1,21 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import hmac
-import logging
 import pprint
 
 from werkzeug.exceptions import Forbidden
 
 from odoo import http
 from odoo.http import request
+from odoo.addons.payment.logging import get_payment_logger
+from odoo.addons.payment_ecpay import const
 
-_logger = logging.getLogger(__name__)
+_logger = get_payment_logger(__name__)
 
 
 class EcpayController(http.Controller):
-    _return_url = "/payment/ecpay/return"
-    _webhook_url = "/payment/ecpay/webhook"
-
     @http.route(
-        _return_url, type="http", auth="public", methods=["POST"], csrf=False, save_session=False
+        const.PAYMENT_RETURN_ROUTE, type="http", auth="public", methods=["POST"], csrf=False, save_session=False
     )
     def ecpay_return_from_checkout(self, **data):
         """Process the notification data sent by ECPay after redirection.
@@ -31,7 +29,7 @@ class EcpayController(http.Controller):
             tx_sudo._process("ecpay", data)
         return request.redirect("/payment/status")
 
-    @http.route(_webhook_url, type="http", auth="public", methods=["POST"], csrf=False)
+    @http.route(const.PAYMENT_WEBHOOK_ROUTE, type="http", auth="public", methods=["POST"], csrf=False)
     def ecpay_webhook(self, **data):
         """Process the notification data sent by ECPay to the webhook.
 
@@ -56,7 +54,7 @@ class EcpayController(http.Controller):
         :return: None
         :raise: :class:`werkzeug.exceptions.Forbidden` if the signatures don't match
         """
-        received_signature = payment_data.get("CheckMacValue")
+        received_signature = payment_data.pop("CheckMacValue", None)
         if not received_signature:
             _logger.warning("Received payment data with missing signature.")
             raise Forbidden

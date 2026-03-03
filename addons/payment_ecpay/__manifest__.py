@@ -4,7 +4,7 @@
     "name": "Payment Provider: ECPay",
     "category": "Accounting/Payment Providers",
     "sequence": 350,
-    "summary": "A payment provider based in Taiwan.",
+    "summary": "A payment provider covering the Taiwanese market.",
     "depends": ["payment"],
     "data": [
         "views/payment_ecpay_templates.xml",

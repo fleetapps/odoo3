@@ -12,12 +12,11 @@
             <input type="hidden" name="ReturnURL" t-att-value="ReturnURL"/>
             <input type="hidden" name="ChoosePayment" t-att-value="ChoosePayment"/>
             <input type="hidden" name="CheckMacValue" t-att-value="CheckMacValue"/>
-            <input type="hidden" name="OrderResultURL" t-att-value="OrderResultURL"/>
-            <input type="hidden" name="PaymentInfoURL" t-att-value="PaymentInfoURL"/>
-            <input type="hidden" name="Language" t-if="Language" t-att-value="Language"/>
             <input type="hidden" name="EncryptType" t-att-value="EncryptType"/>
             <input type="hidden" name="Remark" t-att-value="Remark"/>
+            <input type="hidden" name="OrderResultURL" t-att-value="OrderResultURL"/>
             <input type="hidden" name="IgnorePayment" t-att-value="IgnorePayment"/>
+            <input type="hidden" name="Language" t-if="Language" t-att-value="Language"/>
         </form>
     </template>
 </odoo>

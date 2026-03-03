@@ -39,7 +39,7 @@ class PaymentProvider(models.Model):
         if self.code != 'ecpay':
             return super()._get_supported_currencies()
 
-        return super()._get_supported_currencies().filtered(lambda c: c.name == 'TWD')
+        return super()._get_supported_currencies().filtered(lambda c: c.name == const.SUPPORTED_CURRENCY)
 
     # === BUSINESS METHODS ===#
 
@@ -57,13 +57,21 @@ class PaymentProvider(models.Model):
     def _ecpay_calculate_signature(self, data):
         """Compute the signature for the provided data.
 
+        ECPay steps for calculating the checksum are as follows:
+        Calculation Formula: CheckMacValue = SHA256(URLEncode(HashKey + Data plaintext + HashIV))
+
+        Steps:
+        1. Extract the plaintext parameter Data as a string.
+        2. The string will be sandwiched by HashKey in the front and HashIV at the bottom.
+        3. The entire string will go through URL encoding.
+        4. Switched to lowercase.
+        5. The string is then encrypted using SHA256 to generate a hash value.
+        6. It is then converted into upper case to generate a CheckMacValue.
+
         :param dict data: The data to sign.
         :return: The calculated signature.
         :rtype: str
         """
-        if data.get('CheckMacValue'):
-            data.pop('CheckMacValue')
-
         ordered_data = collections.OrderedDict(sorted(data.items(), key=lambda k: k[0].lower()))
         encoding_lst = [
             'HashKey=%s&' % self.ecpay_hash_key,
@@ -72,7 +80,7 @@ class PaymentProvider(models.Model):
         ]
         safe_characters = '-_.!*()'
         encoding_str = ''.join(encoding_lst)
-        encoding_str = quote_plus(str(encoding_str), safe=safe_characters).lower()
+        encoding_str = quote_plus(encoding_str, safe=safe_characters).lower()
         return hashlib.sha256(encoding_str.encode('utf-8')).hexdigest().upper()
 
     # === CONSTRAINT METHODS === #
@@ -80,7 +88,7 @@ class PaymentProvider(models.Model):
     @api.constrains('available_currency_ids')
     def _limit_available_currency_ids(self):
         for provider in self.filtered(lambda p: p.code == 'ecpay'):
-            if provider.available_currency_ids.filtered(lambda c: c.name not in 'TWD'):
+            if provider.available_currency_ids.filtered(lambda c: c.name not in const.SUPPORTED_CURRENCY):
                 raise ValidationError(self.env._("ECPay only supports TWD."))
 
     # === CRUD METHODS === #

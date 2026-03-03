@@ -8,6 +8,7 @@ from odoo.tests import tagged
 from odoo.tools import mute_logger
 
 from odoo.addons.payment.tests.http_common import PaymentHttpCommon
+from odoo.addons.payment_ecpay import const
 from odoo.addons.payment_ecpay.controllers.main import EcpayController
 from odoo.addons.payment_ecpay.tests.common import EcpayCommon
 
@@ -19,7 +20,7 @@ class TestProcessingFlows(EcpayCommon, PaymentHttpCommon):
         """Test that receiving a valid webhook notification triggers the processing of the payment
         data."""
         self._create_transaction('redirect', reference="S0000220251104095811")
-        url = self._build_url(EcpayController._webhook_url)
+        url = self._build_url(const.PAYMENT_WEBHOOK_ROUTE)
         with (
             patch('odoo.addons.payment_ecpay.controllers.main.EcpayController._verify_signature'),
             patch(
@@ -33,7 +34,7 @@ class TestProcessingFlows(EcpayCommon, PaymentHttpCommon):
     def test_webhook_triggers_signature_check(self):
         """Test that receiving a webhook notification triggers a signature check."""
         self._create_transaction('redirect', reference="S0000220251104095811")
-        url = self._build_url(EcpayController._webhook_url)
+        url = self._build_url(const.PAYMENT_WEBHOOK_ROUTE)
         with (
             patch(
                 'odoo.addons.payment_ecpay.controllers.main.EcpayController._verify_signature'
