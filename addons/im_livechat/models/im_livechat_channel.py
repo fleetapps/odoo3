@@ -23,9 +23,7 @@ class Im_LivechatChannel(models.Model):
     """
 
     _name = 'im_livechat.channel'
-    _inherit = ['rating.parent.mixin']
     _description = 'Livechat Channel'
-    _rating_satisfaction_days = 14  # include only last 14 days to compute satisfaction
 
     def _default_user_ids(self):
         return [(6, 0, [self.env.uid])]
@@ -70,6 +68,8 @@ class Im_LivechatChannel(models.Model):
     )
     script_external = fields.Html('Script (external)', compute='_compute_script_external', store=False, readonly=True, sanitize=False)
     nbr_channel = fields.Integer('Number of conversation', compute='_compute_nbr_channel', store=False, readonly=True)
+    rating_percentage_satisfaction = fields.Float("Rating Satisfaction", compute="_compute_rating_percentage_satisfaction")
+    rating_count = fields.Integer(string='# Ratings', compute="_compute_rating_percentage_satisfaction")
 
     # relationnal fields
     user_ids = fields.Many2many('res.users', 'im_livechat_channel_im_user', 'channel_id', 'user_id', string='Agents', default=_default_user_ids)
@@ -246,6 +246,37 @@ class Im_LivechatChannel(models.Model):
         channel_count = {livechat_channel.id: count for livechat_channel, count in data}
         for record in self:
             record.nbr_channel = channel_count.get(record.id, 0)
+
+    @api.depends("channel_ids.livechat_rating")
+    def _compute_rating_percentage_satisfaction(self):
+        read_group_data = (
+            self.env["discuss.channel"]
+            ._read_group(
+                [
+                    Domain("livechat_channel_id", "in", self.ids)
+                    & Domain("livechat_rating_value", "!=", "0")
+                    & (
+                        Domain(
+                            "create_date",
+                            ">=",
+                            fields.Datetime.now() - timedelta(days=14),
+                        )
+                    )
+                ],
+                ["livechat_channel_id", "livechat_rating"],
+                ["__count"],
+            )
+        )
+        channel_data = defaultdict(dict)
+        for parent_id, rating, count in read_group_data:
+            channel_data[parent_id.id][rating] = count
+        for channel in self:
+            rating_data = channel_data[channel.id]
+            rating_count = sum(rating_data.values())
+            channel.rating_count = rating_count
+            channel.rating_percentage_satisfaction = (
+                rating_data.get("5", 0) * 100 / rating_count if rating_count else 0
+            )
 
     # --------------------------
     # Action Methods
