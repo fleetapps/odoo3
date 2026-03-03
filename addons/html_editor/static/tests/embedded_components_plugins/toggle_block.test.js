@@ -234,6 +234,48 @@ describe("deleteBackward applied to toggle", () => {
             `<div class="o-paragraph o-we-hint" o-we-hint-text='Type "/" for commands'>[]<br></div>`
         );
     });
+    test("press 'shift+ArrowUp' with leading toggle block should select and delete it", async () => {
+        const { editor, el } = await setupEditor(
+            unformat(`
+                <div data-embedded="toggleBlock" data-oe-protected="true" data-embedded-props='{ "toggleBlockId": "1" }' contenteditable="false">
+                    <div data-embedded-editable="title">
+                        <p>Hello</p>
+                    </div>
+                    <div data-embedded-editable="content">
+                        <p>World</p>
+                    </div>
+                </div>
+                <div class="o-paragraph">[]hello</div>
+            `),
+            { config: getConfig([toggleBlockEmbedding]) }
+        );
+        await embeddedToggleMountedPromise;
+        await press(["shift", "arrowup"]);
+        expect(getContent(el)).toBe(
+            unformat(`
+                <p data-selection-placeholder="">]<br></p>
+                <div data-embedded="toggleBlock" data-oe-protected="true" data-embedded-props='{ "toggleBlockId": "1" }' contenteditable="false">
+                    <div class="d-flex flex-row align-items-center">
+                        <button class="btn p-0 border-0 align-items-center justify-content-center btn-light" type="button">
+                            <i class="fa align-self-center fa-caret-right"></i>
+                        </button>
+                        <div class="flex-fill ms-1">
+                            <div data-embedded-editable="title" data-oe-protected="false" contenteditable="true">
+                                <p>Hello</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ps-4 ms-1 d-none">
+                        <div data-embedded-editable="content" data-oe-protected="false" contenteditable="true">
+                            <p>World</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="o-paragraph">[hello</div>`)
+        );
+        deleteBackward(editor);
+        expect(getContent(el)).toBe(`<div class="o-paragraph">[]hello</div>`);
+    });
 });
 describe("deleteForward applied to toggle", () => {
     test("empty paragraph, before toggle: should remove empty paragraph", async () => {

@@ -25,6 +25,7 @@ export class SelectionPlaceholderPlugin extends Plugin {
         normalize_handlers: withSequence(100, this.updatePlaceholders.bind(this)),
         step_added_handlers: this.updatePlaceholders.bind(this),
         selectionchange_handlers: (selectionData) => this.onSelectionChange(selectionData),
+        before_selection_expansion_handlers: this.updatePlaceholders.bind(this),
         clean_for_save_handlers: withSequence(0, ({ root }) => {
             for (const placeholder of root.querySelectorAll(PLACEHOLDER_SELECTOR)) {
                 placeholder.remove();
@@ -77,10 +78,10 @@ export class SelectionPlaceholderPlugin extends Plugin {
      * Update all placeholders and blinker classes so they are present
      * everywhere we need them, and absent wherever they are not useful.
      */
-    updatePlaceholders() {
+    updatePlaceholders({ expand = false } = {}) {
         const checkPredicate = (resourceId, node) => {
             const results = this.getResource(resourceId)
-                .map((p) => p(node))
+                .map((p) => p(node, expand))
                 .filter((result) => result !== undefined);
             return !!results.length && results.every(Boolean);
         };
@@ -211,7 +212,13 @@ export class SelectionPlaceholderPlugin extends Plugin {
      */
     onSelectionChange(selectionData) {
         const selection = selectionData.editableSelection;
-        this.resetBlinkerClasses(selection);
+        const currSelectionState = selection.isCollapsed ? "collapsed" : "uncollapsed";
+        if (currSelectionState !== this.prevSelectionState) {
+            this.prevSelectionState = currSelectionState;
+            this.updatePlaceholders();
+        } else {
+            this.resetBlinkerClasses(selection);
+        }
         if (selection.isCollapsed) {
             const anchor = closestElement(selection.anchorNode);
             if (
