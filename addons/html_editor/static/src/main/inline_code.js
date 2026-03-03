@@ -24,7 +24,6 @@ export class InlineCodePlugin extends Plugin {
                 return true;
             }
         },
-        mergeable_feff_predicates: (node) => node.matches("code.o_inline_code"),
     };
 
     setup() {

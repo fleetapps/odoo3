@@ -58,6 +58,7 @@ function isFormatted(formatPlugin, format) {
  * }) => void | boolean)[]} on_will_format_selection_handlers
  * @typedef {(() => void)[]} on_all_formats_removed_handlers
  * @typedef {((root: Node) => void)[]} on_will_merge_adjacent_siblings_handlers
+ * @typedef {((root: Node) => void)[]} on_merged_adjacent_siblings_handlers
  *
  * @typedef {((className: string) => boolean | undefined)[]} is_format_class_predicates
  * @typedef {((node: Node) => boolean | undefined)[]} has_format_predicates
@@ -709,6 +710,7 @@ export class FormatPlugin extends Plugin {
             }
         }
         selectionToRestore?.restore();
+        this.trigger("on_merged_adjacent_siblings_handlers", root);
     }
 
     shouldBeMergedWithPreviousSibling(node) {

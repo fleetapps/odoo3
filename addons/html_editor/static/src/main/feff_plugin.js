@@ -1,6 +1,6 @@
 import { Plugin } from "@html_editor/plugin";
 import { cleanEmptyAncestors, cleanTextNode } from "@html_editor/utils/dom";
-import { isElement, isTextNode, isZwnbsp } from "@html_editor/utils/dom_info";
+import { isTextNode, isZwnbsp } from "@html_editor/utils/dom_info";
 import { prepareUpdate } from "@html_editor/utils/dom_state";
 import { descendants, selectElements } from "@html_editor/utils/dom_traversal";
 import { leftPos, rightPos } from "@html_editor/utils/position";
@@ -36,7 +36,9 @@ export class FeffPlugin extends Plugin {
     resources = {
         normalize_processors: this.updateFeffs.bind(this),
         clean_for_save_processors: this.cleanForSave.bind(this),
-        on_will_merge_adjacent_siblings_handlers: this.mergeAdjacentSiblingsHandler.bind(this),
+        on_will_merge_adjacent_siblings_handlers:
+            this.onWillMergeAdjacentSiblingsHandler.bind(this),
+        on_merged_adjacent_siblings_handlers: this.onMergedAdjacentSiblingsHandler.bind(this),
         is_char_tangible_for_keyboard_navigation_predicates: (ev, char, lastSkipped) => {
             // Skip first FEFF, but not the second one (unless shift is pressed).
             if (char === "\uFEFF" && (ev.shiftKey || lastSkipped !== "\uFEFF")) {
@@ -57,19 +59,13 @@ export class FeffPlugin extends Plugin {
         }
     }
 
-    mergeAdjacentSiblingsHandler(root) {
-        for (const node of [root, ...descendants(root)].filter(isElement)) {
-            if (
-                this.getResource("mergeable_feff_predicates").some((predicate) => predicate(node))
-            ) {
-                while (
-                    node.previousSibling?.nodeType === Node.TEXT_NODE &&
-                    node.previousSibling.nodeValue === "\uFEFF"
-                ) {
-                    node.previousSibling.remove();
-                }
-            }
-        }
+    onWillMergeAdjacentSiblingsHandler(root) {
+        const cursors = this.getCursors();
+        this.removeFeffs(root, cursors);
+        cursors.restore();
+    }
+    onMergedAdjacentSiblingsHandler(root) {
+        this.updateFeffs(root);
     }
 
     /**
