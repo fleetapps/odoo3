@@ -161,53 +161,66 @@ patch(PosStore.prototype, {
             }
         }
     },
-    async mergeOrders(sourceOrder, destOrder) {
-        let whileGuard = 0;
+    async _mergeLines(orphanLine, destinationLine, destOrder, sourceOrder, mergedCourses) {
+        let uuid;
+        if (destinationLine) {
+            destinationLine.merge(orphanLine);
+            uuid = destinationLine.uuid;
+            this.handlePreparationHistory(
+                sourceOrder.last_order_preparation_change.lines,
+                destOrder.last_order_preparation_change.lines,
+                orphanLine,
+                destinationLine,
+                orphanLine.qty
+            );
+        } else {
+            const serializedLine = { ...orphanLine.raw };
+            serializedLine.order_id = destOrder.id;
+            delete serializedLine.uuid;
+            delete serializedLine.id;
+            const newLine = this.models["pos.order.line"].create(serializedLine, false, true);
+            newLine.course_id = orphanLine.course_id?.id;
+            uuid = newLine.uuid;
+            if (orphanLine.course_id && mergedCourses) {
+                // Replace new line uuid in the merged courses
+                const course = mergedCourses[orphanLine.course_id.uuid];
+                if (course?.lines) {
+                    course.lines = course.lines.map((lineUuid) =>
+                        lineUuid === orphanLine.uuid ? uuid : lineUuid
+                    );
+                }
+            }
+            this.handlePreparationHistory(
+                sourceOrder.last_order_preparation_change.lines,
+                destOrder.last_order_preparation_change.lines,
+                orphanLine,
+                newLine,
+                orphanLine.qty
+            );
+        }
+        return uuid;
+    },
+    getLinesToMerge(sourceOrder, destinationOrder) {
+        return sourceOrder.lines;
+    },
+
+    async _mergeOrders(sourceOrder, destOrder) {
         const mergedCourses = this.mergeCourses(sourceOrder, destOrder);
 
         // Sum the guest counts from both orders
         const totalGuests = sourceOrder.getCustomerCount() + destOrder.getCustomerCount();
         destOrder.setCustomerCount(totalGuests);
 
-        while (sourceOrder.lines.length) {
-            const orphanLine = sourceOrder.lines[0];
+        const sourceLines = this.getLinesToMerge(sourceOrder, destOrder);
+        for (const orphanLine of sourceLines) {
             const destinationLine = destOrder?.lines?.find((l) => l.canBeMergedWith(orphanLine));
-            let uuid = "";
-            if (destinationLine) {
-                destinationLine.merge(orphanLine);
-                uuid = destinationLine.uuid;
-                this.handlePreparationHistory(
-                    sourceOrder.last_order_preparation_change.lines,
-                    destOrder.last_order_preparation_change.lines,
-                    orphanLine,
-                    destinationLine,
-                    orphanLine.qty
-                );
-            } else {
-                const serializedLine = { ...orphanLine.raw };
-                serializedLine.order_id = destOrder.id;
-                delete serializedLine.uuid;
-                delete serializedLine.id;
-                const newLine = this.models["pos.order.line"].create(serializedLine, false, true);
-                newLine.course_id = orphanLine.course_id?.id;
-                uuid = newLine.uuid;
-                if (orphanLine.course_id && mergedCourses) {
-                    // Replace new line uuid in the merged courses
-                    const course = mergedCourses[orphanLine.course_id.uuid];
-                    if (course?.lines) {
-                        course.lines = course.lines.map((lineUuid) =>
-                            lineUuid === orphanLine.uuid ? uuid : lineUuid
-                        );
-                    }
-                }
-                this.handlePreparationHistory(
-                    sourceOrder.last_order_preparation_change.lines,
-                    destOrder.last_order_preparation_change.lines,
-                    orphanLine,
-                    newLine,
-                    orphanLine.qty
-                );
-            }
+            const uuid = await this._mergeLines(
+                orphanLine,
+                destinationLine,
+                destOrder,
+                sourceOrder,
+                mergedCourses
+            );
 
             if (sourceOrder.table_id) {
                 destOrder.uiState.unmerge[uuid] = {
@@ -218,10 +231,6 @@ patch(PosStore.prototype, {
             }
 
             orphanLine.delete();
-            whileGuard++;
-            if (whileGuard > 1000) {
-                break;
-            }
         }
         if (mergedCourses) {
             destOrder.uiState.unmergeCourses = {
@@ -240,7 +249,9 @@ patch(PosStore.prototype, {
                 });
             }
         }
-
+    },
+    async mergeOrders(sourceOrder, destOrder) {
+        await this._mergeOrders(sourceOrder, destOrder);
         await this.deleteOrders([sourceOrder], [], true);
         this.syncAllOrders({ orders: [destOrder] });
         return destOrder;
@@ -886,6 +897,7 @@ patch(PosStore.prototype, {
         const destinationOrder = this.getActiveOrdersOnTable(destinationTable.rootTable)[0];
         await this.mergeOrders(sourceOrder, destinationOrder);
         await this.setTable(destinationTable);
+        return destinationOrder;
     },
     async handleFailToPrepareOrderTransfer(orders) {
         await this.syncAllOrders({ orders });
