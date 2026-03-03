@@ -844,3 +844,35 @@ class TestHrEmployeeWebJson(HttpCase):
         }
         res = self.url_open(url, headers=CSRF_USER_HEADERS)
         self.assertEqual(res.status_code, 200)
+
+
+@tagged('-at_install', 'post_install')
+class TestHrEmployeeAvatarCardPopover(HttpCase):
+    def test_avatar_popover_employee_data_order(self):
+        user = self.env['res.users'].create({
+            'name': 'John',
+            'login': 'John',
+        })
+        department_a, department_b = self.env['hr.department'].create([
+            {'name': 'Department A'},
+            {'name': 'Department B'},
+        ])
+        employee_a = self.env['hr.employee'].create({
+            'name': 'John',
+            'user_id': user.id,
+            'department_id': department_a.id,
+        })
+        employee_a.write({'user_id': False})
+        employee_a.invalidate_recordset()
+        employee_b = self.env['hr.employee'].create({
+            'name': 'John',
+            'user_id': user.id,
+            'department_id': department_b.id,
+        })
+        self.authenticate(user.login, user.login)
+        employee_data = self.make_jsonrpc_request('/mail/data', {'fetch_params': [[
+                'avatar_card', {'id': user.id, 'model': 'res.users'},
+            ]]},
+        )['hr.employee']
+        self.assertEqual(len(employee_data), 2)
+        self.assertEqual(employee_data[0]['department_id'], employee_b.department_id.id)
