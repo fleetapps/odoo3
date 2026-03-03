@@ -2032,3 +2032,24 @@ class TestPoSSale(TestPointOfSaleHttpCommon):
         for picking in pos_order_refund_record.picking_ids:
             picking.button_validate()
         self.assertEqual(sale_order.order_line.qty_delivered, 2)
+
+    def test_advance_payment_with_extra_lines(self):
+        so = self.env['sale.order'].sudo().create({
+            'partner_id': self.partner_a.id,
+            'order_line': [
+                (0, 0, {
+                    'name': self.product_a.name,
+                    'product_id': self.product_a.id,
+                    'product_uom_qty': 1.0,
+                    'price_unit': 100,
+                    'tax_ids': False,
+                })],
+        })
+        so.action_confirm()
+        self.product_a.write({'available_in_pos': True})
+
+        # Apply 10% down payment and add a product to the PoS order
+        self.main_pos_config.open_ui()
+        self.main_pos_config.down_payment_product_id = self.env.ref("pos_sale.default_downpayment_product")
+        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'PoSApplyDownpaymentWithExtraLine', login="accountman")
+        self.assertEqual(so.amount_unpaid, 90)
