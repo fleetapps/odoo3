@@ -18,6 +18,9 @@ export class TimeOffCalendarRenderer extends CalendarRenderer {
     get employeeId() {
         return this.props.model.employeeId;
     }
+    get activeModel() {
+        return this.props.model.meta.context.active_model || false;
+    }
 
     get showDashboard() {
         return false;

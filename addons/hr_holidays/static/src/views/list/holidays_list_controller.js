@@ -3,6 +3,9 @@ import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { listView } from "@web/views/list/list_view";
 import { ListController } from "@web/views/list/list_controller";
+import { onMounted } from "@odoo/owl";
+import { user } from "@web/core/user";
+import { _t } from "@web/core/l10n/translation";
 
 export class HolidaysListController extends ListController {
     static template = "hr_holidays.HolidaysListView";
@@ -16,6 +19,15 @@ export class HolidaysListController extends ListController {
 
         useSubEnv({
             onClickViewButton: (params) => this.handleViewButtonClick(params),
+        });
+
+        onMounted(() => {
+            if (user.activeCompany.id !== user.defaultCompany.id) {
+                this.env.services.notification.add(
+                    _t("You are not linked to an employee in the current company, so you cannot create requests for yourself."),
+                    { type: "warning", sticky: true }
+                );
+            }
         });
     }
 

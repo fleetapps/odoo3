@@ -45,7 +45,7 @@ export function useLeaveCancelWizard() {
 export function useNewAllocationRequest() {
     const addDialog = useOwnedDialogs();
     const component = useComponent();
-    return async (employeeId, holidayStatusId) => {
+    return async (employeeId, holidayStatusId, activeModel) => {
         let size = "md";
         const context = {
             form_view_ref: "hr_holidays.hr_leave_allocation_view_form_dashboard",
@@ -56,6 +56,9 @@ export function useNewAllocationRequest() {
             context["default_employee_id"] = employeeId;
             context["form_view_ref"] =
                 "hr_holidays.hr_leave_allocation_view_form_manager_dashboard";
+        }
+        if (activeModel) {
+            context["default_active_model"] = activeModel;
         }
         if (holidayStatusId) {
             context["default_work_entry_type_id"] = holidayStatusId;

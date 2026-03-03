@@ -126,6 +126,7 @@ class HrLeaveAllocation(models.Model):
     virtual_remaining_leaves = fields.Float(compute='_compute_leaves', string='Available Time Off')
     expiring_carryover_days = fields.Float("The number of carried over days that will expire on carried_over_days_expiration_date")
     carried_over_days_expiration_date = fields.Date("Carried over days expiration date")
+    can_create = fields.Boolean(compute="_compute_can_create")
 
     @api.constrains('date_from', 'date_to')
     def _check_date_from_date_to(self):
@@ -1039,3 +1040,11 @@ class HrLeaveAllocation(models.Model):
             self.check_access('read')
             return super(HrLeaveAllocation, self.sudo()).message_subscribe(partner_ids=partner_ids, subtype_ids=subtype_ids)
         return super().message_subscribe(partner_ids=partner_ids, subtype_ids=subtype_ids)
+
+    def _compute_can_create(self):
+        active_model = self.env.context.get("default_active_model")
+        for record in self:
+            record.can_create = (
+                record.env.company == record.env.user.company_id
+                or active_model == "hr.employee"
+            )
