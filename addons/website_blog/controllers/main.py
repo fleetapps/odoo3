@@ -235,6 +235,22 @@ class WebsiteBlog(http.Controller):
 
         return create_breadcrumbs(items)
 
+    def _get_blog_post_breadcrumb_structured_data(self, blog_post):
+        """Create BreadcrumbList schema for a blog post page."""
+        website = request.website
+        base_url = website.get_base_url()
+        items = [
+            (website.name, base_url),
+            (_("Blog Posts"), f"{base_url}/blog"),
+        ]
+        if blog_post.blog_id:
+            items.append((
+                blog_post.blog_id.name,
+                f"{base_url}/blog/{request.env['ir.http']._slug(blog_post.blog_id)}",
+            ))
+        items.append((blog_post.name, f"{base_url}{blog_post.website_url}"))
+        return create_breadcrumbs(items)
+
     def sitemap_blog(env, rule, qs):
         Blog = env['blog.blog']
         website = env['website'].get_current_website()
@@ -411,7 +427,7 @@ class WebsiteBlog(http.Controller):
                 website.organization_structured_data(with_id=True),
                 blog_post.blog_id._to_structured_data(website),
                 *post_sd,
-                blog_post._to_breadcrumb_structured_data(website),
+                self._get_blog_post_breadcrumb_structured_data(blog_post),
             ]
             values['blog_post_json_ld'] = JsonLd.render_structured_data_list(structured_data)
         response = request.render("website_blog.blog_post_complete", values)

@@ -45,6 +45,16 @@ class TestJsonLd(common.BaseCase):
         with self.assertRaises(TypeError):
             product.add_nested(tags=offer_1)
 
+        with self.assertRaises(TypeError):
+            product.add_nested(offers=False)
+
+    def test_add_nested_rejects_invalid_item_in_existing_list(self):
+        product = JsonLd("Product", name="Widget")
+        product.values["offers"] = [JsonLd("Offer", price=10), "invalid"]
+
+        with self.assertRaises(TypeError):
+            product.add_nested(offers=JsonLd("Offer", price=20))
+
     def test_render_preserves_false_and_skips_none(self):
         data = JsonLd("Thing").set(name="Item", is_family_friendly=False, description=None)._render()
 
@@ -73,6 +83,9 @@ class TestJsonLd(common.BaseCase):
         self.assertEqual(len(decoded), 2)
         self.assertEqual(decoded[0]["@type"], "Organization")
         self.assertEqual(decoded[1]["@type"], "WebSite")
+
+    def test_render_structured_data_list_all_none_returns_false(self):
+        self.assertFalse(JsonLd.render_structured_data_list([None, None]))
 
     def test_create_id_reference(self):
         with self.assertRaises(ValueError):

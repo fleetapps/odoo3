@@ -5,7 +5,7 @@ from datetime import datetime
 import random
 
 from odoo import api, models, fields, _
-from odoo.addons.website.tools.jsonld_builder import create_breadcrumbs, JsonLd
+from odoo.addons.website.tools.jsonld_builder import JsonLd
 from odoo.addons.website.tools.helpers import text_from_html, truncate_text, images_from_html
 from odoo.tools.json import scriptsafe as json_scriptsafe
 from odoo.tools.translate import html_translate
@@ -202,22 +202,6 @@ class BlogPost(models.Model):
         'website.cover_properties.mixin', 'website.searchable.mixin']
     _order = 'id DESC'
     _mail_post_access = 'read'
-
-    def _to_breadcrumb_structured_data(self, website=None):
-        self.ensure_one()
-        base_url = website.get_base_url()
-        items = [(website.name, base_url), (_("Blog Posts"), f"{base_url}/blog")]
-        # Add blog breadcrumb only if blog exists
-        if self.blog_id:
-            items.append((
-                self.blog_id.name,
-                f"{base_url}/blog/{self.env['ir.http']._slug(self.blog_id)}",
-            ))
-        items.append((
-            self.name,
-            f"{base_url}{self.website_url}",
-        ))
-        return create_breadcrumbs(items)
 
     def _to_structured_data_summary(self, website):
         """Lightweight structured data for listing pages.

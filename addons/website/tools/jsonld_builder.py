@@ -116,10 +116,12 @@ class JsonLd:
             >>> product.add_nested(offers=[offer1, offer2, offer3])
         """
         for raw_key, builder in kwargs.items():
-            if not builder:
+            if builder is None:
                 continue
             key = self._normalize_key(raw_key)
             items = builder if isinstance(builder, list) else [builder]
+            if not items:
+                continue
             invalid = self._find_invalid_types(items, JsonLd)
             if invalid:
                 raise TypeError(
@@ -131,10 +133,11 @@ class JsonLd:
             elif isinstance(existing, JsonLd):
                 self.values[key] = [existing, *items]
             elif isinstance(existing, list):
-                if existing and not isinstance(existing[0], JsonLd):
+                invalid_existing = self._find_invalid_types(existing, JsonLd)
+                if invalid_existing:
                     raise TypeError(
                         f"add_nested() cannot append to key '{raw_key}': "
-                        f"existing list contains {existing[0].__class__.__name__}, not JsonLd")
+                        f"existing list contains {', '.join(invalid_existing)}, not JsonLd")
                 existing.extend(items)
             else:
                 raise TypeError(
@@ -231,7 +234,10 @@ class JsonLd:
                 f"render_structured_data_list() expects JsonLd instances, "
                 f"got: {', '.join(invalid)}",
             )
-        return scriptsafe.dumps([b._render() for b in builders if b])
+        rendered = [b._render() for b in builders if b]
+        if not rendered:
+            return False
+        return scriptsafe.dumps(rendered)
 
     @staticmethod
     def create_id_reference(schema_type: str, id_value: str) -> JsonLd:

@@ -2457,7 +2457,7 @@ class Website(models.CachedModel):
         street_address = " ".join(filter(None, [street, street2])).strip() or None
         zip_code = kwargs.get("zip")
         city = kwargs.get("city")
-        state = kwargs.get("state_code")
+        state = kwargs.get("state_code") or None
         country = kwargs.get("country_code")
 
         if not any([street, street2, city, zip_code, state, country]):

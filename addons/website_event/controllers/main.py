@@ -206,7 +206,11 @@ class WebsiteEventController(http.Controller):
             'original_search': fuzzy_search_term and search,
             'website': website,
             'event_list_json_ld': JsonLd.render_structured_data_list(
-                [item_list, breadcrumb]),
+                [
+                    website.organization_structured_data(with_id=True),
+                    item_list,
+                    breadcrumb,
+                ]),
         }
         return request.render("website_event.index", values)
 
@@ -277,7 +281,11 @@ class WebsiteEventController(http.Controller):
         website = request.website
         main_schema = event._to_structured_data(website)
         breadcrumb_list_schema = self._get_event_breadcrumb_structured_data(event)
-        values['event_json_ld'] = JsonLd.render_structured_data_list([main_schema, breadcrumb_list_schema])
+        values['event_json_ld'] = JsonLd.render_structured_data_list([
+            website.organization_structured_data(with_id=True),
+            main_schema,
+            breadcrumb_list_schema,
+        ])
         return request.render("website_event.event_description_full", values)
 
     def _prepare_event_register_values(self, event, **post):
