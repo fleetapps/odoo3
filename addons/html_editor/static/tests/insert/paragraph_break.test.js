@@ -171,7 +171,7 @@ describe("Selection collapsed", () => {
                             textareaRange: 3, // "ab\n[]cd"
                         }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">ab<br>cd</pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">ab<br>cd</pre>[]`,
                     config: configWithEmbeddings,
                 });
             });
@@ -192,7 +192,7 @@ describe("Selection collapsed", () => {
                             textareaRange: 4, // "abc\n[]"
                         }) +
                         '<p data-selection-placeholder="" style="margin: -9px 0px 8px;"><br></p>',
-                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext">abc<br><br></pre>[]`,
+                    contentAfter: `<pre data-embedded="readonlySyntaxHighlighting" data-language-id="plaintext" data-code-wrap="false">abc<br><br></pre>[]`,
                     config: configWithEmbeddings,
                 });
             });

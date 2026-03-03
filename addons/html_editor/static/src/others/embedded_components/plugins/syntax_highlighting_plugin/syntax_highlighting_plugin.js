@@ -61,6 +61,7 @@ export class SyntaxHighlightingPlugin extends Plugin {
             const embeddedProps = getEmbeddedProps(codeBlock);
             const value = embeddedProps.value;
             pre.dataset.languageId = embeddedProps.languageId;
+            pre.dataset.codeWrap = embeddedProps.codeWrap;
             codeBlock.before(pre);
             codeBlock.remove();
             // Remove highlighting.
@@ -88,10 +89,11 @@ export class SyntaxHighlightingPlugin extends Plugin {
             const embeddedProps = JSON.stringify({
                 value: getPreValue(pre),
                 languageId: pre.dataset.languageId || DEFAULT_LANGUAGE_ID,
+                codeWrap: pre.dataset.codeWrap === "true" ? true : false,
             });
             const codeBlock = this.dependencies.embeddedComponents.renderBlueprintToElement(
                 "html_editor.EmbeddedSyntaxHighlightingBlueprint",
-                { embeddedProps },
+                { embeddedProps, isCodeWrap: pre.dataset.codeWrap === "true" },
                 () => {
                     if (preserveFocus && isPreInSelection) {
                         const textarea = codeBlock.querySelector("textarea");
