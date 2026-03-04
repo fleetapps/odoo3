@@ -1692,28 +1692,28 @@ class TestTaxesDownPayment(TestTaxCommon):
                 'same_tax_base': True,
                 'currency_id': self.foreign_currency.id,
                 'company_currency_id': self.currency.id,
-                'base_amount_currency': 0.71,
-                'base_amount': 1.42,
-                'tax_amount_currency': 0.15,
-                'tax_amount': 0.3,
-                'total_amount_currency': 0.86,
-                'total_amount': 1.72,
+                'base_amount_currency': 0.67,
+                'base_amount': 1.35,
+                'tax_amount_currency': 0.14,
+                'tax_amount': 0.28,
+                'total_amount_currency': 0.81,
+                'total_amount': 1.6300000000000001,
                 'subtotals': [
                     {
                         'name': "Untaxed Amount",
-                        'base_amount_currency': 0.71,
-                        'base_amount': 1.42,
-                        'tax_amount_currency': 0.15,
-                        'tax_amount': 0.3,
+                        'base_amount_currency': 0.67,
+                        'base_amount': 1.35,
+                        'tax_amount_currency': 0.14,
+                        'tax_amount': 0.28,
                         'tax_groups': [
                             {
                                 'id': self.tax_groups[1].id,
-                                'base_amount_currency': 0.71,
-                                'base_amount': 1.42,
-                                'tax_amount_currency': 0.15,
-                                'tax_amount': 0.3,
-                                'display_base_amount_currency': 0.71,
-                                'display_base_amount': 1.42,
+                                'base_amount_currency': 0.67,
+                                'base_amount': 1.34,
+                                'tax_amount_currency': 0.14,
+                                'tax_amount': 0.28,
+                                'display_base_amount_currency': 0.67,
+                                'display_base_amount': 1.34,
                             },
                         ],
                     },
@@ -1723,7 +1723,7 @@ class TestTaxesDownPayment(TestTaxCommon):
 
             # Down Payment 3-20%
             for percent in range(3, 21):
-                expected_values = {'total_amount_currency': self.foreign_currency.round(43.06 * percent / 100.0)}
+                expected_values = {'total_amount_currency': self.foreign_currency.round(40.64 * percent / 100.0)}
                 yield "round_per_line, price_excluded", document, True, 'percent', percent, expected_values
 
         with self.with_tax_calculation_rounding_method('round_globally'):
@@ -1774,28 +1774,28 @@ class TestTaxesDownPayment(TestTaxCommon):
                 'same_tax_base': True,
                 'currency_id': self.foreign_currency.id,
                 'company_currency_id': self.currency.id,
-                'base_amount_currency': 0.71,
-                'base_amount': 1.42,
-                'tax_amount_currency': 0.15,
-                'tax_amount': 0.3,
-                'total_amount_currency': 0.86,
-                'total_amount': 1.72,
+                'base_amount_currency': 0.67,
+                'base_amount': 1.35,
+                'tax_amount_currency': 0.14,
+                'tax_amount': 0.28,
+                'total_amount_currency': 0.81,
+                'total_amount': 1.6300000000000001,
                 'subtotals': [
                     {
                         'name': "Untaxed Amount",
-                        'base_amount_currency': 0.71,
-                        'base_amount': 1.42,
-                        'tax_amount_currency': 0.15,
-                        'tax_amount': 0.3,
+                        'base_amount_currency': 0.67,
+                        'base_amount': 1.35,
+                        'tax_amount_currency': 0.14,
+                        'tax_amount': 0.28,
                         'tax_groups': [
                             {
                                 'id': self.tax_groups[1].id,
-                                'base_amount_currency': 0.71,
-                                'base_amount': 1.42,
-                                'tax_amount_currency': 0.15,
-                                'tax_amount': 0.3,
-                                'display_base_amount_currency': 0.71,
-                                'display_base_amount': 1.42,
+                                'base_amount_currency': 0.67,
+                                'base_amount': 1.34,
+                                'tax_amount_currency': 0.14,
+                                'tax_amount': 0.28,
+                                'display_base_amount_currency': 0.67,
+                                'display_base_amount': 1.34,
                             },
                         ],
                     },
@@ -1805,7 +1805,7 @@ class TestTaxesDownPayment(TestTaxCommon):
 
             # Down Payment 3-20%
             for percent in range(3, 21):
-                expected_values = {'total_amount_currency': self.foreign_currency.round(43.05 * percent / 100.0)}
+                expected_values = {'total_amount_currency': self.foreign_currency.round(40.63 * percent / 100.0)}
                 yield "round_globally, price_excluded", document, True, 'percent', percent, expected_values
 
         taxes.price_include_override = 'tax_included'
@@ -1866,28 +1866,28 @@ class TestTaxesDownPayment(TestTaxCommon):
                 'same_tax_base': True,
                 'currency_id': self.foreign_currency.id,
                 'company_currency_id': self.currency.id,
-                'base_amount_currency': 0.71,
-                'base_amount': 1.42,
-                'tax_amount_currency': 0.15,
-                'tax_amount': 0.3,
-                'total_amount_currency': 0.86,
-                'total_amount': 1.72,
+                'base_amount_currency': 0.6699999999999999,
+                'base_amount': 1.3499999999999999,
+                'tax_amount_currency': 0.14,
+                'tax_amount': 0.28,
+                'total_amount_currency': 0.8099999999999999,
+                'total_amount': 1.63,
                 'subtotals': [
                     {
                         'name': "Untaxed Amount",
-                        'base_amount_currency': 0.71,
-                        'base_amount': 1.42,
-                        'tax_amount_currency': 0.15,
-                        'tax_amount': 0.3,
+                        'base_amount_currency': 0.6699999999999999,
+                        'base_amount': 1.3499999999999999,
+                        'tax_amount_currency': 0.14,
+                        'tax_amount': 0.28,
                         'tax_groups': [
                             {
                                 'id': self.tax_groups[1].id,
-                                'base_amount_currency': 0.71,
-                                'base_amount': 1.42,
-                                'tax_amount_currency': 0.15,
-                                'tax_amount': 0.3,
-                                'display_base_amount_currency': 0.71,
-                                'display_base_amount': 1.42,
+                                'base_amount_currency': 0.6699999999999999,
+                                'base_amount': 1.34,
+                                'tax_amount_currency': 0.14,
+                                'tax_amount': 0.28,
+                                'display_base_amount_currency': 0.6699999999999999,
+                                'display_base_amount': 1.34,
                             },
                         ],
                     },
@@ -1897,7 +1897,7 @@ class TestTaxesDownPayment(TestTaxCommon):
 
             # Down Payment 3-20%
             for percent in range(3, 21):
-                expected_values = {'total_amount_currency': self.foreign_currency.round(43.06 * percent / 100.0)}
+                expected_values = {'total_amount_currency': self.foreign_currency.round(40.64 * percent / 100.0)}
                 yield "round_per_line, price_included", document, True, 'percent', percent, expected_values
 
         with self.with_tax_calculation_rounding_method('round_globally'):
@@ -1948,28 +1948,28 @@ class TestTaxesDownPayment(TestTaxCommon):
                 'same_tax_base': True,
                 'currency_id': self.foreign_currency.id,
                 'company_currency_id': self.currency.id,
-                'base_amount_currency': 0.71,
-                'base_amount': 1.42,
-                'tax_amount_currency': 0.15,
-                'tax_amount': 0.3,
-                'total_amount_currency': 0.86,
-                'total_amount': 1.72,
+                'base_amount_currency': 0.6699999999999999,
+                'base_amount': 1.3499999999999999,
+                'tax_amount_currency': 0.14,
+                'tax_amount': 0.28,
+                'total_amount_currency': 0.8099999999999999,
+                'total_amount': 1.63,
                 'subtotals': [
                     {
                         'name': "Untaxed Amount",
-                        'base_amount_currency': 0.71,
-                        'base_amount': 1.42,
-                        'tax_amount_currency': 0.15,
-                        'tax_amount': 0.3,
+                        'base_amount_currency': 0.6699999999999999,
+                        'base_amount': 1.3499999999999999,
+                        'tax_amount_currency': 0.14,
+                        'tax_amount': 0.28,
                         'tax_groups': [
                             {
                                 'id': self.tax_groups[1].id,
-                                'base_amount_currency': 0.71,
-                                'base_amount': 1.42,
-                                'tax_amount_currency': 0.15,
-                                'tax_amount': 0.3,
-                                'display_base_amount_currency': 0.71,
-                                'display_base_amount': 1.42,
+                                'base_amount_currency': 0.6699999999999999,
+                                'base_amount': 1.34,
+                                'tax_amount_currency': 0.14,
+                                'tax_amount': 0.28,
+                                'display_base_amount_currency': 0.6699999999999999,
+                                'display_base_amount': 1.34,
                             },
                         ],
                     },
@@ -1979,7 +1979,7 @@ class TestTaxesDownPayment(TestTaxCommon):
 
             # Down Payment 3-20%
             for percent in range(3, 21):
-                expected_values = {'total_amount_currency': self.foreign_currency.round(43.06 * percent / 100.0)}
+                expected_values = {'total_amount_currency': self.foreign_currency.round(40.64 * percent / 100.0)}
                 yield "round_globally, price_included", document, True, 'percent', percent, expected_values
 
     def test_taxes_l10n_be_generic_helpers(self):
@@ -1997,15 +1997,15 @@ class TestTaxesDownPayment(TestTaxCommon):
         document = self.populate_document(document_params)
 
         expected_values = {
-            'same_tax_base': False,
+            'same_tax_base': True,
             'currency_id': self.currency.id,
-            'base_amount_currency': 55.0,
+            'base_amount_currency': 50.0,
             'tax_amount_currency': 10.0,
-            'total_amount_currency': 65.0,
+            'total_amount_currency': 60.0,
             'subtotals': [
                 {
                     'name': "Untaxed Amount",
-                    'base_amount_currency': 55.0,
+                    'base_amount_currency': 50.0,
                     'tax_amount_currency': 10.0,
                     'tax_groups': [
                         {
