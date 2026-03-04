@@ -14,6 +14,21 @@ const CarouselSliderEdit = (I) =>
         carouselOptions = { ride: false, pause: true, keyboard: false };
         showClickableSlideLinks = false;
 
+        start() {
+            super.start();
+            // Recompute carousel height when its class changes (e.g., when a
+            // custom snippet sets `o_full_screen_height` and later switches the
+            // carousel height to `auto`) to ensure the correct min-height is
+            // reapplied to carousel items.
+            this.carouselClassObserver = new MutationObserver(() => {
+                this.computeMaxHeight();
+            });
+            this.carouselClassObserver.observe(this.el.closest("section"), {
+                attributes: true,
+                attributeFilter: ["class"],
+            });
+            this.registerCleanup(() => this.carouselClassObserver?.disconnect());
+        }
         onContentChanged() {
             this.computeMaxHeight();
         }
