@@ -30,6 +30,9 @@ class StockMove(models.Model):
             m.bom_line_id.bom_id == moves.bom_line_id.bom_id
         )
 
+    def _should_update_standard_price(self):
+        return not self.product_id.is_kits
+
     def _get_kit_price_unit(self, product, kit_bom, valuated_quantity):
         """ Override the value for kit products """
         _dummy, exploded_lines = kit_bom.explode(product, valuated_quantity)
