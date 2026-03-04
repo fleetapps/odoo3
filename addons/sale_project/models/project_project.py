@@ -1,7 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import ast
-
 from odoo import api, fields, models
 from odoo.fields import Domain
 from odoo.models import Query
@@ -151,7 +150,7 @@ class ProjectProject(models.Model):
             aggregates=['amount:sum'],
         ))
         for project in self:
-            project.actual_margin = margin_per_account.get(project.account_id.id, 0.0)
+            project.actual_margin = margin_per_account.get(project.account_id)
 
     def action_customer_preview(self):
         self.ensure_one()
@@ -517,6 +516,6 @@ class ProjectProject(models.Model):
         self.ensure_one()
         action = self.env['ir.actions.act_window']._for_xml_id('sale_project.action_analytic_reporting_inherit_sale_project')
         action['display_name'] = self.env._("%(name)s's Actual Margins", name=self.name)
-        action['context'] = {'search_default_fiscal_date': 1, 'search_default_group_date': 1}
+        action['context'] = {'search_default_last_365_days': 1, 'search_default_group_date': 1}
         action['domain'] = [('account_id', 'in', self.account_id.ids)]
         return action

@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    
     <record id="view_analytic_lines_service_search" model="ir.ui.view">
         <field name="name">account.analytic.line.services.search.inherit.sale.project</field>
         <field name="model">account.analytic.line</field>
         <field name="inherit_id" ref="sale.view_analytic_lines_service_search"/>
         <field name="arch" type="xml">
+            <!-- <xpath expr="//filter[@name='mine']" position="attributes">
+                <attribute name="string">Mine</attribute>
+            </xpath>
+            <xpath expr="//filter[@name='groupby_parent_task']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath> -->
             <filter name="my_orders" position="after">
                 <filter name="my_team" string="My Team" domain="[('employee_id.parent_id.user_id', '=', uid)]"/>
                 <filter
@@ -25,5 +32,18 @@
                 <filter name="group_employee" string="Employee" context="{'group_by':'employee_id'}"/>
             </filter>
         </field>
+    </record>
+    <record id="hr_timesheet_line_search" model="ir.ui.view">
+            <field name="name">sale_timesheet.account.analytic.margins.search</field>
+            <field name="model">account.analytic.line</field>
+            <field name="inherit_id" ref="analytic.view_account_analytic_line_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='mine']" position="attributes">
+                <attribute name="string">Mine</attribute>
+            </xpath>
+            <xpath expr="//filter[@name='groupby_parent_task']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            </field>
     </record>
 </odoo>
