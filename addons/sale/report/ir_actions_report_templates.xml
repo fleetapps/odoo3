@@ -257,7 +257,7 @@
                                 name="tr_section_group"
                                 class="o_line_section"
                             >
-                                <td name="td_section_group_name" t-att-class="padding_class">
+                                <td name="td_section_group_name" t-att-class="padding_class" colspan="2">
                                     <span t-field="line.name">
                                         Section Summary
                                     </span>
