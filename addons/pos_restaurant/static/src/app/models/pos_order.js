@@ -75,8 +75,15 @@ patch(PosOrder.prototype, {
         return this.isDirectSale && !this.isEmpty();
     },
     setPartner(partner) {
-        if (this.config.module_pos_restaurant && this.isDirectSale) {
-            this.floating_order_name = partner.name;
+        const isPreviouslyPartnerName =
+            this.getPartner() && this.floating_order_name === this.getPartner().name;
+        const couldBeDirectSale = !this.table_id && this.state === "draft" && !this.isRefund;
+
+        if (
+            this.config.module_pos_restaurant &&
+            (this.isDirectSale || (couldBeDirectSale && isPreviouslyPartnerName))
+        ) {
+            this.floating_order_name = partner ? partner.name : "";
         }
         return super.setPartner(...arguments);
     },
