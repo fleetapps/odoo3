@@ -1,22 +1,24 @@
 import { useState } from "@web/owl2/utils";
 import { onWillStart } from "@odoo/owl";
 import { BaseOptionComponent, useDomState } from "@html_builder/core/utils";
+import { BuilderSelectMenu } from "@html_builder/core/building_blocks/builder_select_menu";
 import { useDynamicSnippetOption } from "@website/builder/plugins/options/dynamic_snippet_hook";
 
 export class DynamicSnippetBlogPostsOption extends BaseOptionComponent {
     static template = "website_blog.DynamicSnippetBlogPostsOption";
     static dependencies = ["dynamicSnippetBlogPostsOption"];
     static selector = ".s_dynamic_snippet_blog_posts";
+    static components = { BuilderSelectMenu };
     setup() {
         super.setup();
-        const { fetchBlogs, getModelNameFilter } = this.dependencies.dynamicSnippetBlogPostsOption;
+        const { fetchAuthors, getModelNameFilter } = this.dependencies.dynamicSnippetBlogPostsOption;
         this.modelNameFilter = getModelNameFilter();
         this.dynamicOptionParams = useDynamicSnippetOption(this.modelNameFilter);
         this.blogState = useState({
-            blogs: [],
+            authors: [],
         });
         onWillStart(async () => {
-            this.blogState.blogs.push(...(await fetchBlogs()));
+            this.blogState.authors.push(...(await fetchAuthors(this.env.getEditingElement())));
         });
         this.templateKeyState = useDomState((el) => ({
             templateKey: el.dataset.templateKey,
