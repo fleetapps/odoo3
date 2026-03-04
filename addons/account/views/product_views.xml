@@ -22,7 +22,6 @@
                     <field name="taxes_id" widget="many2many_tags"
                         context="{'search_default_sale': 1}"
                         create="False"/>
-                    <field name="tax_string"/>
                 </div>
             </field>
          </field>

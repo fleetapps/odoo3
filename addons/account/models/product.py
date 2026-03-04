@@ -40,7 +40,11 @@ class ProductTemplate(models.Model):
         domain=[('type_tax_use', '=', 'sale')],
         default=lambda self: self.env.companies.account_sale_tax_id or self.env.companies.root_id.sudo().account_sale_tax_id,
     )
-    tax_string = fields.Char(compute='_compute_tax_string')
+    after_tax_price = fields.Float(
+        compute='_compute_after_tax_price',
+        store=True,
+        readonly=False,
+    )
     supplier_taxes_id = fields.Many2many('account.tax', 'product_supplier_taxes_rel', 'prod_id', 'tax_id',
         string="Purchase Taxes",
         help="Default taxes used when buying the product",
@@ -103,27 +107,20 @@ class ProductTemplate(models.Model):
 
     @api.depends('taxes_id', 'list_price')
     @api.depends_context('company')
-    def _compute_tax_string(self):
+    def _compute_after_tax_price(self):
         for record in self:
-            record.tax_string = record._construct_tax_string(record.list_price)
+            res = self.taxes_id._filter_taxes_by_company(self.env.company).compute_all(
+                price_unit=record.list_price, product=self, partner=self.env['res.partner'], handle_price_include=False,
+            )
+            record.after_tax_price = res['total_included']
 
-    def _construct_tax_string(self, price):
-        currency = self.currency_id
-        res = self.taxes_id._filter_taxes_by_company(self.env.company).compute_all(
-            price, product=self, partner=self.env['res.partner']
-        )
-        joined = []
-        included = res['total_included']
-        if currency.compare_amounts(included, price):
-            joined.append(_('%(amount)s Incl. Taxes', amount=format_amount(self.env, included, currency)))
-        excluded = res['total_excluded']
-        if currency.compare_amounts(excluded, price):
-            joined.append(_('%(amount)s Excl. Taxes', amount=format_amount(self.env, excluded, currency)))
-        if joined:
-            tax_string = f"(= {', '.join(joined)})"
-        else:
-            tax_string = " "
-        return tax_string
+    @api.depends('after_tax_price')
+    def _compute_list_price(self):
+        for record in self:
+            res = self.taxes_id._filter_taxes_by_company(self.env.company).with_context(force_price_include=True).compute_all(
+                price_unit=record.after_tax_price, product=self, partner=self.env['res.partner']
+            )
+            record.list_price = res['total_excluded']
 
     @api.constrains('uom_id')
     def _check_uom_not_in_invoice(self):
@@ -208,14 +205,13 @@ class ProductTemplate(models.Model):
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
-    tax_string = fields.Char(compute='_compute_tax_string')
-
     def _get_product_accounts(self):
         return self.product_tmpl_id._get_product_accounts()
 
     def _get_tax_included_unit_price(self, company, currency, document_date, document_type,
         is_refund_document=False, product_uom=None, product_currency=None,
-        product_price_unit=None, product_taxes=None, fiscal_position=None
+        product_price_unit=None, product_taxes=None, fiscal_position=None,
+        document_tax_mode=None,
     ):
         """ Helper to get the price unit from different models.
             This is needed to compute the same unit price in different models (sale order, account move, etc.) with same parameters.
@@ -235,12 +231,15 @@ class ProductProduct(models.Model):
             elif document_type == 'purchase':
                 product_currency = company.currency_id
         if product_price_unit is None:
-            if document_type == 'sale':
-                product_price_unit = product.with_company(company).lst_price
-            elif document_type == 'purchase':
-                product_price_unit = product.with_company(company).standard_price
+            if document_tax_mode == 'tax_included':
+                product_price_unit = product.with_company(company).after_tax_price
             else:
-                return 0.0
+                if document_type == 'sale':
+                    product_price_unit = product.with_company(company).lst_price
+                elif document_type == 'purchase':
+                    product_price_unit = product.with_company(company).standard_price
+                else:
+                    return 0.0
         if product_taxes is None:
             if document_type == 'sale':
                 product_taxes = product.taxes_id.filtered(lambda x: x.company_id == company)
@@ -256,6 +255,7 @@ class ProductProduct(models.Model):
                 product_price_unit,
                 product_taxes,
                 fiscal_position=fiscal_position,
+                document_tax_mode=document_tax_mode
             )
 
         # Apply currency rate.
@@ -268,6 +268,7 @@ class ProductProduct(models.Model):
         self, product_price_unit, product_taxes,
         fiscal_position=None,
         product_taxes_after_fp=None,
+        document_tax_mode=None,
     ):
         if not product_taxes:
             return product_price_unit
@@ -283,13 +284,8 @@ class ProductProduct(models.Model):
             product=self,
             original_taxes=product_taxes,
             new_taxes=product_taxes_after_fp,
+            document_tax_mode=document_tax_mode,
         )
-
-    @api.depends('lst_price', 'product_tmpl_id', 'taxes_id')
-    @api.depends_context('company')
-    def _compute_tax_string(self):
-        for record in self:
-            record.tax_string = record.product_tmpl_id._construct_tax_string(record.lst_price)
 
     # -------------------------------------------------------------------------
     # EDI
