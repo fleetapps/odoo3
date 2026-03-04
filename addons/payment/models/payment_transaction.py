@@ -746,12 +746,13 @@ class PaymentTransaction(models.Model):
         if tx:
             tx.ensure_one()
             previous_state = tx.state
-            tx._validate_amount(payment_data)
             if tx.state == 'error' and tx.state != previous_state:
                 return tx
             tx._apply_updates(payment_data)
-            if tx.tokenize and tx.state in {'authorized', 'done'}:
-                tx._tokenize(payment_data)
+            if tx.state in {'authorized', 'done'}:
+                if tx.tokenize:
+                    tx._tokenize(payment_data)
+                tx._validate_amount(payment_data)
         return tx
 
     @api.model

@@ -273,8 +273,9 @@ class TestPaymentTransaction(PaymentCommon):
             tx._process('test', {})
         self.assertEqual(apply_updates_mock.call_count, 1)
 
-    def test_processing_does_not_apply_updates_when_amount_data_is_invalid(self):
-        tx = self._create_transaction('redirect', state='draft', amount=100)
+    def test_error_after_processing_when_amount_data_is_invalid(self):
+        self.provider.support_manual_capture = 'full_only'
+        tx = self._create_transaction('redirect', state='authorized', amount=100)
         with patch(
             'odoo.addons.payment.models.payment_transaction.PaymentTransaction'
             '._extract_amount_data', return_value={'amount': 10, 'currency_code': 'USD'}
@@ -284,7 +285,29 @@ class TestPaymentTransaction(PaymentCommon):
         ) as apply_updates_mock:
             tx._process('test', {})
         self.assertEqual(tx.state, 'error')
-        self.assertEqual(apply_updates_mock.call_count, 0)
+        self.assertEqual(apply_updates_mock.call_count, 1)
+
+    def test_processing_when_amount_data_is_valid_and_state_is_authorized(self):
+        self.provider.support_manual_capture = 'full_only'
+        tx = self._create_transaction('redirect', state='authorized', amount=100)
+        with patch(
+            'odoo.addons.payment.models.payment_transaction.PaymentTransaction'
+            '._extract_amount_data',
+            return_value={'amount': 100, 'currency_code': tx.currency_id.name}
+        ):
+            tx._process('test', {})
+        self.assertEqual(tx.state, 'authorized')
+
+    def test_processing_no_amount_validation_when_amount_data_is_invalid_and_state_is_pending(self):
+        self.provider.support_manual_capture = 'full_only'
+        tx = self._create_transaction('redirect', state='pending', amount=100)
+        with patch(
+            'odoo.addons.payment.models.payment_transaction.PaymentTransaction'
+            '._extract_amount_data', return_value={'amount': 10, 'currency_code': 'USD'}
+        ) as extract_amount_data_mock:
+            tx._process('test', {})
+        self.assertNotEqual(tx.state, 'error')
+        self.assertEqual(extract_amount_data_mock.call_count, 0)
 
     def test_processing_tokenizes_validated_transaction(self):
         """Test that `_process` tokenizes 'authorized' and 'done' transactions when possible."""
