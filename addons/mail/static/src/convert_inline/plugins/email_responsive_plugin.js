@@ -4,7 +4,13 @@ import { EMAIL_DESKTOP_DIMENSIONS, EMAIL_MOBILE_DIMENSIONS } from "../hooks";
 import { childNodes } from "@html_editor/utils/dom_traversal";
 import { memoize } from "@web/core/utils/functions";
 import { useShorthands } from "./hooks";
-import { Band, getOverlapY } from "./responsive_utils";
+import {
+    Band,
+    LayoutCluster,
+    getOverlapY,
+    LayoutBlock,
+    getContainerPadding,
+} from "./responsive_utils";
 
 const BLOCK_TAG_NAMES = [
     "ADDRESS",
@@ -68,7 +74,7 @@ export class ResponsivePlugin extends BasePlugin {
             "getStylePropertyValue",
         ]);
         this.layoutDimensions = { width: 0, height: 0 };
-        this.layoutToBands = new Map(); // layoutName (desktop/mobile) -> map: node -> bands
+        this.layoutToBlocks = new Map(); // layoutName (desktop/mobile) -> map: node -> LayoutBlock
         this.layoutStrategies = new WeakMap(); // node -> strategy
         this.ignoredInlineNodes = new WeakSet();
         this.filterInlineNodes = memoize((node) => {
@@ -139,22 +145,28 @@ export class ResponsivePlugin extends BasePlugin {
         // TODO EGGMAIL: create final layout based on measured layouts
     }
 
-    applyDefaultStrategy({ parent, layoutToBands }) {
+    applyDefaultStrategy({ parent, layoutToBlocks }) {
         const strategy = undefined;
         return strategy;
     }
 
     applyLayoutStrategies() {
+        // TODO EGGMAIL: create a tree walker to go over every node in the reference
+        // every node should have a "strategy" resulting in a fragment, even if
+        // it's ignore/do nothing/skip descendants
+        // treeWalker could/should ignore descendants of nodes where the strategy
+        // is to ignore descendants
+        // review current rendering loop and how it applies fragments
         const treeWalker = this.createLayoutTreeWalker();
         let el = treeWalker.root;
         do {
-            const layoutToBands = new Map(); // map layout to bands for this el
-            for (const layout of this.layoutToBands.keys()) {
-                layoutToBands.set(layout, this.layoutToBands.get(layout).get(el));
+            const layoutToBlocks = new Map(); // map layout to bands for this el
+            for (const layout of this.layoutToBlocks.keys()) {
+                layoutToBlocks.set(layout, this.layoutToBlocks.get(layout).get(el));
             }
             let strategy;
             const output = { strategy };
-            const args = { parent: el, layoutToBands };
+            const args = { parent: el, layoutToBlocks };
             if (this.delegateTo("choose_layout_strategy_overrides", args, output)) {
                 ({ strategy } = output);
             } else {
@@ -170,7 +182,7 @@ export class ResponsivePlugin extends BasePlugin {
         if (this.layoutDimensions.width !== dimensions.width) {
             this.config.updateLayoutDimensions(dimensions);
         }
-        this.computeLayoutBands(layoutType);
+        this.computeLayoutBlocks(layoutType);
         if (this.layoutDimensions.width !== originalDimensions.width) {
             this.config.updateLayoutDimensions(originalDimensions);
         }
@@ -182,43 +194,40 @@ export class ResponsivePlugin extends BasePlugin {
      * any style that disregard the DOM hierarchy (eg position: absolute) is not
      * supported
      */
-    computeClusterInfos(parent) {
+    computeLayoutClusters(parent) {
         const subNodes = childNodes(parent);
-        const clusterInfos = subNodes.reduce((accumulator, node) => {
+        const layoutClusters = subNodes.reduce((accumulator, node) => {
             const isBlock = this.isBlock(node);
-            const prevClusterInfo = accumulator.at(-1);
-            const clusterInfo =
-                isBlock || !prevClusterInfo || prevClusterInfo.isBlock
-                    ? {
-                          nodes: [node],
-                          isBlock,
-                      }
-                    : prevClusterInfo;
-            if (clusterInfo !== prevClusterInfo) {
-                accumulator.push(clusterInfo);
+            const prevLayoutCluster = accumulator.at(-1);
+            const layoutCluster =
+                isBlock || !prevLayoutCluster || prevLayoutCluster.isBlock
+                    ? new LayoutCluster([node], isBlock)
+                    : prevLayoutCluster;
+            if (layoutCluster !== prevLayoutCluster) {
+                accumulator.push(layoutCluster);
             } else {
-                clusterInfo.nodes.push(node);
+                layoutCluster.nodes.push(node);
             }
             return accumulator;
         }, []);
-        return clusterInfos;
+        return layoutClusters;
     }
 
-    computeClusterBands(clusterInfos) {
+    computeClusterBands(layoutClusters) {
         let bands = new Set();
-        for (const clusterInfo of clusterInfos) {
-            const nodes = clusterInfo.nodes;
-            clusterInfo.rect = this.getBoundingClientRect(
-                clusterInfo.isBlock
-                    ? clusterInfo.nodes[0]
+        for (const layoutCluster of layoutClusters) {
+            const nodes = layoutCluster.nodes;
+            layoutCluster.rect = this.getBoundingClientRect(
+                layoutCluster.isBlock
+                    ? layoutCluster.nodes[0]
                     : this.getNodeClusterRange(nodes.at(0), nodes.at(-1))
             );
-            if (clusterInfo.rect.height === 0 || clusterInfo.rect.width === 0) {
+            if (layoutCluster.rect.height === 0 || layoutCluster.rect.width === 0) {
                 continue;
             }
             const bandCandidates = [];
             for (const band of bands) {
-                if (getOverlapY(band, clusterInfo.rect)) {
+                if (getOverlapY(band, layoutCluster.rect)) {
                     bandCandidates.push(band);
                 }
             }
@@ -231,28 +240,54 @@ export class ResponsivePlugin extends BasePlugin {
             for (const candidate of bandCandidates) {
                 band.merge(candidate);
             }
-            band.addClusterInfo(clusterInfo);
+            band.addLayoutCluster(layoutCluster);
         }
         for (const band of bands) {
             // TODO EGGMAIL: sorting is not perfect (clusters with same center position are "identical")
-            band.clusterInfos.sort((clusterInfo1, clusterInfo2) => {
-                const { left: l1, width: w1 } = clusterInfo1;
-                const { left: l2, width: w2 } = clusterInfo2;
+            band.layoutClusters.sort((layoutCluster1, layoutCluster2) => {
+                const { left: l1, width: w1 } = layoutCluster1;
+                const { left: l2, width: w2 } = layoutCluster2;
                 return l1 + w1 / 2 - (l2 + w2 / 2);
             });
         }
         return Array.from(bands).sort((band1, band2) => band1.top - band2.top);
     }
 
-    computeLayoutBands(layoutType) {
-        const nodeToBands = new WeakMap();
-        this.layoutToBands.set(layoutType, nodeToBands);
+    computeLayoutBlock(element, bands) {
+        const layoutBlock = new LayoutBlock(element, bands, this.getBoundingClientRect(element));
+        const firstBand = layoutBlock.bands.at(0);
+        const lastBand = layoutBlock.bands.at(-1);
+        const rect = layoutBlock.rect;
+        const bandsRect = {
+            top: firstBand?.top ?? rect.top,
+            bottom: lastBand?.bottom ?? rect.bottom,
+        };
+        for (const band of bands) {
+            for (const layoutCluster of band.layoutClusters) {
+                if (bandsRect.left === undefined || layoutCluster.rect.left < bandsRect.left) {
+                    bandsRect.left = layoutCluster.rect.left;
+                }
+                if (bandsRect.right === undefined || layoutCluster.rect.right > bandsRect.right) {
+                    bandsRect.right = layoutCluster.rect.right;
+                }
+            }
+        }
+        bandsRect.left ??= rect.left;
+        bandsRect.right ??= rect.right;
+        layoutBlock.padding = getContainerPadding(bandsRect, rect);
+        return layoutBlock;
+    }
+
+    computeLayoutBlocks(layoutType) {
+        const nodeToBlocks = new WeakMap();
+        this.layoutToBlocks.set(layoutType, nodeToBlocks);
         const treeWalker = this.createLayoutTreeWalker();
         let el = treeWalker.root;
         do {
-            const clusterInfos = this.computeClusterInfos(el);
-            const bands = this.computeClusterBands(clusterInfos);
-            nodeToBands.set(el, bands);
+            const layoutClusters = this.computeLayoutClusters(el);
+            const bands = this.computeClusterBands(layoutClusters);
+            const layoutBlock = this.computeLayoutBlock(el, bands);
+            nodeToBlocks.set(el, layoutBlock);
         } while ((el = treeWalker.nextNode()));
     }
 

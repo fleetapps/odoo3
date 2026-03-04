@@ -43,39 +43,70 @@ export function getSiblingSpacing(siblingRect1, siblingRect2) {
 
 // Idea here is to compare the spacing desktop vs mobile, to split into
 // fixed value, variable value, and define the best fitted layout strategy
-export function getContainerSpacing(innerRect, outerRect) {
-    const { left: l1, right: r1, top: t1, bottom: b1 } = innerRect;
-    const { left: l2, right: r2, top: t2, bottom: b2 } = outerRect;
+export function getContainerPadding(innerRect, outerRect) {
+    const { left: li, right: ri, top: ti, bottom: bi } = innerRect;
+    const { left: lo, right: ro, top: to, bottom: bo } = outerRect;
+    // TODO EGGMAIL: reconsider: do not allow inner elements to overflow outside
+    // of their parent (such overflow will be ignored)
     return {
-        spacingTop: Math.abs(t1 - t2),
-        spacingLeft: Math.abs(l1 - l2),
-        spacingBottom: Math.abs(b2 - b1),
-        spacingRight: Math.abs(r2 - r1),
+        top: Math.max(0, ti - to),
+        left: Math.max(0, li - lo),
+        bottom: Math.max(0, bo - bi),
+        right: Math.max(0, ro - ri),
     };
 }
 
 export class Band {
+    // implicit positioning:
+    // margin-left => band.left - (layoutBlock.left + layoutBlock.padding.left)
+    // margin-right same
+    // gapY with previous/next band
     top;
     bottom;
-    clusterInfos = [];
+    layoutClusters = [];
 
-    addClusterInfo(clusterInfo) {
-        this.clusterInfos.push(clusterInfo);
-        this.top ??= clusterInfo.rect.top;
-        this.top = Math.min(this.top, clusterInfo.rect.top);
-        this.bottom ??= clusterInfo.rect.bottom;
-        this.bottom = Math.max(this.bottom, clusterInfo.rect.bottom);
+    addLayoutCluster(layoutCluster) {
+        this.layoutClusters.push(layoutCluster);
+        this.top ??= layoutCluster.rect.top;
+        this.top = Math.min(this.top, layoutCluster.rect.top);
+        this.bottom ??= layoutCluster.rect.bottom;
+        this.bottom = Math.max(this.bottom, layoutCluster.rect.bottom);
     }
 
     merge(band) {
-        for (const clusterInfo of band.clusterInfos) {
-            this.addClusterInfo(clusterInfo);
+        for (const layoutCluster of band.layoutClusters) {
+            this.addLayoutCluster(layoutCluster);
         }
     }
 }
 
+export class LayoutCluster {
+    // implicit positioning:
+    // margin-top => cluster.top - band.top
+    // margin-bottom => same
+    // gapX with previous/next cluster
+    nodes = [];
+    isBlock;
+    rect;
+    constructor(nodes, isBlock) {
+        this.nodes = nodes;
+        this.isBlock = isBlock;
+    }
+}
+
+export class LayoutBlock {
+    element;
+    bands = [];
+    rect;
+    padding = { top: 0, bottom: 0, left: 0, right: 0 };
+    constructor(element, bands, rect) {
+        this.element = element;
+        this.bands = bands;
+        this.rect = rect;
+    }
+}
+
 export class LayoutStrategy {
-    ancestors = [];
     parent;
 
     constructor(type, parent) {
