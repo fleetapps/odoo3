@@ -1736,6 +1736,9 @@ class SaleOrderLine(models.Model):
                 'price': float,
                 'readOnly': bool,
                 'uomDisplayName': String,
+                'uomId': int,
+                'uomConversion': float (optional),
+                'productUomDisplayName': string (optional),
             }
         """
         if len(self) == 1:
@@ -1747,6 +1750,9 @@ class SaleOrderLine(models.Model):
                     or bool(self.combo_item_id)
                 ),
                 'uomDisplayName': self.product_uom_id.display_name,
+                'productUomDisplayName': self.product_id.uom_id.display_name,
+                'uomId': self.product_uom_id.id,
+                'uomConversion': self[0].product_id.uom_id.factor / self[0].product_uom_id.factor,
             }
         elif self:
             self.product_id.ensure_one()

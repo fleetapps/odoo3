@@ -1029,7 +1029,7 @@ class AccountMoveLine(models.Model):
         for line in self.filtered(lambda l: l.parent_state == 'draft'):
             # vendor bills should have the product purchase UOM
             if line.move_id.is_purchase_document():
-                seller_ids = line.product_id.seller_ids._get_filtered_supplier(line.company_id, line.product_id, False)
+                seller_ids = line.product_id.seller_ids._get_filtered_supplier(line.company_id, line.product_id, {'partner_id': line.partner_id})
                 line.product_uom_id = seller_ids[:1].uom_id or line.product_id.uom_id
             else:
                 line.product_uom_id = line.product_id.uom_id
@@ -3767,19 +3767,23 @@ class AccountMoveLine(models.Model):
 
         :param products: Recordset of `product.product`.
         :param dict kwargs: additional values given for inherited models.
+        :raise odoo.exceptions.ValueError: ``len(self.product_id) != 1``
         :rtype: dict
         :return: A dict with the following structure:
             {
                 'quantity': float,
                 'price': float,
                 'readOnly': bool,
-                'min_qty': int, (optional)
+                'min_qty': int (optional),
+                'uomDisplayName': string,
+                'uomId': int,
+                'uomConversion': float (optional),
+                'productUomDisplayName': string (optional),
             }
         """
         if self:
             self.product_id.ensure_one()
             return {
-                **self[0].move_id._get_product_price_and_data(self[0].product_id),
                 'quantity': sum(
                     self.mapped(
                         lambda line: line.product_uom_id._compute_quantity(
@@ -3790,6 +3794,10 @@ class AccountMoveLine(models.Model):
                 ),
                 'readOnly': self.move_id._is_readonly() or len(self) > 1,
                 'uomDisplayName': len(self) == 1 and self.product_uom_id.display_name or self.product_id.uom_id.display_name,
+                'uomId': self[0].product_uom_id.id,
+                'uomConversion': self[0].product_id.uom_id.factor / self[0].product_uom_id.factor,
+                'price': self[0].price_unit,
+                'productUomDisplayName': self.product_id.uom_id.display_name,
             }
         return {
             'quantity': 0,
