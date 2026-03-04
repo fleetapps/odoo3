@@ -52,9 +52,14 @@ class ResUsers(models.Model):
     def _sync_google_calendar(self, calendar_service: GoogleCalendarService):
         self.ensure_one()
         results = self._sync_request(calendar_service)
-        if not results or (not results.get('events') and not self._check_pending_odoo_records()):
+        if not results:
             return False
         events, default_reminders, full_sync = results.values()
+        # These are special events that do not behave like others. They also appear as
+        # a separate calendar in the google UI, so it is functionally sound not to sync them.
+        events = events.filter(lambda google_event: google_event.eventType != 'birthday')
+        if not events and not self._check_pending_odoo_records():
+            return False
         # Google -> Odoo
         send_updates = not full_sync
         events.clear_type_ambiguity(self.env)
