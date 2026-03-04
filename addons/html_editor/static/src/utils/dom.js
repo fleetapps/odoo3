@@ -1,5 +1,12 @@
 import { closestBlock, isBlock } from "./blocks";
-import { isEmptyTextNode, isParagraphRelatedElement, isShrunkBlock, isVisible } from "./dom_info";
+import {
+    isElement,
+    isEmptyTextNode,
+    isParagraphRelatedElement,
+    isShrunkBlock,
+    isTextNode,
+    isVisible,
+} from "./dom_info";
 import { callbacksForCursorUpdate } from "./selection";
 import { isEmptyBlock, isPhrasingContent } from "../utils/dom_info";
 import { childNodes } from "./dom_traversal";
@@ -306,6 +313,7 @@ export function splitTextNode(textNode, offset, originalNodeSide = DIRECTIONS.RI
     }
     return parentOffset;
 }
+<<<<<<< 5fb1a63da07cc51e4da14c4ac45a69d0bd810a66
 
 /**
  * Ensures that the first child of the editable container is editable.
@@ -327,3 +335,39 @@ export function fixNonEditableFirstChild(editable, node, baseContainerNodeName) 
         node.before(firstBaseContainer);
     }
 }
+||||||| e6540e0659a2130ce0fb01f1482bb2e8a8111ffa
+=======
+
+/**
+ * This is used as a replacement for `node.normalize()` which in Safari
+ * incorrectly moves the selection to the parent element instead of
+ * restoring it to the correct offset in the merged text node.
+ *
+ * @param {HTMLElement} node
+ * @param {Cursors} cursor
+ */
+export function mergeAdjacentTextNodes(node, cursor) {
+    let child = node.firstChild;
+    while (child) {
+        if (isElement(child)) {
+            mergeAdjacentTextNodes(child, cursor);
+        }
+
+        const next = child.nextSibling;
+        if (isTextNode(child) && next && isTextNode(next)) {
+            if (cursor.anchor.node === next) {
+                cursor.anchor.node = child;
+                cursor.anchor.offset = child.textContent.length + cursor.anchor.offset;
+            }
+            if (cursor.focus.node === next) {
+                cursor.focus.node = child;
+                cursor.focus.offset = child.textContent.length + cursor.focus.offset;
+            }
+            child.textContent += next.textContent;
+            next.remove();
+        } else {
+            child = next;
+        }
+    }
+}
+>>>>>>> b87d73a6abac88b5a944d7605345d148dec5933c
