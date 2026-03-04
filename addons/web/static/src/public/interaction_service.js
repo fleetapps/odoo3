@@ -76,7 +76,11 @@ class InteractionService {
         rootEl.setAttribute("contenteditable", "false");
         rootEl.dataset.oeProtected = "true";
         rootEl.style.display = "contents";
-        el.insertAdjacentElement(position, rootEl);
+        if (el.insertAdjacentElement) {
+            el.insertAdjacentElement(position, rootEl);
+        } else {
+            el.appendChild(rootEl);
+        }
         return {
             C,
             root,
