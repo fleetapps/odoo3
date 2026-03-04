@@ -666,13 +666,15 @@ class WebsiteSale(payment_portal.PaymentPortal):
         elif type == 'video':  # Video case
             video_data = media[0]
             thumbnail = None
-            if video_data.get('src'):  # Check if a valid video URL is provided
+            if video_data.get('thumbnailUrl'):  # Check if a valid video URL is provided
                 try:
-                    thumbnail = base64.b64encode(get_video_thumbnail(video_data['src']))
-                except Exception:
+                    thumbnail = base64.b64encode(get_video_thumbnail(video_data.get('thumbnailUrl')))
+                except ValidationError:
+                    raise
+                except (ValueError, TypeError):
                     thumbnail = None
             else:
-                raise ValidationError(_("Invalid video URL provided."))
+                raise ValidationError(_("Invalid thumbnail URL provided."))
             media_create_data = [Command.create({
                 'name': video_data.get('name', 'Odoo Video'),
                 'video_url': video_data['src'],
