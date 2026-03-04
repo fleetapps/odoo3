@@ -3585,7 +3585,7 @@ class BaseModel(metaclass=MetaModel):
             yield records_impacted
 
     @typing.final
-    def _delete_collect_nullify(self, ignore_records_dict) -> Iterator[tuple[Field, tuple[int, ...]]]:
+    def _delete_collect_nullify(self, ignore_records_dict) -> Iterator[tuple[Field, BaseModel]]:
         for field in self.env.transaction.registry.many2one_targeting.get(self._name, ()):
             if field.ondelete != 'set null':
                 continue
@@ -3700,7 +3700,7 @@ class BaseModel(metaclass=MetaModel):
             for model_name, fields in flushing_info:
                 records.env[model_name].flush_model([field.name for field in fields])
 
-        cascade_nullify = []
+        cascade_nullify: list[tuple[Field, BaseModel]] = []
         for records in all_records_deleted:
             cascade_nullify.extend(records._delete_collect_nullify(records_delete_dict))
 
