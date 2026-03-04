@@ -106,10 +106,40 @@ describe("Elements with o_input_box classname", () => {
         positionInputBoxOverlay(getFixture());
         await animationFrame();
         expect(".o_input_box .fa").toHaveCount(2);
-        const overlayPaddingStart = queryFirst(".o_input_box_overlay_start").clientWidth + INPUTBOX_SPACING_UNIT;
-        const overlayPaddingEnd = queryFirst(".o_input_box_overlay_end").clientWidth + INPUTBOX_SPACING_UNIT;
+        const overlayPaddingStart = queryFirst(".o_input_box_overlay_start").clientWidth;
+        const overlayPaddingEnd = queryFirst(".o_input_box_overlay_end").clientWidth;
         expect(".o_input_box:not(.o_input_box .o_input_box").toHaveAttribute("style",`--inputbox-overlay-padding-prefix: ${overlayPaddingStart}px; --inputbox-overlay-padding-suffix: ${overlayPaddingEnd}px;`);
         expect(".o_input_box .o_input_box").not.toHaveAttribute("style");
         expect(".o_input_box .fa-phone").toBeVisible();
+    });
+
+    test("Multiple and different overlay items can be present", async () => {
+        const item_a_w = 24;
+        const item_b_w = 35;
+        const item_c_w = 35;
+        class Root extends Component {
+            static components = {};
+            static props = {};
+            static template = xml`
+                <div class="o_input_box" style="--inputbox-overlay-padding-x: ${INPUTBOX_SPACING_UNIT}px;">
+                    <div class="o_input_box_overlay_start" style="width: ${item_a_w}px;"/>
+                    <div class="o_input_box">
+                        <span>Hello Guys</span>
+                        <div id="b" class="o_input_box_overlay_end" style="width: ${item_b_w}px;"/>
+                        <div id="c" class="o_input_box_overlay_end" style="width: ${item_c_w}px;"/>
+                    </div>
+                </div>
+            `;
+        }
+        await mountWithCleanup(Root);
+        // Component with o_input_box class having o_input_box_overlay elements must call the positioning function after the render
+        positionInputBoxOverlay(getFixture());
+        await animationFrame();
+        expect(".o_input_box .o_input_box_overlay_start").toHaveCount(1);
+        expect(".o_input_box .o_input_box_overlay_end").toHaveCount(2);
+        const overlayPaddingStart = queryFirst(".o_input_box_overlay_start").clientWidth + INPUTBOX_SPACING_UNIT;
+        const overlayPaddingEnd = queryFirst(".o_input_box_overlay_end#b").clientWidth + 2 * INPUTBOX_SPACING_UNIT + queryFirst(".o_input_box_overlay_end#c").clientWidth;
+        expect(".o_input_box:not(.o_input_box .o_input_box").toHaveAttribute("style",`--inputbox-overlay-padding-x: 8px; --inputbox-overlay-padding-prefix: ${overlayPaddingStart}px; --inputbox-overlay-padding-suffix: ${overlayPaddingEnd}px;`);
+        expect(".o_input_box .o_input_box").not.toHaveAttribute("style");
     });
 });
