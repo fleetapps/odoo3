@@ -5,25 +5,44 @@
             <div class="d-flex flex-column flex-grow-1 overflow-y-auto" t-custom-ref="scrollContainer">
                <div class="container o_self_container my-auto">
                    <h1 class="text-center mt-4">Where do you want to eat?</h1>
-                   <div class="grid py-3 py-lg-4 gap-3 gap-sm-4" t-att-class="{'d-flex justify-content-center': presets.length === 1}">
+                   <div t-if="ui.size gt SIZES.SM" class="d-grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(200px, 350px)); justify-content: center">
                        <article
                             t-foreach="presets"
                             t-as="preset" t-key="preset.id"
                             t-on-click="() => this.selectPreset(preset)"
                             role="button"
-                            class="preset_btn fs-2 fw-medium g-col-12 g-col-sm-6 d-flex flex-row-inverse flex-sm-column align-items-center border border-light shadow-sm overflow-hidden bg-white rounded cursor-pointer rounded-4"
-                            t-att-class="{
-                                'justify-content-center': !preset.has_image,
-                                'g-col-md-6': presets.length &lt; 3,
-                                'g-col-md-4': presets.length &gt; 2,
-                                'w-50': presets.length === 1
-                            }">
-                            <t t-if="preset.has_image">
-                                <div class="img_container flex-shrink-0 w-25 w-sm-100 ratio ratio-1x1">
-                                    <img class="object-fit-cover" t-attf-src="/web/image/pos.preset/#{preset.id}/image_512?unique=#{preset.write_date} "/>
+                            class="preset_btn fs-2 fw-medium d-flex flex-column shadow-sm bg-white rounded cursor-pointer rounded-4"
+                            >
+                            <div class="position-relative img-container">
+                                <div class="ratio ratio-1x1">
+                                    <img t-if="preset.has_image" class="object-fit-cover rounded-top-4" t-attf-src="/web/image/pos.preset/#{preset.id}/image_512?unique=#{preset.write_date}"/>
                                 </div>
-                            </t>
+                                <span t-if="preset.service_at === 'counter' and preset.use_timing" class="badge text-bg-light p-2 m-2 bg-opacity-75 position-absolute bottom-0 end-0">
+                                    Average time: <t t-esc="preset.interval_time"/> minutes
+                                </span>
+                            </div>
                            <span class="px-3 py-3 fw-bold"  t-out="preset.name"/>
+                       </article>
+                    </div>
+                    <div t-if="ui.size lte SIZES.SM" class="d-flex flex-column gap-3">
+                       <article
+                            t-foreach="presets"
+                            t-as="preset" t-key="preset.id"
+                            t-on-click="() => this.selectPreset(preset)"
+                            role="button"
+                            class="preset_btn fs-2 fw-medium d-flex align-items-center bg-white shadow-sm rounded cursor-pointer rounded-4"
+                            >
+                            <div t-if="preset.has_image" class="w-25 ratio ratio-1x1">
+                                <img class="object-fit-cover" t-attf-src="/web/image/pos.preset/#{preset.id}/image_512?unique=#{preset.write_date} "/>
+                            </div>
+                            <div class="d-flex flex-column w-100">
+                                <div class="ms-2 fw-bold"  t-esc="preset.name"/>
+                                <div class="d-flex ms-auto me-2">
+                                    <span t-if="preset.service_at === 'counter' and preset.use_timing" class="badge text-bg-info bg-opacity-75">
+                                        <span class="fa fa-clock-o" /> <t t-esc="preset.interval_time"/> min
+                                    </span>
+                                </div>
+                            </div>
                        </article>
                    </div>
                 </div>
