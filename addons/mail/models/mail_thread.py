@@ -1913,7 +1913,7 @@ class MailThread(models.AbstractModel):
             recipient_data.update(
                 {
                     "partner_id": partner.id,
-                    "name": partner.name,
+                    "name": partner.name or partner.parent_id.name or '',
                     "display_name": partner.display_name,
                 }
             )
