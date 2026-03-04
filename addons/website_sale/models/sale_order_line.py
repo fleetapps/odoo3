@@ -23,7 +23,30 @@ class SaleOrderLine(models.Model):
     #=== BUSINESS METHODS ===#
 
     def get_description_following_lines(self):
-        return reversed(self.name.splitlines()[1:])
+        sale_description = self.product_id.description_sale
+        if not sale_description:
+            return reversed(self.name.splitlines()[1:])
+        sale_description_len = len(sale_description)
+
+        blocks = []
+        index = self.name.find("\n") + 1
+        found_sale_description = False
+        while index < len(self.name):
+            curr = self.name[index:]
+            if not found_sale_description and curr.startswith(sale_description):
+                blocks.append(curr[:sale_description_len])
+                index += sale_description_len + 1
+                found_sale_description = True
+            else:
+                next_index = curr.find("\n")
+                if next_index < 0:
+                    blocks.append(curr)
+                    break
+                blocks.append(curr[:next_index])
+                index += next_index + 1
+
+        blocks.reverse()
+        return [line for block in blocks for line in block.splitlines()]
 
     def _get_combination_name(self):
         return self.product_id.product_template_attribute_value_ids._get_combination_name()
