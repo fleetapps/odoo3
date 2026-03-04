@@ -116,7 +116,7 @@ class ImageToolOptionPlugin extends Plugin {
         this.htmlStyle = getHtmlStyle(this.document);
     }
     canHaveHoverEffect(imgEl, dataset) {
-        return imgEl.tagName === "IMG" && !dataset.isCorsProtected;
+        return !(imgEl.tagName === "IMG") || !dataset.isCorsProtected;
     }
     migrateImages(rootEl) {
         for (const el of selectElements(

@@ -105,10 +105,10 @@ export class ImageShapeOptionPlugin extends Plugin {
     }
     canHaveHoverEffect(imgEl, dataset) {
         return (
-            imgEl.tagName === "IMG" &&
-            !this.isDeviceShape(imgEl) &&
-            !this.isAnimableShape(dataset.shape) &&
-            this.isImageSupportedForShapes(imgEl, dataset)
+            !(imgEl.tagName === "IMG") ||
+            (!this.isDeviceShape(imgEl) &&
+                !this.isAnimableShape(dataset.shape) &&
+                this.isImageSupportedForShapes(imgEl, dataset))
         );
     }
     isDeviceShape(img) {
