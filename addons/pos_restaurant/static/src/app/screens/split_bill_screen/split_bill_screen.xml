@@ -9,12 +9,12 @@
                         <i class="oi oi-chevron-left fa-fw"/><t t-if="!this.ui.isSmall" t-out="' Back'"/>
                     </button>
                     <div class="top-content-center flex-grow-1" t-att-class="{'pe-5':!this.ui.isSmall}">
-                        <h4 class="mb-0">Bill Splitting</h4>
+                        <h2 class="mb-0">Bill Splitting</h2>
                     </div>
                 </div>
 
                 <div class="main d-flex flex-column flex-lg-row flex-grow-1 overflow-hidden">
-                    <div class="flex-grow-1 w-100 w-lg-50 border-end border-bottom bg-view overflow-auto">
+                    <div class="flex-grow-1 w-100 w-lg-50 border-end border-bottom bg-view overflow-auto" style="font-size: x-large;">
                         <OrderDisplay mode="'receipt'" order="currentOrder" t-slot-scope="scope">
                             <t t-set="line" t-value="scope.line" />
                              <Orderline line="line"
@@ -26,7 +26,7 @@
                     </div>
                     <div class="controls d-flex flex-column flex-nowrap w-100 w-lg-50 p-1">
                         <div class="order-info m-auto py-3 py-lg-4 rounded-3 text-center">
-                            <div class="d-flex flex-row justify-content-center align-items-baseline">
+                            <div class="d-flex flex-row justify-content-center align-items-baseline border-bottom">
                                 <t t-set="price" t-value="env.utils.formatCurrency(newOrderPrice)" />
                                 <span class="subtotal text-dark fw-bold"
                                     t-att-style="'font-size:' + adjustFontSize(price)"
@@ -38,10 +38,7 @@
                                     / <PriceFormatter price="env.utils.formatCurrency(currentOrder.priceIncl)" />
                                 </span>
                             </div>
-                            <div class="text-dark"
-                                t-attf-class="{{ this.ui.isSmall ? 'fs-6' : 'fs-2' }}">
-                                <t t-out="this.getNumberOfProducts()" /> product(s) selected
-                            </div>
+                            <div style="font-size: xx-large;" class="text-dark mt-2"><t t-out="this.getNumberOfProducts()" /> product(s) selected</div>
                             <t t-set="discountPc" t-value="getGlobalDiscountPc()" />
                             <div t-if="discountPc.value" class="discount text-dark"
                                 t-attf-class="{{ this.ui.isSmall ? 'fs-6' : 'fs-2' }}">
