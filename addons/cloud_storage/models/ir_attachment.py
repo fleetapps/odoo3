@@ -40,11 +40,16 @@ class IrAttachment(models.Model):
             if not self.env['ir.config_parameter'].sudo().get_str('cloud_storage_provider'):
                 raise UserError(_('Cloud Storage is not enabled'))
             for record in self:
-                record.write({
+                # todo pian check with CWG, imo we should preserve the mimetype otherwise we'll fallback to guess_type method
+                # eg. for webm guess_type will return video/webm even if the original mimetype was audio/webm
+                vals = {
                     'raw': False,
                     'type': 'cloud_storage',
                     'url': record._generate_cloud_storage_url(),
-                })
+                }
+                if self.env.context.get('preserve_cloud_mimetype'):
+                    vals['mimetype'] = record.mimetype
+                record.write(vals)
 
     def _migrate_remote_to_local(self):
         if self.type != 'cloud_storage':
