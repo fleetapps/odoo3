@@ -7,11 +7,63 @@ from odoo import api, fields, models, modules, tools
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import ValidationError, UserError
 from odoo.fields import Command, Domain
-from odoo.tools import html2plaintext, file_open, ormcache
+from odoo.tools import html2plaintext, file_open, ormcache, SQL
 from odoo.tools.image import image_process
 from odoo.tools.sql import table_columns
 
 _logger = logging.getLogger(__name__)
+
+
+def company_default_for(fname, target_model, target_fname, condition=None):
+    """Return the attributes needed to sync a company field with `ir.default` for company dependent fields."""
+    def _compute_from_ir_default(self, fname=fname):
+        field = self._fields[fname]
+        target_model, target_field, target_condition = field.company_default_for
+        for company in self:
+            company[fname] = self.env['ir.default'].with_company(company)._get_model_defaults(
+                target_model,
+                condition=target_condition,
+            ).get(target_field)
+
+    def _inverse_to_ir_default(self, fname=fname):
+        field = self._fields[fname]
+        target_model, target_field, target_condition = field.company_default_for
+        for company in self:
+            value = field.convert_to_cache(company[fname], company)
+            self.env['ir.default'].sudo().set(
+                target_model,
+                target_field,
+                value,
+                company_id=company.id,
+                condition=target_condition,
+            )
+
+    def _compute_sql_ir_default(self, table, fname=fname):
+        field = self._fields[fname]
+        target_model, target_field, target_condition = field.company_default_for
+        ir_default_alias = table._make_alias(target_field)
+        ir_default_field = self.env['ir.model.fields']._get(target_model, target_field)
+        table._query.add_join(
+            kind='LEFT JOIN',
+            alias=ir_default_alias,
+            table=self.env['ir.default']._table,
+            condition=SQL(
+                "%s = %s AND %s = %s AND %s IS NOT DISTINCT FROM %s AND %s IS NULL",
+                ir_default_alias.company_id, table.id,
+                ir_default_alias.field_id, ir_default_field.id,
+                ir_default_alias.condition, target_condition,
+                ir_default_alias.user_id,
+            ),
+        )
+        return SQL("(%s::jsonb #>> '{}')::%s", ir_default_alias.json_value, field.sql_column_type)
+
+    return {
+        'company_default_for': (target_model, target_fname, condition),
+        'compute': _compute_from_ir_default,
+        'inverse': _inverse_to_ir_default,
+        'compute_sql': _compute_sql_ir_default,
+        'compute_sudo': True,
+    }
 
 
 class ResCompany(models.CachedModel):
@@ -100,9 +152,9 @@ class ResCompany(models.CachedModel):
             paperformat_euro = self.env.ref('base.paperformat_euro', False)
             if paperformat_euro:
                 company.write({'paperformat_id': paperformat_euro.id})
-        sup = super()
-        if hasattr(sup, 'init'):
-            sup.init()
+        if any(hasattr(f, 'company_default_for') for f in self._fields.values()):
+            self.pool.post_init(lambda env=self.env: env['res.company'].search([])._init_company_defaults())
+        super().init()
 
     def _get_company_root_delegated_field_names(self):
         """Get the set of fields delegated to the root company.
@@ -329,6 +381,8 @@ class ResCompany(models.CachedModel):
         if companies_needs_l10n:
             companies_needs_l10n.install_l10n_modules()
 
+        companies._init_company_defaults()
+
         return companies
 
     def write(self, vals):
@@ -476,3 +530,24 @@ class ResCompany(models.CachedModel):
     @ormcache()
     def _get_company_partner_ids(self):
         return tuple(self.env['res.company'].sudo().with_context(active_test=False).search([]).partner_id.ids)
+
+    def _valid_field_parameter(self, field, name):
+        return name == 'company_default_for' or super()._valid_field_parameter(field, name)
+
+    def _init_company_defaults(self):
+        """Write ir.default entries for company_default_for fields that declare a default.
+        """
+        for fname, field in self._fields.items():
+            if not hasattr(field, 'company_default_for') or not field.default:
+                continue
+            target_model, target_field, target_condition = field.company_default_for
+            for company in self:
+                existing = self.env['ir.default'].with_company(company)._get_model_defaults(
+                    target_model, condition=target_condition,
+                ).get(target_field)
+                if existing is None:
+                    value = field.default(company) if callable(field.default) else field.default
+                    self.env['ir.default'].set(
+                        target_model, target_field, value,
+                        company_id=company.id, condition=target_condition,
+                    )
