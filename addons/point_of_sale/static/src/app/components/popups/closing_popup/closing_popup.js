@@ -68,7 +68,7 @@ export class ClosePosPopup extends Component {
         );
         return { total, moves };
     }
-    get orderForNextDays() {
+    get orderForLater() {
         const today = DateTime.now();
         return this.pos.models["pos.order"].filter(
             (o) => o.lines.length > 0 && o.preset_time > today && o.state === "draft"
