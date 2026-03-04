@@ -5,16 +5,24 @@ import { MAIN_PLUGINS as MAIN_EDITOR_PLUGINS } from "@html_editor/plugin_sets";
 import { normalizeHTML, parseHTML } from "@html_editor/utils/html";
 import { MassMailingIframe } from "@mass_mailing/iframe/mass_mailing_iframe";
 import { ThemeSelector } from "@mass_mailing/themes/theme_selector/theme_selector";
-import { getCSSRules, toInline } from "@mail/views/web/fields/html_mail_field/convert_inline";
-import { onWillUpdateProps, status, toRaw, useEffect, useRef } from "@odoo/owl";
+import {
+    onWillUpdateProps,
+    status,
+    toRaw,
+    useEffect,
+    useExternalListener,
+    useRef,
+} from "@odoo/owl";
 import { loadBundle } from "@web/core/assets";
 import { Domain } from "@web/core/domain";
 import { registry } from "@web/core/registry";
 import { Deferred } from "@web/core/utils/concurrency";
 import { effect } from "@web/core/utils/reactive";
-import { useChildRef, useService } from "@web/core/utils/hooks";
+import { useBus, useChildRef, useService } from "@web/core/utils/hooks";
 import { batched } from "@web/core/utils/timing";
 import { PowerButtonsPlugin } from "@html_editor/main/power_buttons_plugin";
+import { useEmailHtmlConverter } from "@mail/convert_inline/hooks";
+import { useRecordObserver } from "@web/model/relational_model/utils";
 
 export class MassMailingHtmlField extends HtmlField {
     static template = "mass_mailing.HtmlField";
@@ -42,6 +50,18 @@ export class MassMailingHtmlField extends HtmlField {
             }
         });
         super.setup();
+        this.converter = useEmailHtmlConverter({
+            // TODO EGGMAIL: evaluate email_html_conversion bundle after refactoring
+            bundles: [
+                "mass_mailing.assets_iframe_style",
+                "mass_mailing.assets_email_html_conversion",
+            ],
+            targetRef: {
+                get el() {
+                    return document.body;
+                },
+            },
+        });
         this.themeService = useService("mass_mailing.themes");
         this.ui = useService("ui");
         Object.assign(this.state, {
@@ -58,6 +78,7 @@ export class MassMailingHtmlField extends HtmlField {
 
         this.resetIframe();
         this.iframeRef = useChildRef();
+        this.iframeWrapperRef = useChildRef();
         this.codeViewButtonRef = useRef("codeViewButtonRef");
 
         onWillUpdateProps((nextProps) => {
@@ -71,12 +92,11 @@ export class MassMailingHtmlField extends HtmlField {
             if (nextProps.readonly) {
                 toRaw(this.state).showThemeSelector = false;
             }
-            if (nextProps.record.isNew) {
-                Object.assign(toRaw(this.state), {
-                    activeTheme: undefined,
-                    showCodeView: false,
-                    showThemeSelector: true,
-                });
+        });
+        useRecordObserver((record) => {
+            if (record?.resId !== this.props.record?.resId && this.isDirty) {
+                this.isDirty = false;
+                (this.props.record || record)?.model.bus.trigger("FIELD_IS_DIRTY", this.isDirty);
             }
         });
 
@@ -112,18 +132,31 @@ export class MassMailingHtmlField extends HtmlField {
             },
             () => [this.codeViewRef.el]
         );
+
+        useBus(this.env.bus, "CLEAR-UNCOMMITTED-CHANGES", ({ forceLeave }) => {
+            if (this.isDirty && !forceLeave) {
+                // Delay a doAction to have the time to compute the email html.
+                return this.commitChanges().then(() => true);
+            }
+        });
+        useExternalListener(window, "pointerdown", this.onPointerDown.bind(this));
     }
 
     get withBuilder() {
-        return !this.props.readonly && this.state.activeTheme !== "basic";
+        return this.state.activeTheme !== "basic" && !this.props.readonly;
     }
 
     resetIframe() {
         this.iframeLoaded = new Deferred();
     }
 
+    /**
+     * Ensure the currently used iframe finished loading.
+     * @returns {Promise<Boolean>}
+     */
     async ensureIframeLoaded() {
         const iframeLoaded = this.iframeLoaded;
+        // iframeInfo is deprecated
         const iframeInfo = await iframeLoaded;
         return iframeLoaded === this.iframeLoaded ? iframeInfo : undefined;
     }
@@ -179,7 +212,9 @@ export class MassMailingHtmlField extends HtmlField {
         const props = {
             config: this.getConfig(),
             iframeRef: this.iframeRef,
-            onBlur: this.onBlur.bind(this),
+            iframeWrapperRef: this.iframeWrapperRef,
+            onFocus: this.onFocus.bind(this),
+            onBlur: this.onBlur.bind(this), // deprecated
             onEditorLoad: this.onEditorLoad.bind(this),
             onIframeLoad: this.onIframeLoad.bind(this),
             readonly: this.props.readonly,
@@ -216,7 +251,7 @@ export class MassMailingHtmlField extends HtmlField {
         } else if (this.withBuilder) {
             return this.getBuilderConfig();
         } else {
-            return this.getSimpleEditorConfig();
+            return this.getBasicEditorConfig();
         }
     }
 
@@ -241,12 +276,11 @@ export class MassMailingHtmlField extends HtmlField {
             allowChecklist: false,
             record: this.props.record,
             mobileBreakpoint: "md",
-            defaultImageMimetype: "image/png",
             onEditorReady: () => this.commitChanges(),
         };
     }
 
-    getSimpleEditorConfig() {
+    getBasicEditorConfig() {
         const config = super.getConfig();
         const codeViewCommand = [config.resources?.user_commands]
             .filter(Boolean)
@@ -261,7 +295,8 @@ export class MassMailingHtmlField extends HtmlField {
             Plugins: [
                 ...MAIN_EDITOR_PLUGINS,
                 ...DYNAMIC_PLACEHOLDER_PLUGINS,
-                ...registry.category("basic-editor-plugins").getAll(),
+                ...registry.category("mail-core-plugins").getAll(),
+                ...registry.category("mass_mailing-basic-editor-plugins").getAll(),
                 PowerButtonsPlugin,
             ].filter((P) => !["banner", "prompt"].includes(P.id)),
         };
@@ -273,7 +308,7 @@ export class MassMailingHtmlField extends HtmlField {
                 this.mutex.exec(() =>
                     // The inlineField can not be updated to its final value at
                     // this point since the editor is needed to process the
-                    // theme template. (i.e. applying the default style).
+                    // theme template (i.e. to insert the Design Tab style).
                     // It will be updated onEditorReady since it has become empty.
                     this.props.record
                         .update({
@@ -288,9 +323,58 @@ export class MassMailingHtmlField extends HtmlField {
         };
     }
 
+    onFocus() {
+        this.activeElement = this.iframeWrapperRef.el;
+    }
+
+    /**
+     * Simulate a tuned down "blur", based around the edition area, comprised
+     * of the edition iframe and the builder, to avoid committing changes when
+     * the user is actively interacting inside that zone. Also avoid cases
+     * where the user clicks inside an overlay or other element inside the
+     * main component container, because the builder uses a lot of these.
+     */
+    onPointerDown(ev) {
+        const isTargetOutsideActiveElement =
+            this.activeElement && !this.activeElement.contains(ev.target);
+        const ignoredTargetContainer =
+            isTargetOutsideActiveElement &&
+            ev.target?.closest(".o-main-components-container, .o_form_status_indicator_buttons");
+        const shouldIgnoreTarget =
+            ignoredTargetContainer && !ignoredTargetContainer.contains(this.activeElement);
+        if (isTargetOutsideActiveElement && !shouldIgnoreTarget) {
+            this.activeElement = undefined;
+            this.onBlur();
+        } else if (this.iframeWrapperRef.el.contains(ev.target)) {
+            this.activeElement = this.iframeWrapperRef.el;
+        }
+    }
+
     onTextareaInput(ev) {
         this.onChange();
         ev.target.style.height = ev.target.scrollHeight + "px";
+    }
+
+    /**
+     * Ensure that the emailHtmlConverter is kept alive (in the DOM) until the
+     * change has been committed to the record (even if this component is
+     * destroyed in the meantime).
+     * @override
+     */
+    async commitChanges() {
+        const promise = super.commitChanges(...arguments);
+        this.converter.keepAlive(promise);
+        return promise;
+    }
+
+    /**
+     * Ensure that every SVG and WEBP images are converted to PNG, and create
+     * an attachment for every b64 encoded image, to ensure every image src
+     * is not a data url.
+     * @override
+     */
+    savePendingImages(content) {
+        return this.editor.shared["mail.ImageFormatPlugin"].sanitizeImages(content);
     }
 
     /**
@@ -320,52 +404,44 @@ export class MassMailingHtmlField extends HtmlField {
 
     /**
      * Complete rewrite of `updateValue` to ensure that both the field and the
-     * inlineField are saved at the same time. Depends on the iframe to compute
+     * inlineField keep consistent values. Depends on the iframe to compute
      * the style of the inlineField.
      * @override
      */
     async updateValue(value) {
-        const iframeInfo = await this.ensureIframeLoaded();
-        if (!iframeInfo) {
-            return;
-        }
-        const { bundleControls } = iframeInfo;
-        this.lastValue = normalizeHTML(value, this.clearElementToCompare.bind(this));
-        this.isDirty = false;
-        const shouldRestoreDisplayNone = this.iframeRef.el.classList.contains("d-none");
-        // d-none must be removed for style computation.
-        this.iframeRef.el.classList.remove("d-none");
-        // The browser resets the size of the `iframe` inside `toInline`
-        // if we just set `width`. So as a workaround we set both `min-width`
-        // and `max-width` to force the size of the `iframe` for a proper
-        // inline conversion.
-        this.iframeRef.el.style.setProperty("min-width", "1320px", "important");
-        this.iframeRef.el.style.setProperty("max-width", "1320px", "important");
-        const processingEl = this.iframeRef.el.contentDocument.createElement("DIV");
-        processingEl.append(parseHTML(this.iframeRef.el.contentDocument, value));
-        const processingContainer = this.iframeRef.el.contentDocument.querySelector(
-            ".o_mass_mailing_processing_container"
-        );
-        bundleControls["mass_mailing.assets_inside_builder_iframe"]?.toggle(false);
-        processingContainer.append(processingEl);
-        this.preprocessFilterDomains(processingEl);
-        const cssRules = getCSSRules(this.iframeRef.el.contentDocument);
-        await toInline(processingEl, cssRules);
-        const inlineValue = processingEl.innerHTML;
-        processingEl.remove();
-        bundleControls["mass_mailing.assets_inside_builder_iframe"]?.toggle(true);
-        this.iframeRef.el.style.minWidth = "";
-        this.iframeRef.el.style.maxWidth = "";
-        if (shouldRestoreDisplayNone) {
-            this.iframeRef.el.classList.add("d-none");
-        }
-        await this.props.record
+        const record = this.props.record;
+        // Ensure the edited value is updated immediately to avoid data loss,
+        // and reset the inline field (need async computation) to avoid
+        // transient state where inline data is obsolete.
+        // If the following computation is aborted, at least it can be
+        // recovered by reloading the field.
+        const urgentUpdatePromise = record
             .update({
                 [this.props.name]: value,
-                [this.props.inlineField]: inlineValue,
+                [this.props.inlineField]: "",
             })
+            .then(() => {
+                record.model.bus.trigger("FIELD_IS_DIRTY", false);
+            });
+        this.lastValue = normalizeHTML(value, this.clearElementToCompare.bind(this));
+        const valueFragment = parseHTML(document, value);
+        let inlineValue;
+        try {
+            inlineValue = await this.converter.convertToEmailHtml(valueFragment, {
+                preProcessCallbacks: [this.preprocessFilterDomains.bind(this)],
+            });
+        } catch {
+            inlineValue = null;
+        }
+        await urgentUpdatePromise;
+        if (record.resId !== this.props.record?.resId || inlineValue === null) {
+            return;
+        }
+        this.isDirty = false;
+        await record
+            .update({ [this.props.inlineField]: inlineValue })
             .catch(() => (this.isDirty = true));
-        this.props.record.model.bus.trigger("FIELD_IS_DIRTY", this.isDirty);
+        record.model.bus.trigger("FIELD_IS_DIRTY", this.isDirty);
     }
     /**
      * Processes the data-filter-domain to be converted to a t-if that will be interpreted on send
@@ -406,6 +482,7 @@ export const massMailingHtmlField = {
         });
         return props;
     },
+    // Deprecated (to be defined in the view)
     fieldDependencies: [{ name: "body_html", type: "html", readonly: "false" }],
 };
 

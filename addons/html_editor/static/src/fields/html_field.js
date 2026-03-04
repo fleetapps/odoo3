@@ -95,6 +95,7 @@ export class HtmlField extends Component {
         });
 
         useRecordObserver((record) => {
+            const key = this.state.key;
             // Reset Wysiwyg when we discard or onchange value
             const newValue = fixInvalidHTML(record.data[this.props.name]);
             if (!this.isDirty) {
@@ -104,6 +105,10 @@ export class HtmlField extends Component {
                     this.state.containsComplexHTML = computeContainsComplexHTML(newValue);
                     this.lastValue = value;
                 }
+            }
+            if (key === this.state.key && record.resId !== this.props.record.resId) {
+                // Ensure key is reset for 2 different records with identical html values
+                this.state.key++;
             }
         });
         useRecordObserver((record) => {
@@ -163,12 +168,17 @@ export class HtmlField extends Component {
         this.props.record.model.bus.trigger("FIELD_IS_DIRTY", this.isDirty);
     }
 
+    savePendingImages(content) {
+        return this.editor.shared.imageSave?.savePendingImages(content);
+    }
+
     async getEditorContent() {
-        const content = this.editor.getElContent();
-        const oldSrcToNewSrcMap = await this.editor.shared.imageSave?.savePendingImages(content);
-        // Update the actual editable if still in the DOM.
-        if (this.editor.editable && oldSrcToNewSrcMap) {
-            this.editor.editable
+        const editor = this.editor;
+        const content = editor.getElContent();
+        const oldSrcToNewSrcMap = await this.savePendingImages(content);
+        // Update the actual editable if the editor was not destroyed
+        if (!editor.isDestroyed && oldSrcToNewSrcMap) {
+            editor.editable
                 .querySelectorAll(".o_b64_image_to_save, .o_modified_image_to_save")
                 .forEach((unsavedImage) => {
                     const oldSrc = unsavedImage.getAttribute("src");
