@@ -84,6 +84,9 @@ export class VDomPlugin extends BasePlugin {
                         referenceNode: node,
                         vNode,
                         fragment: undefined,
+                        setRenderStrategy(strategy) {
+                            this.strategy = strategy;
+                        },
                     },
                     this.lazyNodeInfoProxyHandler(node)
                 );
@@ -168,6 +171,9 @@ export class VDomPlugin extends BasePlugin {
      relevant style is inlined, and the variables it contains are not used
      in the final rendering. Its fragment is therefore emptied.
      */
+    // TODO EGGMAIL: will disappear automatically with strategies, since the
+    // strategy for a node which has no layout is to be ignored, at that point
+    // this function will be obsolete
     emptyDesignElementFragment({ nodeInfo, templateNode }) {
         if (
             templateNode.nodeType === Node.ELEMENT_NODE &&

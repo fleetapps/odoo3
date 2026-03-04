@@ -54,14 +54,10 @@ const BLOCK_TAG_NAMES = [
     "THEAD",
     "TH",
 ];
-const DIMENSIONS = {
-    desktop: EMAIL_DESKTOP_DIMENSIONS,
-    mobile: EMAIL_MOBILE_DIMENSIONS,
-};
 
 export class ResponsivePlugin extends BasePlugin {
     static id = "ResponsivePlugin";
-    static dependencies = ["layoutSnapshotCache"];
+    static dependencies = ["layoutSnapshotCache", "vDomPlugin"];
     resources = {
         reference_content_loaded_handlers: this.computeEmailHtmlStructure.bind(this),
         update_layout_dimensions_handlers: this.onUpdateLayoutDimensions.bind(this),
@@ -73,15 +69,11 @@ export class ResponsivePlugin extends BasePlugin {
             "getNodeClusterRange",
             "getStylePropertyValue",
         ]);
+        useShorthands(this, "vDomPlugin", ["getNodeInfo"]);
         this.layoutDimensions = { width: 0, height: 0 };
-        this.layoutToBlocks = new Map(); // layoutName (desktop/mobile) -> map: node -> LayoutBlock
-        this.layoutStrategies = new WeakMap(); // node -> strategy
-        this.ignoredInlineNodes = new WeakSet();
+        this.layoutToFilters = new Map(); // layoutDimensions (desktop/mobile) -> filterInlineNodes function
+        this.layoutToBlocks = new Map(); // layoutDimensions (desktop/mobile) -> map: node -> LayoutBlock
         this.filterInlineNodes = memoize((node) => {
-            // TODO EGGMAIL: evaluate if memoize makes sense here or if we should
-            // independently compute ignoredInlineNodes depending on the layout,
-            // to capture nodes that are inline in one layout and block in another
-            // (should not happen, but who knows)
             const subNodes = [];
             let hasSomeBlock = false;
             let child = node.firstChild;
@@ -100,17 +92,13 @@ export class ResponsivePlugin extends BasePlugin {
         });
     }
 
-    createLayoutTreeWalker() {
+    // TODO NOW: optional filter based on layout dimensions + new filter for
+    // applying strategies
+    createReferenceTreeWalker(filter = () => NodeFilter.FILTER_ACCEPT) {
         return this.config.referenceDocument.createTreeWalker(
             this.config.reference,
-            NodeFilter.SHOW_ELEMENT,
-            (node) => {
-                if (this.ignoredInlineNodes.has(node)) {
-                    return NodeFilter.FILTER_REJECT;
-                }
-                this.filterInlineNodes(node);
-                return NodeFilter.FILTER_ACCEPT;
-            }
+            NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+            filter
         );
     }
 
@@ -139,13 +127,13 @@ export class ResponsivePlugin extends BasePlugin {
     // mobile and in desktop modes
 
     computeEmailHtmlStructure() {
-        this.parseWithLayout("desktop");
-        this.parseWithLayout("mobile");
+        this.parseWithDimensions(EMAIL_DESKTOP_DIMENSIONS);
+        this.parseWithDimensions(EMAIL_MOBILE_DIMENSIONS);
         this.applyLayoutStrategies();
         // TODO EGGMAIL: create final layout based on measured layouts
     }
 
-    applyDefaultStrategy({ parent, layoutToBlocks }) {
+    getDefaultStrategy({ parent, layoutToBlocks }) {
         const strategy = undefined;
         return strategy;
     }
@@ -157,32 +145,73 @@ export class ResponsivePlugin extends BasePlugin {
         // treeWalker could/should ignore descendants of nodes where the strategy
         // is to ignore descendants
         // review current rendering loop and how it applies fragments
-        const treeWalker = this.createLayoutTreeWalker();
-        let el = treeWalker.root;
+        const rejectedNodes = new WeakSet();
+        const treeWalker = this.createReferenceTreeWalker((node) => {
+            if (rejectedNodes.has(node)) {
+                return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+        });
+        let node = treeWalker.root;
         do {
             const layoutToBlocks = new Map(); // map layout to bands for this el
-            for (const layout of this.layoutToBlocks.keys()) {
-                layoutToBlocks.set(layout, this.layoutToBlocks.get(layout).get(el));
+            for (const layoutDimensions of this.layoutToBlocks.keys()) {
+                layoutToBlocks.set(
+                    layoutDimensions,
+                    this.layoutToBlocks.get(layoutDimensions).get(node)
+                );
             }
             let strategy;
             const output = { strategy };
-            const args = { parent: el, layoutToBlocks };
+            const args = { node, layoutToBlocks };
             if (this.delegateTo("choose_layout_strategy_overrides", args, output)) {
                 ({ strategy } = output);
             } else {
-                strategy = this.applyDefaultStrategy(args);
+                strategy = this.getDefaultStrategy(args);
             }
-            this.layoutStrategies.set(el, strategy);
-        } while ((el = treeWalker.nextNode()));
+            const nodeInfo = this.getNodeInfo(node);
+            nodeInfo.setRenderStrategy(strategy);
+            if (strategy.rejectSubTree) {
+                let child = node.firstChild;
+                while (child) {
+                    rejectedNodes.add(child);
+                    child = child.nextSibling;
+                }
+            }
+        } while ((node = treeWalker.nextNode()));
     }
 
-    parseWithLayout(layoutType) {
+    parseWithDimensions(dimensions) {
+        const ignoredInlineNodes = new WeakSet();
+        const filterInlineNodes = memoize((node) => {
+            const subNodes = [];
+            let hasSomeBlock = false;
+            let child = node.firstChild;
+            while (child) {
+                if (!hasSomeBlock && this.isBlock(child)) {
+                    hasSomeBlock = true;
+                }
+                subNodes.push(child);
+                child = child.nextSibling;
+            }
+            if (!hasSomeBlock) {
+                for (const child of subNodes) {
+                    ignoredInlineNodes.add(child);
+                }
+            }
+        });
+        this.layoutToFilters.set(dimensions, (node) => {
+            if (ignoredInlineNodes.has(node)) {
+                return NodeFilter.FILTER_REJECT;
+            }
+            filterInlineNodes(node);
+            return NodeFilter.FILTER_ACCEPT;
+        });
         const originalDimensions = this.layoutDimensions;
-        const dimensions = DIMENSIONS[layoutType];
         if (this.layoutDimensions.width !== dimensions.width) {
             this.config.updateLayoutDimensions(dimensions);
         }
-        this.computeLayoutBlocks(layoutType);
+        this.computeLayoutBlocks();
         if (this.layoutDimensions.width !== originalDimensions.width) {
             this.config.updateLayoutDimensions(originalDimensions);
         }
@@ -278,10 +307,11 @@ export class ResponsivePlugin extends BasePlugin {
         return layoutBlock;
     }
 
-    computeLayoutBlocks(layoutType) {
+    computeLayoutBlocks() {
         const nodeToBlocks = new WeakMap();
-        this.layoutToBlocks.set(layoutType, nodeToBlocks);
-        const treeWalker = this.createLayoutTreeWalker();
+        this.layoutToBlocks.set(this.layoutDimensions, nodeToBlocks);
+        const filterInlineNodes = this.layoutToFilters.get(this.layoutDimensions);
+        const treeWalker = this.createReferenceTreeWalker(filterInlineNodes);
         let el = treeWalker.root;
         do {
             const layoutClusters = this.computeLayoutClusters(el);

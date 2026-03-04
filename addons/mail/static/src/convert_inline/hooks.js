@@ -6,14 +6,14 @@ import { EmailHtmlConverter } from "@mail/convert_inline/email_html_converter";
 import { loadIframeBundles, loadIframe } from "@mail/convert_inline/iframe_utils";
 import { Mutex } from "@web/core/utils/concurrency";
 
-export const EMAIL_DESKTOP_DIMENSIONS = {
+export const EMAIL_DESKTOP_DIMENSIONS = Object.freeze({
     width: 1320,
     height: 1000,
-};
-export const EMAIL_MOBILE_DIMENSIONS = {
+});
+export const EMAIL_MOBILE_DIMENSIONS = Object.freeze({
     width: 360,
     height: 1000,
-};
+});
 
 /**
  * Hook to handle email HTML conversion in a mail HtmlField.
@@ -32,12 +32,13 @@ export function useEmailHtmlConverter({ Plugins, bundles, targetRef, isVisible }
         isBrowserSafari,
         isVisible,
     });
-    const updateLayoutDimensions = ({ width, height } = EMAIL_DESKTOP_DIMENSIONS) => {
+    const updateLayoutDimensions = (dimensions = EMAIL_DESKTOP_DIMENSIONS) => {
+        const { width, height } = dimensions;
         referenceIframe.style.setProperty("max-width", `${width}px`, "important");
         referenceIframe.style.setProperty("min-width", `${width}px`, "important");
         referenceIframe.style.setProperty("min-height", `${height}px`, "important");
         if (converter) {
-            converter.onLayoutDimensionsUpdate({ width, height });
+            converter.onLayoutDimensionsUpdate(dimensions);
         }
     };
     const cleanupEmailHtmlConversion = () => {

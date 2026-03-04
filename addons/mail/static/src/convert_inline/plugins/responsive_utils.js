@@ -107,10 +107,10 @@ export class LayoutBlock {
 }
 
 export class LayoutStrategy {
-    parent;
+    node;
 
-    constructor(type, parent) {
-        this.parent = parent;
+    constructor(type, node) {
+        this.node = node;
         this.type = type;
     }
 
@@ -119,5 +119,9 @@ export class LayoutStrategy {
             strategy: this,
             ...extraContext,
         });
+    }
+
+    get rejectSubTree() {
+        return false;
     }
 }

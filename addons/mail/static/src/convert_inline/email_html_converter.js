@@ -60,7 +60,7 @@ export class EmailHtmlConverter extends PluginManager {
         return emailTemplate;
     }
 
-    onLayoutDimensionsUpdate({ width, height }) {
-        this.dispatchTo("update_layout_dimensions_handlers", { width, height });
+    onLayoutDimensionsUpdate(dimensions) {
+        this.dispatchTo("update_layout_dimensions_handlers", dimensions);
     }
 }
