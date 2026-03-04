@@ -9,7 +9,12 @@ from . import test_ir_websocket
 from . import test_kpi_provider
 from . import test_link_preview
 from . import test_mail_activity
+<<<<<<< 8cb0f7a18fe764db923eb0d755db031065469db2
 from . import test_mail_canned_response
+||||||| 5c1000cb11da64bf317f9bd9b0ae71f6fbea910d
+=======
+from . import test_mail_blacklist
+>>>>>>> 4457a6204e75cc095f01fa384ad533fec76a6ba6
 from . import test_mail_composer
 from . import test_mail_mail
 from . import test_mail_message
