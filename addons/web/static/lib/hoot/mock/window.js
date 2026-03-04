@@ -352,9 +352,9 @@ function observeAddedNodes(mutations) {
     for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
             if (runner.dry) {
-                node.remove();
+                removeDiscardableHeadNode(node);
             } else {
-                runner.after(node.remove.bind(node));
+                runner.after(removeDiscardableHeadNode.bind(null, node));
             }
         }
     }
@@ -386,6 +386,23 @@ function onAnchorHrefClick(ev) {
 
 function onWindowResize() {
     callMediaQueryChanges();
+}
+
+/**
+ * @param {Node} node
+ */
+function removeDiscardableHeadNode(node) {
+    if (
+        node.nodeType !== Node.ELEMENT_NODE ||
+        !(
+            (node.nodeName === "SCRIPT" && node.getAttribute("src")) ||
+            (node.nodeName === "LINK" &&
+                node.getAttribute("rel") === "stylesheet" &&
+                node.getAttribute("href"))
+        )
+    ) {
+        node.remove();
+    }
 }
 
 /**

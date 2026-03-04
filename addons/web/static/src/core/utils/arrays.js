@@ -26,10 +26,19 @@ function _cartesian(...args) {
     const productOfOtherArrays = _cartesian(...args);
     for (const array of firstArray) {
         for (const tuple of productOfOtherArrays) {
-            result.push([...array, ...tuple]);
+            result.push(array.concat(tuple));
         }
     }
     return result;
+}
+
+/**
+ * @template T
+ * @param {Iterable<T>} value
+ * @returns {Set<T>}
+ */
+function ensureSet(value) {
+    return value instanceof Set ? value : new Set(value);
 }
 
 /**
@@ -55,8 +64,16 @@ function _getExtractorFrom(criterion) {
                 );
         }
     } else {
-        return (element) => element;
+        return identity;
     }
+}
+
+/**
+ * @template T
+ * @param {T} value
+ */
+function identity(value) {
+    return value;
 }
 
 /**
@@ -69,7 +86,13 @@ function _getExtractorFrom(criterion) {
  * @returns {T[]}
  */
 export function ensureArray(value) {
-    return isIterable(value) ? [...value] : [value];
+    if (Array.isArray(value)) {
+        return value;
+    } else if (isIterable(value)) {
+        return Array.from(value);
+    } else {
+        return [value];
+    }
 }
 
 /**
@@ -81,8 +104,7 @@ export function ensureArray(value) {
  * @returns {T[]}
  */
 export function intersection(iter1, iter2) {
-    const set2 = new Set(iter2);
-    return unique(iter1).filter((v) => set2.has(v));
+    return Array.from(ensureSet(iter1).intersection(ensureSet(iter2)));
 }
 
 /**
@@ -99,7 +121,7 @@ export function isIterable(value) {
  * or a default one. Each group is a subset of the original given list.
  * The given criterion can either be:
  * - a string: a property name on the list elements which value will be the
- * group name,
+ * group key,
  * - a function: a handler that will return the group name from a given
  * element.
  *
@@ -110,17 +132,7 @@ export function isIterable(value) {
  * @returns {Record<K, T[]>}
  */
 export function groupBy(iterable, criterion) {
-    const extract = _getExtractorFrom(criterion);
-    /** @type {Partial<Record<K, T[]>>} */
-    const groups = {};
-    for (const element of iterable) {
-        const group = String(extract(element));
-        if (!(group in groups)) {
-            groups[group] = [];
-        }
-        groups[group].push(element);
-    }
-    return groups;
+    return Object.groupBy(iterable, _getExtractorFrom(criterion));
 }
 
 /**
@@ -163,12 +175,7 @@ export function sortBy(iterable, criterion, order = "asc") {
  * that are not in iter2 and vice-versa.
  */
 export function symmetricalDifference(iter1, iter2) {
-    const array1 = [...iter1];
-    const array2 = [...iter2];
-    return [
-        ...array1.filter((value) => !array2.includes(value)),
-        ...array2.filter((value) => !array1.includes(value)),
-    ];
+    return Array.from(ensureSet(iter1).symmetricDifference(ensureSet(iter2)));
 }
 
 /**
@@ -203,7 +210,7 @@ export const shallowEqual = _shallowEqual;
  * @returns {T[][]}
  */
 export function sections(iterable) {
-    const array = [...iterable];
+    const array = ensureArray(iterable);
     const sections = [];
     for (let i = 0; i < array.length + 1; i++) {
         sections.push(array.slice(0, i));
@@ -220,7 +227,7 @@ export function sections(iterable) {
  * @returns {T[]}
  */
 export function unique(iterable) {
-    return [...new Set(iterable)];
+    return Array.from(ensureSet(iterable));
 }
 
 /**
@@ -231,8 +238,8 @@ export function unique(iterable) {
  * @returns {[T1, T2][]}
  */
 export function zip(iter1, iter2, fill = false) {
-    const array1 = [...iter1];
-    const array2 = [...iter2];
+    const array1 = ensureArray(iter1);
+    const array2 = ensureArray(iter2);
     /** @type {[T1, T2][]} */
     const result = [];
     const getLength = fill ? Math.max : Math.min;
@@ -257,18 +264,24 @@ export function zipWith(iter1, iter2, mapFn) {
  * slidingWindow([1, 2, 3, 4], 2) => [[1, 2], [2, 3], [3, 4]]
  *
  * @template T
- * @param {T[]} arr the array over which to create a sliding window
+ * @param {Iterable<T>[]} iterable the array over which to create a sliding window
  * @param {number} width the width of the window
  * @returns {T[][]} an array of tuples of size width
  */
-export function slidingWindow(arr, width) {
+export function slidingWindow(iterable, width) {
+    const array = ensureArray(iterable);
     const res = [];
-    for (let i = 0; i <= arr.length - width; i++) {
-        res.push(arr.slice(i, i + width));
+    for (let i = 0; i <= array.length - width; i++) {
+        res.push(array.slice(i, i + width));
     }
     return res;
 }
 
+/**
+ * @param {number} i
+ * @param {any[]} arr
+ * @param {number} [inc]
+ */
 export function rotate(i, arr, inc = 1) {
     return (arr.length + i + inc) % arr.length;
 }

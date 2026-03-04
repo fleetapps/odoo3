@@ -1,11 +1,11 @@
-import { decorateEmojis } from "@mail/utils/common/format";
 import { defineMailModels } from "@mail/../tests/mail_test_helpers";
+import { decorateEmojis } from "@mail/utils/common/format";
 
 import { expect, test } from "@odoo/hoot";
 import { markup } from "@odoo/owl";
 
 import { makeMockEnv } from "@web/../tests/web_test_helpers";
-import { loadEmoji } from "@web/core/emoji_picker/emoji_picker";
+import { loadEmoji } from "@web/core/emoji_picker/emoji_loader";
 
 const Markup = markup().constructor;
 

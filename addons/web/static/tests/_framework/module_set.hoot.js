@@ -13,12 +13,13 @@ import {
     watchListeners,
 } from "@odoo/hoot";
 
+import { mockAssetsFactory } from "./mock_assets.hoot";
 import { mockBrowserFactory } from "./mock_browser.hoot";
 import { mockCurrencyFactory } from "./mock_currency.hoot";
 import { mockFunctionsFactory } from "./mock_functions.hoot";
-import { mockIndexedDB } from "./mock_indexed_db.hoot";
+import { mockIndexedDBFactory } from "./mock_indexed_db.hoot";
 import { mockSessionFactory } from "./mock_session.hoot";
-import { makeTemplateFactory } from "./mock_templates.hoot";
+import { mockTemplateFactory } from "./mock_templates.hoot";
 import { mockUserFactory } from "./mock_user.hoot";
 
 /**
@@ -277,13 +278,14 @@ function getSuitePath(name) {
  * Keeps the original definition of a factory.
  *
  * @param {string} name
+ * @param {OdooModuleFactory} factory
  */
-function makeFixedFactory(name) {
-    return () => {
-        if (!loader.modules.has(name)) {
-            loader.startModule(name);
+function mockFixedFactory(name, { fn }) {
+    return function fixedFactory(...args) {
+        if (!fixedFactories.has(name)) {
+            fixedFactories.set(name, fn(...args));
         }
-        return loader.modules.get(name);
+        return fixedFactories.get(name);
     };
 }
 
@@ -513,19 +515,21 @@ const CSRF_TOKEN = odoo.csrf_token;
 const DEFAULT_ADDONS = ["base", "web"];
 const MODULE_MOCKS_BY_NAME = new Map([
     // Fixed modules
-    ["@web/core/template_inheritance", makeFixedFactory],
+    ["@web/core/template_inheritance", mockFixedFactory],
+    ["@web/core/emoji_picker/emoji_loader", mockFixedFactory],
     // Other mocks
+    ["@web/core/assets", mockAssetsFactory],
     ["@web/core/browser/browser", mockBrowserFactory],
-    ["@web/core/utils/indexed_db", mockIndexedDB],
     ["@web/core/currency", mockCurrencyFactory],
-    ["@web/core/templates", makeTemplateFactory],
+    ["@web/core/templates", mockTemplateFactory],
     ["@web/core/user", mockUserFactory],
     ["@web/core/utils/functions", mockFunctionsFactory],
+    ["@web/core/utils/indexed_db", mockIndexedDBFactory],
     ["@web/session", mockSessionFactory],
 ]);
 const MODULE_MOCKS_BY_REGEX = new Map([
     // Fixed modules
-    [/\.bundle\.xml$/, makeFixedFactory],
+    [/\.bundle\.xml$/, mockFixedFactory],
 ]);
 const R_DEFAULT_MODULE = /^@odoo\/(owl|hoot)/;
 const R_PATH_ADDON = /^[@/]?(\w+)/;
@@ -535,6 +539,8 @@ const TEMPLATE_MODULE_NAME = "@web/core/templates";
 const dependencies = {};
 /** @type {Record<string, Deferred} */
 const dependencyCache = {};
+/** @type {Map<string, OdooModule>} */
+const fixedFactories = new Map();
 /** @type {Record<string, Promise<Response>} */
 const globalFetchCache = Object.create(null);
 /** @type {Set<string>} */
