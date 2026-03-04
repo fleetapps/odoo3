@@ -1,10 +1,12 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import json
+
 from odoo.addons.mail.tools.discuss import Store
 from odoo.addons.mail.tests.common import mail_new_test_user
 from odoo.tests import TransactionCase
 from odoo.tests.common import new_test_user
-
+from odoo.addons.bus.models.bus import channel_with_db, json_dump
 
 class TestDiscussTools(TransactionCase):
     """Test class for discuss tools."""
@@ -250,6 +252,44 @@ class TestDiscussTools(TransactionCase):
         data = store.get_result()
         self.assertEqual(data["res.partner"][0]["email"], "test_user_355_a@example.com")
         self.assertNotIn("email", data["res.partner"][1])
+
+    def test_360_internal_fields(self):
+        general = self.env["discuss.channel"].create({"name": "General", "description": "secret"})
+        bob_user = new_test_user(self.env, "bob_user", email="bob@secret.com")
+        general._add_members(partners=bob_user.partner_id)
+        self.env.cr.precommit.run()
+        self.env["bus.bus"].search([]).unlink()  # reset bus
+        store = Store(bus_channel=general)
+        store.add(general,
+            lambda res: (
+                res.attr("name"),
+                res.attr("description", internal=True),
+                res.many("channel_member_ids", lambda res: (
+                    res.one("partner_id", lambda res: (
+                        res.attr("name"),
+                        res.attr("email", internal=True),
+                    )),
+                    res.attr("seen_message_id"),
+                )),
+            ),
+        )
+        store.bus_send()
+        self.env.cr.precommit.run()  # trigger the creation of bus.bus records
+
+        def get_payload(internal=False):
+            channel = json_dump(channel_with_db(
+                self.env.cr.dbname, (general, "internal_users") if internal else general),
+            )
+            bus_notif = self.env["bus.bus"].search([("channel", "=", channel)], order="id desc")
+            return json.loads(bus_notif.message)["payload"]
+        main_payload, internal_payload = get_payload(), get_payload(internal=True)
+
+        self.assertNotIn("description", main_payload["discuss.channel"][0])
+        self.assertNotIn("email", main_payload["res.partner"][0])
+        self.assertNotIn("email", main_payload["res.partner"][1])
+        self.assertEqual(internal_payload["discuss.channel"][0]["description"], "secret")
+        self.assertEqual(internal_payload["res.partner"][0]["email"], "odoobot@example.com")
+        self.assertEqual(internal_payload["res.partner"][1]["email"], "bob@secret.com")
 
     # 4xx Tests many command modes
 

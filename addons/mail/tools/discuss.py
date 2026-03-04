@@ -91,6 +91,9 @@ class Store:
         self.data = {}
         self.data_id = None
         self.target = Store.Target(bus_channel, bus_subchannel)
+        self._internal_store = None
+        if bus_subchannel != "internal_users":
+            self._internal_store = Store(bus_channel=bus_channel, bus_subchannel="internal_users")
 
     def add(self, records, fields, *, as_thread=False, fields_params=None):
         """Add records to the store. Data is coming from _to_store() method of the model if it is
@@ -152,14 +155,33 @@ class Store:
         """
         if not field_list or not field_list.records:
             return self
-        for record, record_data_list in self._get_records_data_list(field_list).items():
-            for record_data in record_data_list:
-                if as_thread:
-                    self.add_model_values(
-                        "mail.thread", {"id": record.id, "model": record._name, **record_data},
-                    )
-                else:
-                    self.add_model_values(record._name, {"id": record.id, **record_data})
+
+        def _add_fields_to_store(store, field_list, as_thread):
+            """Add fields from the field list to the store."""
+            for record, record_data_list in store._get_records_data_list(field_list).items():
+                for record_data in record_data_list:
+                    if as_thread:
+                        store.add_model_values(
+                            "mail.thread", {"id": record.id, "model": record._name, **record_data},
+                        )
+                    else:
+                        store.add_model_values(record._name, {"id": record.id, **record_data})
+
+        if not self._internal_store:
+            _add_fields_to_store(self, field_list, as_thread)
+            return self
+        # Let's split the field list in internal and non-internal
+        non_internal_field_list = Store.FieldList(field_list.records, self.target)
+        internal_field_list = Store.FieldList(
+            field_list.records, Store.Target(self.target.channel, "internal_users"),
+        )
+        for field in field_list:
+            if isinstance(field, Store.Attr) and field.internal:
+                internal_field_list.append(field)
+            else:
+                non_internal_field_list.append(field)
+        _add_fields_to_store(self, non_internal_field_list, as_thread)
+        _add_fields_to_store(self._internal_store, internal_field_list, as_thread)
         return self
 
     def add_singleton_values(self, model_name, values):
@@ -219,6 +241,10 @@ class Store:
         )
         if res := self.get_result():
             self.target.channel._bus_send(notification_type, res, subchannel=self.target.subchannel)
+        if self._internal_store and (res := self._internal_store.get_result()):
+            self._internal_store.target.channel._bus_send(
+                notification_type, res, subchannel=self._internal_store.target.subchannel,
+            )
 
     def resolve_data_request(self, values=None):
         """Add values to the store for the current data request.
@@ -256,9 +282,7 @@ class Store:
 
     @staticmethod
     def _format_fields(fields, target, records=None, fields_params=None):
-        field_list = Store.FieldList()
-        field_list.target = target
-        field_list.records = records
+        field_list = Store.FieldList(records, target)
         if isinstance(fields, str) and (method := Store._get_fields_method(records, fields)):
             method(field_list, **(fields_params or {}))
         elif callable(fields):
@@ -358,11 +382,12 @@ class Store:
         Note: when a static value is given to a recordset, the same value is set on all records.
         """
 
-        def __init__(self, field_name, value=NO_VALUE, *, predicate=None, sudo=False):
+        def __init__(self, field_name, value=NO_VALUE, *, predicate=None, sudo=False, internal=False):
             self.field_name = field_name
             self.predicate = predicate
             self.sudo = sudo
             self.value = value
+            self.internal = internal
 
         def _get_value(self, record, *, target=None):
             if self.value is NO_VALUE and record is not None and self.field_name in record._fields:
@@ -387,13 +412,14 @@ class Store:
             as_thread=False,
             dynamic_fields=None,
             fields_params=None,
+            internal=False,
             only_data=False,
             predicate=None,
             sudo=False,
             value=NO_VALUE,
         ):
             field_name = records_or_field_name if isinstance(records_or_field_name, str) else None
-            super().__init__(field_name, predicate=predicate, sudo=sudo, value=value)
+            super().__init__(field_name, internal=internal, predicate=predicate, sudo=sudo, value=value)
             assert (
                 not records_or_field_name
                 or isinstance(records_or_field_name, (str, models.Model))
@@ -463,6 +489,7 @@ class Store:
             as_thread=False,
             dynamic_fields=None,
             fields_params=None,
+            internal=False,
             only_data=False,
             predicate=None,
             sudo=False,
@@ -474,6 +501,7 @@ class Store:
                 as_thread=as_thread,
                 dynamic_fields=dynamic_fields,
                 fields_params=fields_params,
+                internal=internal,
                 only_data=only_data,
                 predicate=predicate,
                 sudo=sudo,
@@ -500,6 +528,7 @@ class Store:
             as_thread=False,
             dynamic_fields=None,
             fields_params=None,
+            internal=False,
             only_data=False,
             predicate=None,
             sort=None,
@@ -512,6 +541,7 @@ class Store:
                 as_thread=as_thread,
                 dynamic_fields=dynamic_fields,
                 fields_params=fields_params,
+                internal=internal,
                 only_data=only_data,
                 predicate=predicate,
                 sudo=sudo,
@@ -566,17 +596,20 @@ class Store:
     class FieldList(UserList):
         """Helper to provide short syntax for building a list of field definitions for a specific
         store.add call (with given records and target)."""
-        # records for which the field list will apply. Useful to pre-compute values in batch.
-        records = None
-        # Store.Target of the field list. Useful to adapt fields depending on the receivers.
-        target = None
 
-        def attr(self, field_name, value=NO_VALUE, *, predicate=None, sudo=False):
+        def __init__(self, records=None, target=None):
+            super().__init__()
+            # records for which the field list will apply. Useful to pre-compute values in batch.
+            self.records = records
+            # Store.Target of the field list. Useful to adapt fields depending on the receivers.
+            self.target = target
+
+        def attr(self, field_name, value=NO_VALUE, *, predicate=None, sudo=False, internal=False):
             """Add an attribute to the field list."""
-            if self.records is not None and value is NO_VALUE and predicate is None and not sudo:
+            if self.records is not None and value is NO_VALUE and predicate is None and not sudo and not internal:
                 self.append(field_name)
             else:
-                self.append(Store.Attr(field_name, value=value, predicate=predicate, sudo=sudo))
+                self.append(Store.Attr(field_name, value=value, predicate=predicate, sudo=sudo, internal=internal))
 
         def from_method(self, method_name, **fields_params):
             """Add fields coming from a method on the records to the field list."""
