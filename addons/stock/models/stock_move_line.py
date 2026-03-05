@@ -74,7 +74,7 @@ class StockMoveLine(models.Model):
     location_dest_usage = fields.Selection(string="Destination Location Type", related='location_dest_id.usage')
     lots_visible = fields.Boolean(compute='_compute_lots_visible')
     picking_partner_id = fields.Many2one(related='picking_id.partner_id', readonly=True)
-    move_partner_id = fields.Many2one(related='move_id.partner_id', readonly=True)
+    move_dest_partner_id = fields.Many2one(related='move_id.dest_partner_id', readonly=True)
     picking_code = fields.Selection(related='picking_type_id.code', readonly=True)
     picking_type_id = fields.Many2one(
         'stock.picking.type', 'Operation type', compute='_compute_picking_type_id', search='_search_picking_type_id')
@@ -339,7 +339,10 @@ class StockMoveLine(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('move_id'):
-                vals['company_id'] = self.env['stock.move'].browse(vals['move_id']).company_id.id
+                move = self.env['stock.move'].browse(vals['move_id'])
+                vals['company_id'] = move.company_id.id
+                if not vals.get('picking_id'):
+                    vals['picking_id'] = move.picking_id.id
             elif vals.get('picking_id'):
                 vals['company_id'] = self.env['stock.picking'].browse(vals['picking_id']).company_id.id
             if vals.get('move_id') and 'picked' not in vals:

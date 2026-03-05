@@ -91,10 +91,11 @@ class StockMove(models.Model):
     location_usage = fields.Selection(string="Source Location Type", related='location_id.usage')
     location_dest_usage = fields.Selection(string="Destination Location Type", related='location_dest_id.usage')
     partner_id = fields.Many2one(
-        'res.partner', 'Destination Address ',
-        help="Optional address where goods are to be delivered, specifically used for allotment",
-        compute='_compute_partner_id', store=True, readonly=False,
-        index='btree_not_null')
+        'res.partner', 'Contact on the picking form',
+        compute='_compute_partner_id',
+        help="The Delivery Address if the picking is a delivery and the Recieve From address if the picking is a receipt",
+        store=True, readonly=False, index='btree_not_null')
+    dest_partner_id = fields.Many2one('res.partner', 'The Customer', help="The customer in case of dropshipping")
     move_dest_ids = fields.Many2many(
         'stock.move', 'stock_move_move_rel', 'move_orig_id', 'move_dest_id', 'Destination Moves',
         copy=False,
@@ -1391,7 +1392,7 @@ Please change the quantity done or the rounding precision in your settings.""",
             ('picking_type_id', '=', self.picking_type_id.id),
             ('printed', '=', False),
             ('state', 'in', ['draft', 'confirmed', 'waiting', 'partially_available', 'assigned'])]
-        if self.partner_id and not self.reference_ids:
+        if self.partner_id:
             domain += [('partner_id', '=', self.partner_id.id)]
         return domain
 

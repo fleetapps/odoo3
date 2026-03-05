@@ -190,7 +190,7 @@ class TestDropship(common.TransactionCase):
 
         # Check the partner of the related picking and move
         self.assertEqual(sale_order.picking_ids.partner_id, supplier_dropship)
-        self.assertEqual(sale_order.picking_ids.move_ids.partner_id, customer)
+        self.assertEqual(sale_order.picking_ids.move_ids.dest_partner_id, customer)
 
     def test_dropshipped_lot_last_delivery(self):
         """ Check if the partner_id of a `stock.lot` is computed correctly
@@ -356,7 +356,7 @@ class TestDropship(common.TransactionCase):
         dropship = po.picking_ids
         self.assertTrue(dropship.is_dropship)
         self.assertRecordValues(dropship.move_ids, [
-            {'product_id': self.dropship_product.id, 'partner_id': delivery_addr.id},
+            {'product_id': self.dropship_product.id, 'dest_partner_id': delivery_addr.id},
         ])
 
         dropship.move_ids.quantity = 1
