@@ -147,6 +147,10 @@ export class MessagingMenu extends Component {
         return this.notificationList.el?.children ?? [];
     }
 
+    get emptyConversationPlaceholder() {
+        return _t("This is the start of your conversation");
+    }
+
     get threads() {
         return this.store.menuThreads;
     }
