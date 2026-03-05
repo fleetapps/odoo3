@@ -12,6 +12,7 @@ export class ProductMatrixDialog extends Component {
         editedCellAttributes: { type: String },
         product_template_id: { type: Number },
         record: { type: Object },
+        dialogTitle: { type: String }, 
         close: { type: Function },
     };
     static components = { Dialog };
