@@ -364,6 +364,10 @@ class WebsiteSale(payment_portal.PaymentPortal):
                 company_currency, website.currency_id, request.website.company_id, fields.Date.today())
         else:
             conversion_rate = 1
+        is_tax_included_price_filter = (
+            filter_by_price_enabled
+            and website.show_line_subtotals_tax_selection == 'tax_included'
+        )
 
         if search:
             post['search'] = search
@@ -371,8 +375,8 @@ class WebsiteSale(payment_portal.PaymentPortal):
         options = self._get_search_options(
             category=category,
             attribute_value_dict=attribute_value_dict,
-            min_price=min_price,
-            max_price=max_price,
+            min_price=min_price if not is_tax_included_price_filter else 0.0,
+            max_price=max_price if not is_tax_included_price_filter else 0.0,
             conversion_rate=conversion_rate,
             display_currency=website.currency_id,
             extra_domain=Domain.OR([
@@ -389,34 +393,58 @@ class WebsiteSale(payment_portal.PaymentPortal):
 
         filter_by_price_enabled = website.is_view_active('website_sale.filter_products_price')
         if filter_by_price_enabled:
-            # TODO Find an alternative way to obtain the domain through the search metadata.
-            Product = request.env['product.template'].with_context(bin_size=True)
-            search_term = fuzzy_search_term if fuzzy_search_term else search
-            domain = self._get_shop_domain(search_term, category, attribute_value_dict)
+            if is_tax_included_price_filter:
+                search_product_prices = {
+                    product_id: product_prices['price_reduce']
+                    for product_id, product_prices in search_product._get_sales_prices(website).items()
+                }
+                available_min_price = min(search_product_prices.values(), default=0.0)
+                available_max_price = max(search_product_prices.values(), default=0.0)
 
-            # This is ~4 times more efficient than a search for the cheapest and most expensive products
-            query = Product._search(domain)
-            sql = query.select(
-                SQL(
-                    "COALESCE(MIN(list_price), 0) * %(conversion_rate)s, COALESCE(MAX(list_price), 0) * %(conversion_rate)s",
-                    conversion_rate=conversion_rate,
+                if min_price or max_price:
+                    if min_price:
+                        min_price = min_price if min_price <= available_max_price else available_min_price
+                        post['min_price'] = min_price
+                    if max_price:
+                        max_price = max_price if max_price >= available_min_price else available_max_price
+                        post['max_price'] = max_price
+
+                    search_product = search_product.filtered(
+                        lambda product: (
+                            (not min_price or search_product_prices.get(product.id, 0.0) >= min_price)
+                            and (not max_price or search_product_prices.get(product.id, 0.0) <= max_price)
+                        )
+                    )
+                    product_count = len(search_product)
+            else:
+                # TODO Find an alternative way to obtain the domain through the search metadata.
+                Product = request.env['product.template'].with_context(bin_size=True)
+                search_term = fuzzy_search_term if fuzzy_search_term else search
+                domain = self._get_shop_domain(search_term, category, attribute_value_dict)
+
+                # This is ~4 times more efficient than a search for the cheapest and most expensive products
+                query = Product._search(domain)
+                sql = query.select(
+                    SQL(
+                        "COALESCE(MIN(list_price), 0) * %(conversion_rate)s, COALESCE(MAX(list_price), 0) * %(conversion_rate)s",
+                        conversion_rate=conversion_rate,
+                    )
                 )
-            )
-            available_min_price, available_max_price = request.env.execute_query(sql)[0]
+                available_min_price, available_max_price = request.env.execute_query(sql)[0]
 
-            if min_price or max_price:
-                # The if/else condition in the min_price / max_price value assignment
-                # tackles the case where we switch to a list of products with different
-                # available min / max prices than the ones set in the previous page.
-                # In order to have logical results and not yield empty product lists, the
-                # price filter is set to their respective available prices when the specified
-                # min exceeds the max, and / or the specified max is lower than the available min.
-                if min_price:
-                    min_price = min_price if min_price <= available_max_price else available_min_price
-                    post['min_price'] = min_price
-                if max_price:
-                    max_price = max_price if max_price >= available_min_price else available_max_price
-                    post['max_price'] = max_price
+                if min_price or max_price:
+                    # The if/else condition in the min_price / max_price value assignment
+                    # tackles the case where we switch to a list of products with different
+                    # available min / max prices than the ones set in the previous page.
+                    # In order to have logical results and not yield empty product lists, the
+                    # price filter is set to their respective available prices when the specified
+                    # min exceeds the max, and / or the specified max is lower than the available min.
+                    if min_price:
+                        min_price = min_price if min_price <= available_max_price else available_min_price
+                        post['min_price'] = min_price
+                    if max_price:
+                        max_price = max_price if max_price >= available_min_price else available_max_price
+                        post['max_price'] = max_price
 
         ProductTag = request.env['product.tag']
         if filter_by_tags_enabled and search_product:
