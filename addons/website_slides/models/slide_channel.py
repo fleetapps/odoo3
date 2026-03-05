@@ -487,6 +487,25 @@ class SlideChannel(models.Model):
             """ % {'table_name': self._table}
             self.env.cr.execute(query)
 
+    @api.model
+    def _populate_description_short(self, vals):
+        if self:
+            self.ensure_one()
+        if not vals.get('description'):
+            return
+        if isinstance(vals.get('description'), dict) or isinstance(vals.get('description_short'), dict):
+            lang = self.env.lang or 'en_US'
+            description = v if isinstance((v := vals.get('description')), dict) else {lang: v}
+            description_short = v if isinstance((v := vals.get('description_short')), dict) else {lang: v} if isinstance(v, str) else {}
+            for lang_, description_ in description.items():
+                record = self.with_context(lang=lang_)
+                if not is_html_empty(description_) and is_html_empty(description_short.get(lang_)) and record.description == record.description_short:
+                    description_short[lang_] = description_
+            vals['description_short'] = description_short or False
+        else:
+            if not is_html_empty(vals.get('description')) and is_html_empty(vals.get('description_short')):
+                vals['description_short'] = vals['description']
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -495,8 +514,7 @@ class SlideChannel(models.Model):
                 vals['channel_partner_ids'] = [(0, 0, {
                     'partner_id': self.env.user.partner_id.id
                 })]
-            if not is_html_empty(vals.get('description')) and is_html_empty(vals.get('description_short')):
-                vals['description_short'] = vals['description']
+            self.browse()._populate_description_short(vals)
 
         channels = super(SlideChannel, self.with_context(mail_create_nosubscribe=True)).create(vals_list)
 
@@ -520,21 +538,10 @@ class SlideChannel(models.Model):
 
     def write(self, vals):
         # If description_short wasn't manually modified, there is an implicit link between this field and description.
-        if not is_html_empty(vals.get('description')) and is_html_empty(vals.get('description_short')) and self.description == self.description_short:
-            vals['description_short'] = vals.get('description')
+        if vals.get('description'):
+            self._populate_description_short(vals)
 
-        res = super().write(vals)
-
-        if vals.get('user_id'):
-            self._action_add_members(self.env['res.users'].sudo().browse(vals['user_id']).partner_id)
-            self.activity_reschedule(
-                ['mail_activity_data_todo'],
-                new_user_id=vals.get('user_id'),
-            )
-        if 'enroll_group_ids' in vals:
-            self._add_groups_members()
-
-        return res
+        return super().write(vals)
 
     def unlink(self):
         """" Necessary override to avoid cache issues in the ORM.

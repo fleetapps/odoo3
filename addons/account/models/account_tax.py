@@ -635,8 +635,14 @@ class AccountTax(models.Model):
         sanitized = vals.copy()
 
         # Wrap plain text in <div> if description has no HTML tags to avoid the padding with automatically added <p>
-        if sanitized.get('description') and not re.search(r'<[^>]+>', sanitized['description']):
-            sanitized['description'] = f"<div>{sanitized['description']}</div>"
+        if (description := sanitized.get('description')):
+            if isinstance(description, dict):
+                for lang, value in description.items():
+                    if not re.search(r'<[^>]+>', value):
+                        description[lang] = f"<div>{value}</div>"
+            else:
+                if not re.search(r'<[^>]+>', description):
+                    sanitized['description'] = f"<div>{description}</div>"
 
         # Allow to provide invoice_repartition_line_ids and refund_repartition_line_ids by dispatching them
         # correctly in the repartition_line_ids

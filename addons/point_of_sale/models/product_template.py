@@ -51,8 +51,14 @@ class ProductTemplate(models.Model):
     def write(self, vals):
         # Clear empty public description content to avoid side-effects on product page
         # when there is no content to display anyway.
-        if vals.get('public_description') and is_html_empty(vals['public_description']):
-            vals['public_description'] = ''
+        if (public_description := vals.get('public_description')):
+            if isinstance(public_description, dict):
+                for lang, value in public_description.items():
+                    if is_html_empty(value):
+                        public_description[lang] = ''
+            else:
+                if is_html_empty(public_description):
+                    vals['public_description'] = ''
         return super().write(vals)
 
     @api.depends('pos_categ_ids')

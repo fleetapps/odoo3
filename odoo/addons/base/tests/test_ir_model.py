@@ -9,7 +9,6 @@ from odoo.tests import Form, TransactionCase, HttpCase, tagged
 from odoo.tools import mute_logger
 from odoo import Command
 
-
 @tagged('at_install', '-post_install')  # LEGACY at_install
 class TestXMLID(TransactionCase):
     def get_data(self, xml_id):
