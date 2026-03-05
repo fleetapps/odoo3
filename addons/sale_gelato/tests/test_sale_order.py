@@ -1,29 +1,17 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from unittest.mock import patch
 
-from odoo import Command
 from odoo.exceptions import ValidationError
 from odoo.tests import tagged
 
-from odoo.addons.sale.tests.common import SaleCommon
+from odoo.addons.sale_gelato.tests.common import GelatoCommon
 
 
 @tagged('post_install', '-at_install')
-class TestGelatoSaleOrder(SaleCommon):
+class TestGelatoSaleOrder(GelatoCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.gelato_product = cls.env['product.product'].create({
-            'name': 'Test Gelato Product',
-            'gelato_product_uid': 'dummy_uid',
-        })
-        cls.gelato_order = cls.env['sale.order'].create({
-            'partner_id': cls.partner.id,
-            'order_line': [
-                Command.create({'product_id': cls.gelato_product.id, 'product_uom_qty': 1})
-            ],
-        })
 
     def test_allow_adding_generic_service_product_to_gelato_order(self):
         """Test that adding a non-gelato, service product to a Gelato order is allowed."""

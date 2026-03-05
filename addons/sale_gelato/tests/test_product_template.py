@@ -2,11 +2,11 @@
 
 from odoo.tests import tagged
 
-from odoo.addons.sale.tests.common import SaleCommon
+from odoo.addons.sale_gelato.tests.common import GelatoCommon
 
 
 @tagged('post_install', '-at_install')
-class TestGelatoProductTemplate(SaleCommon):
+class TestGelatoProductTemplate(GelatoCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -14,25 +14,6 @@ class TestGelatoProductTemplate(SaleCommon):
         cls.env['product.attribute'].search([('name', 'in', ['Color', 'Size'])]).active = False
         cls.env['product.attribute.value'].search([]).active = False
 
-        cls.gelato_template = cls.env['product.template'].create({
-            'name': 'Gelato Product Template'
-        })
-
-        cls.template_data_one_variant = {
-            'id': 'c12a363e-0d4e-4d96-be4b-bf4138eb8743',
-            'title': 'Classic Unisex Crewneck T-shirt',
-            'description': 'Some test description',
-            'variants': [
-                {
-                    'productUid': 'm_orange_tshirt_uid',
-                    'variantOptions': [
-                        {'name': 'Size', 'value': 'M'},
-                        {'name': 'Color', 'value': 'Orange'},
-                    ],
-                    'imagePlaceholders': [{'printArea': 'front'}, {'printArea': 'back'}],
-                }
-            ],
-        }
         cls.template_data_two_variants = dict(
             cls.template_data_one_variant,
             variants=[
