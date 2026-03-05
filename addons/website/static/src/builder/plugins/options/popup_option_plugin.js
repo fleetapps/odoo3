@@ -4,15 +4,52 @@ import { registry } from "@web/core/registry";
 import { withSequence } from "@html_editor/utils/resource";
 import { BuilderAction } from "@html_builder/core/builder_action";
 import { BaseOptionComponent } from "@html_builder/core/utils";
+import { _t } from "@web/core/l10n/translation";
+
+/** @typedef {import("plugins").LazyTranslatedString} LazyTranslatedString */
+
+/**
+ * @typedef {{
+ *      value: string;
+ *      label: LazyTranslatedString;
+ *      pageSelector: string | null;
+ * }} popup_show_on_options
+ *
+ * Register "Show on" options for the popup snippet.
+ * `value` is the internal identifier used in `data-show-on` attribute.
+ * `label` is the human-readable label shown in the dropdown.
+ * `pageSelector` is a CSS selector matched against the current page at
+ * runtime to decide whether to show the popup. Use `null` for options
+ * that should show on all pages (e.g. "All pages", "This page").
+ *
+ * Example:
+ *
+ *      resources: {
+ *          popup_show_on_options: withSequence(30, {
+ *              value: "allProducts",
+ *              label: _t("All Products"),
+ *              pageSelector: ".o_wsale_product_page",
+ *          }),
+ *      };
+ */
 
 export const POPUP = SNIPPET_SPECIFIC;
 export const COOKIES_BAR = SNIPPET_SPECIFIC_END;
+
+const SHARED_BLOCKS_SELECTOR = "#o_shared_blocks";
+const SHOW_ON_CURRENT_PAGE = "currentPage";
+const SHOW_ON_ALL_PAGES = "allPages";
 
 export class PopupOption extends BaseOptionComponent {
     static template = "website.PopupOption";
     static selector = ".s_popup";
     static exclude = "#website_cookies_bar";
     static applyTo = ".modal";
+
+    setup() {
+        super.setup();
+        this.showOnOptions = this.getResource("popup_show_on_options");
+    }
 }
 
 export class PopupCookiesOption extends BaseOptionComponent {
@@ -70,6 +107,18 @@ class PopupOptionPlugin extends Plugin {
         on_will_remove_handlers: this.onWillRemove.bind(this),
         no_parent_containers: ".s_popup",
         popup_container_selectors: withSequence(10, "main .oe_structure.o_savable"),
+        popup_show_on_options: [
+            withSequence(10, {
+                value: SHOW_ON_CURRENT_PAGE,
+                label: _t("This page"),
+                pageSelector: null,
+            }),
+            withSequence(20, {
+                value: SHOW_ON_ALL_PAGES,
+                label: _t("All pages"),
+                pageSelector: null,
+            }),
+        ],
     };
 
     onCloned({ cloneEl }) {
@@ -81,6 +130,7 @@ class PopupOptionPlugin extends Plugin {
     onSnippetDropped({ snippetEl }) {
         if (snippetEl.matches(".s_popup")) {
             this.relocatePopup(snippetEl);
+            snippetEl.dataset.showOn = SHOW_ON_CURRENT_PAGE;
             this.assignUniqueID(snippetEl);
             this.dependencies.history.addCustomMutation({
                 apply: () => {
@@ -117,7 +167,7 @@ class PopupOptionPlugin extends Plugin {
 
     relocatePopup(editingElement) {
         const popupEl = editingElement.closest(".s_popup");
-        if (popupEl.closest("#o_shared_blocks")) {
+        if (popupEl.closest(SHARED_BLOCKS_SELECTOR)) {
             return;
         }
         const containerEl = getPopupContainerFromSelectors(
@@ -136,21 +186,41 @@ class PopupOptionPlugin extends Plugin {
 export class MoveBlockAction extends BuilderAction {
     static id = "moveBlock";
     isApplied({ editingElement, value }) {
-        return editingElement.closest("#o_shared_blocks")
-            ? value === "allPages"
-            : value === "currentPage";
+        const popupEl = editingElement.closest(".s_popup");
+        const showOn = popupEl?.dataset.showOn;
+        if (showOn) {
+            return showOn === value;
+        }
+        // Backward compat: no data-show-on attr yet, infer from DOM location.
+        return popupEl?.closest(SHARED_BLOCKS_SELECTOR)
+            ? value === SHOW_ON_ALL_PAGES
+            : value === SHOW_ON_CURRENT_PAGE;
     }
     apply({ editingElement, value }) {
         const popupEl = editingElement.closest(".s_popup");
-        const whereEl =
-            value === "allPages"
-                ? this.editable.querySelector("#o_shared_blocks")
-                : getPopupContainerFromSelectors(
-                      this.editable,
-                      this.getResource("popup_container_selectors")
-                  );
-        if (whereEl) {
-            whereEl.insertAdjacentElement("afterbegin", popupEl);
+        popupEl.dataset.showOn = value;
+        if (value === SHOW_ON_CURRENT_PAGE) {
+            const whereEl = getPopupContainerFromSelectors(
+                this.editable,
+                this.getResource("popup_container_selectors")
+            );
+            if (whereEl) {
+                whereEl.insertAdjacentElement("afterbegin", popupEl);
+            }
+        } else {
+            const sharedBlocksEl = this.editable.querySelector(SHARED_BLOCKS_SELECTOR);
+            if (sharedBlocksEl) {
+                sharedBlocksEl.insertAdjacentElement("afterbegin", popupEl);
+            }
+        }
+        // Set or clear the page-type filter selector. The resource entry for
+        // "currentPage" and "allPages" declares pageSelector: null, so both
+        // are handled uniformly here — no special-casing per value needed.
+        const option = this.getResource("popup_show_on_options").find((opt) => opt.value === value);
+        if (option?.pageSelector) {
+            popupEl.dataset.showOnSelector = option.pageSelector;
+        } else {
+            delete popupEl.dataset.showOnSelector;
         }
     }
 }

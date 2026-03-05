@@ -94,7 +94,15 @@ export class Popup extends Interaction {
     }
 
     canShowPopup() {
-        return true;
+        const selector = this.el.dataset.showOnSelector;
+        if (!selector) {
+            // No selector = allPages, currentPage, or old popup without attrs. Always show.
+            return true;
+        }
+        // If selector matches current page DOM, show the popup. Otherwise don't.
+        // If the module that registered this selector is uninstalled, its page
+        // templates are gone so the selector never matches — popup stays hidden.
+        return !!this.el.ownerDocument.querySelector(selector);
     }
 
     hidePopup() {
