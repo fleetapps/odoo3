@@ -12,7 +12,7 @@
         inherit_id="website_sale.total"
         name="Loyalty, coupon, gift card"
     >
-        <xpath expr="//div[contains(@t-attf-class, 'o_cart_total')]//table/tr[last()]" position="after">
+        <xpath expr="//div['o_order_total']" position="after">
             <tr t-if="not hide_promotions" class="oe_website_sale_gift_card">
                 <td colspan="3" class="text-center text-xl-end border-0 p-0">
                     <span class=''>
