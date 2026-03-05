@@ -34,53 +34,27 @@
                         t-att-placeholder="partnerIsSelected ? '*************' : 'Email'"
                         t-custom-model="state.email"
                         t-att-disabled="partnerIsSelected" />
-                    <t t-if="preset.needsName || preset.needsPartner">
-                        <input type="text"
-                            class="form-control form-control-lg"
-                            t-att-placeholder="partnerIsSelected ? '*************' : 'Phone'"
-                            t-custom-model="state.phone"
-                            t-att-disabled="partnerIsSelected"/>
-                        <p t-if="!checkPhoneFormat()" class="text-danger">Enter a valid phone number starting with the country code (e.g. +32)</p>
-                    </t>
+                    <input t-if="preset.needsName || preset.needsPartner"
+                        type="text"
+                        class="form-control form-control-lg"
+                        placeholder="Phone"
+                        t-model="state.phone"
+                        t-att-disabled="partnerIsSelected"/>
+                    <p t-if="!checkPhoneFormat()" class="text-danger">Enter a valid phone number starting with the country code (e.g. +32)</p>
                     <t t-if="preset.needsPartner">
-                        <select class="partner-select form-select form-select-lg" t-custom-model="state.countryId" t-att-disabled="partnerIsSelected">
-                            <option value="">
-                                <t t-if="partnerIsSelected">*************</t>
-                                <t t-else="">Select a country</t>
-                            </option>
-                            <t t-foreach="this.countries" t-as="country" t-key="country.id">
-                                <option t-att-value="country.id" t-out="country.name" />
-                            </t>
-                        </select>
-                        <div class="d-flex gap-3">
-                            <input type="text"
-                                class="form-control form-control-lg w-75"
-                                t-att-placeholder="partnerIsSelected ? '*************' : 'Street and Number'"
-                                t-custom-model="state.street"
-                                t-att-disabled="partnerIsSelected"/>
-                            <input
-                                type="text"
-                                class="form-control form-control-lg w-25"
-                                t-att-placeholder="partnerIsSelected ? '*************' : 'Zip'"
-                                t-custom-model="state.zip"
-                                t-att-disabled="partnerIsSelected"/>
+                        <div t-if="state.validationError" class="alert alert-danger d-flex align-items-center justify-content-between">
+                            <span t-esc="state.validationError.message" />
+                            <button
+                                t-if="state.validationError.type === 'delivery' and takeoutPreset"
+                                type="button"
+                                class="btn btn-light btn-sm"
+                                t-on-click="selectTakeoutPreset"
+                            >
+                                Takeout
+                            </button>
                         </div>
-                        <div class="d-flex gap-3">
-                            <t t-set="availableState" t-value="this.states" />
-                            <select t-if="availableState.length" class="partner-select form-select form-select-lg" t-custom-model="state.stateId" t-att-disabled="partnerIsSelected">
-                                <option value="">
-                                    <t t-if="partnerIsSelected">*************</t>
-                                    <t t-else="">Select a state</t>
-                                </option>
-                                <t t-foreach="availableState" t-as="state" t-key="state.id">
-                                    <option t-att-value="state.id" t-out="state.name" />
-                                </t>
-                            </select>
-                            <input type="text"
-                                class="form-control form-control-lg"
-                                t-att-placeholder="partnerIsSelected ? '*************' : 'City'"
-                                t-custom-model="state.city"
-                                t-att-disabled="partnerIsSelected"/>
+                        <div t-att-class="state.validationError?.type === 'delivery' ? 'border border-danger rounded p-2' : ''">
+                            <AddressAutoComplete t-props="addressAutoCompleteProps" />
                         </div>
                     </t>
                 </div>
@@ -91,8 +65,14 @@
                     </button>
                     <button class="btn btn-primary flex-grow-1 ms-1"
                         t-on-click="setInformations"
-                        t-att-disabled="!this.validSelection">
-                        Continue
+                        t-att-disabled="!this.validSelection || state.isSubmitting">
+                        <t t-if="state.isSubmitting">
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                            Validating...
+                        </t>
+                        <t t-elif="this.validSelection">
+                            Continue
+                        </t>
                     </button>
                 </div>
             </div>
