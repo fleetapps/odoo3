@@ -26,6 +26,9 @@
                                                     t-att-checked="item[entry[0]]"
                                                     t-att-data-id="item._id"
                                                     t-on-click="onChange"
+                                                    t-att-disabled="props.disableLastActiveCheckbox and item[entry[0]] and items.filter(i => i[entry[0]]).length === 1"
+                                                    t-on-pointerenter="onPointerEnter"
+                                                    t-on-pointerleave="onPointerLeave"
                                                 />
                                             </div>
                                         </t>
