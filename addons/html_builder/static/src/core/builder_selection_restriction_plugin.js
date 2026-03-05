@@ -161,8 +161,23 @@ export class BuilderSelectionRestrictionPlugin extends Plugin {
         if (this.restrictedToPSelectors) {
             const closestPRestrictedEl = closestElement(anchorNode, this.restrictedToPSelectors);
             if (closestPRestrictedEl && !closestPRestrictedEl.contains(closestDivEl)) {
+                const closestPEl = closestElement(anchorNode, "p");
+                if (!closestPEl) {
+                    console.warn(
+                        "The anchordeNode of the selection is not inside a <p> element, the selection restriction plugin might not work properly",
+                        anchorNode
+                    );
+                    return closestElement(anchorNode);
+                }
                 return closestElement(anchorNode, "p");
             }
+        }
+        if (!closestDivEl) {
+            console.warn(
+                "The anchordeNode of the selection is not inside a <div> element, the selection restriction plugin might not work properly",
+                anchorNode
+            );
+            return closestElement(anchorNode);
         }
         return closestDivEl;
     }
