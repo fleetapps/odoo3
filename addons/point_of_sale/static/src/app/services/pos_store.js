@@ -36,6 +36,7 @@ import DevicesSynchronisation from "../utils/devices_synchronisation";
 import { formatDate, deserializeDateTime } from "@web/core/l10n/dates";
 import { ProductInfoPopup } from "@point_of_sale/app/components/popups/product_info_popup/product_info_popup";
 import { PresetSlotsPopup } from "@point_of_sale/app/components/popups/preset_slots_popup/preset_slots_popup";
+import { SelectDefaultPrinterPopup } from "@point_of_sale/app/components/popups/select_default_printer_popup/select_default_printer_popup";
 import { DebugWidget } from "../utils/debug/debug_widget";
 import OrderPaymentValidation from "../utils/order_payment_validation";
 import { logPosMessage } from "../utils/pretty_console_log";
@@ -44,6 +45,7 @@ import { accountTaxHelpers } from "@account/helpers/account_tax";
 import { SnoozedProductTracker } from "@point_of_sale/app/models/utils/snooze_tracker";
 
 const { DateTime } = luxon;
+const DEFAULT_PRINTER_STORAGE_KEY = "pos.default_printer_id";
 export const CONSOLE_COLOR = "#F5B427";
 
 export class PosStore extends WithLazyGetterTrap {
@@ -163,6 +165,7 @@ export class PosStore extends WithLazyGetterTrap {
         });
 
         this.handleQRPaymentLines();
+        this.initActivePrinter();
     }
 
     handleQRPaymentLines() {
@@ -243,6 +246,24 @@ export class PosStore extends WithLazyGetterTrap {
 
         this.router.navigate(routeName, routeParams);
         return true;
+    }
+
+    initActivePrinter() {
+        // If a default printer is set.
+        const storedPrinterId = Number(
+            localStorage.getItem(DEFAULT_PRINTER_STORAGE_KEY + this.config.id)
+        );
+        if (storedPrinterId) {
+            const relPrinter = Array.from(this.ticketPrinter.printers).find(
+                (d) => d.id === storedPrinterId
+            );
+            if (relPrinter) {
+                this.ticketPrinter.activePrinter = relPrinter;
+                return;
+            }
+        } else if (["ProductScreen", "FloorScreen"].includes(this.router.state.current)) {
+            this.selectPrinter();
+        }
     }
 
     navigateToFirstPage() {
@@ -493,8 +514,41 @@ export class PosStore extends WithLazyGetterTrap {
         this.openCashbox(_t("Cash in / out"));
         return makeAwaitable(this.dialog, CashMovePopup);
     }
+    async selectPrinter({ force = false } = {}) {
+        const receiptPrinters = this.ticketPrinter.receiptPrinters;
+        const printer_id = Number(
+            localStorage.getItem(DEFAULT_PRINTER_STORAGE_KEY + this.config.id)
+        );
+        if (!force && (printer_id || !receiptPrinters.length)) {
+            return;
+        }
+        if (receiptPrinters.length == 1) {
+            this.ticketPrinter.activePrinter = Array.from(receiptPrinters)[0];
+            return;
+        }
+        const defaultPrinter = await makeAwaitable(this.dialog, SelectDefaultPrinterPopup, {
+            receipt_printers: Array.from(receiptPrinters),
+            selectedId: printer_id,
+        });
+        if (defaultPrinter) {
+            const relPrinter = Array.from(receiptPrinters).find(
+                (printer) => printer.id === parseInt(defaultPrinter)
+            );
+            localStorage.setItem(
+                DEFAULT_PRINTER_STORAGE_KEY + this.config.id,
+                String(relPrinter.id)
+            );
+            this.ticketPrinter.activePrinter = relPrinter;
+        }
+    }
+    get canOpenCashdrawer() {
+        return (
+            this.config.receipt_printer_ids.length &&
+            this.ticketPrinter?.activePrinter?.iface_cashdrawer
+        );
+    }
     async openCashbox(action = undefined) {
-        if (this.config.iface_cashdrawer) {
+        if (this.canOpenCashdrawer) {
             await this.ticketPrinter.openCashbox();
 
             if (action) {

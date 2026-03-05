@@ -129,7 +129,8 @@ export class FeedbackScreen extends Component {
         return true;
     }
 
-    clickPrint() {
+    async clickPrint() {
+        await this.pos.selectPrinter();
         this.stopAutomaticSkip();
         this.dialog.add(PrintPopup, {
             order: this.currentOrder,

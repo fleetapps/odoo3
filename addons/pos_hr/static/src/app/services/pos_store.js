@@ -73,6 +73,7 @@ patch(PosStore.prototype, {
             if (!this.cashierHasPriceControlRights() && this.numpadMode === "price") {
                 this.numpadMode = "quantity";
             }
+            this.selectPrinter();
         }
     },
     addLineToCurrentOrder(vals, opt = {}, configure = true) {
