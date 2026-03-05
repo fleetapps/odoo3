@@ -15,6 +15,7 @@ const patchStep = {
         const uploadService = odoo.__WOWL_DEBUG__.root.env.services.uploadLocalFiles;
         unpatch = patch(uploadService, {
             async upload() {
+                // hard-coded id
                 return [{ id: 1, name: "file.txt", public: true, checksum: "123" }];
             },
         });

@@ -78,7 +78,7 @@ registry.category("web_tour.tours").add("invoicePoSOrderWithSelfInvocing", {
                 if (Array.from(countrySelect.classList).includes("d-none")) {
                     throw new Error("The language selector must not be hidden.");
                 }
-                countrySelect.value = "233";
+                countrySelect.value = "233"; // hard-coded id
             },
         },
         {
@@ -88,7 +88,7 @@ registry.category("web_tour.tours").add("invoicePoSOrderWithSelfInvocing", {
                 if (Array.from(stateSelect.classList).includes("d-none")) {
                     throw new Error("The language selector must not be hidden.");
                 }
-                stateSelect.value = "19";
+                stateSelect.value = "19"; // hard-coded id
             },
         },
         {
