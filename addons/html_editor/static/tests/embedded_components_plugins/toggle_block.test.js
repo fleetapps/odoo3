@@ -1121,4 +1121,14 @@ describe("create with powerbox", () => {
             "[data-embedded='toggleBlock'] [data-embedded-editable='title']:contains('abc')"
         ).toHaveCount(1);
     });
+    test("title element should be same as current block if current block is heading", async () => {
+        const { editor } = await setupEditor(`<h1>abc[]</h1>`, {
+            config: getConfig([toggleBlockEmbedding]),
+        });
+        await insertText(editor, "/toggle");
+        await press("Enter");
+        expect("[data-embedded='toggleBlock'] [data-embedded-editable='title']").toHaveInnerHTML(
+            "<h1>abc</h1>"
+        );
+    });
 });
