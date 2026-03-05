@@ -216,8 +216,13 @@ class ResGroups(models.Model):
 
     def write(self, vals):
         if 'name' in vals:
-            if vals['name'].startswith('-'):
-                raise UserError(self.env._('The name of the group can not start with "-"'))
+            val_name = vals['name']
+            if isinstance(val_name, str):
+                if val_name.startswith('-'):
+                    raise UserError(self.env._('The name of the group can not start with "-"'))
+            elif isinstance(val_name, dict):
+                if any(v.startswith('-') for v in val_name.values()):
+                    raise UserError(self.env._('The name of the group can not start with "-"'))
 
         # invalidate caches before updating groups, since the recomputation of
         # field 'share' depends on method has_group()

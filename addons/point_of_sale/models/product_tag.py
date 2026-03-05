@@ -20,6 +20,12 @@ class ProductTag(models.Model):
             record.has_image = bool(record.image)
 
     def write(self, vals):
-        if vals.get('pos_description') and is_html_empty(vals['pos_description']):
-            vals['pos_description'] = ''
+        if (pos_description := vals.get('pos_description')):
+            if isinstance(pos_description, dict):
+                for lang, value in pos_description.items():
+                    if is_html_empty(value):
+                        pos_description[lang] = ''
+            else:
+                if is_html_empty(pos_description):
+                    vals['pos_description'] = ''
         return super().write(vals)
