@@ -31,7 +31,7 @@ class PopupOptionPlugin extends Plugin {
             withSequence(POPUP, PopupOption),
             withSequence(COOKIES_BAR, PopupCookiesOption),
         ],
-        dropzone_selector: {
+        dropzone_selectors: {
             selector: ".s_popup",
             exclude: "#website_cookies_bar",
             excludeAncestor: ".s_popup, .s_table_of_content, .s_tabs, .s_tabs_images",

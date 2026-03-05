@@ -13,7 +13,7 @@ export class CTABadgePlugin extends Plugin {
     static id = "mass_mailing.CTABadgePlugin";
     resources = {
         builder_options: [withSequence(BLOCK_ALIGN, MassMailingCTABadgeOption)],
-        so_content_addition_selector: [".s_cta_badge"],
+        so_content_addition_selectors: [".s_cta_badge"],
     };
 }
 

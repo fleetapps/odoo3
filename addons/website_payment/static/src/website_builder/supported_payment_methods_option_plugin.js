@@ -16,7 +16,7 @@ class SupportedPaymentMethodsOptionPlugin extends Plugin {
     static id = 'supportedPaymentMethodsOption';
     static dependencies = ['edit_interaction'];
     resources = {
-        so_content_addition_selector: ['.s_supported_payment_methods'],
+        so_content_addition_selectors: ['.s_supported_payment_methods'],
         builder_options: [
             withSequence(SNIPPET_SPECIFIC, SupportedPaymentMethodsOption),
         ],
