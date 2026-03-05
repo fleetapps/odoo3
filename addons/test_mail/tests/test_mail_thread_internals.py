@@ -195,6 +195,39 @@ class TestAPI(ThreadRecipients):
         self.assertEqual(message.body, Markup('<p>Hello &lt;R&amp;D/&gt;<span class="o-mail-Message-edited"></span></p>'))
 
     @users('employee')
+    def test_find_localpart_aliases_vs_allowed_catchall_domain(self):
+        """ Test that _find_aliases correctly filters based on allowed catchall domains when using an alias
+        configured for local part detection AND designating a allowed domains for localpart detection. """
+
+        # General setup
+        local_part_alias = self.test_aliases.filtered(lambda x: x.alias_incoming_local)[0]
+        emails_to_check = [
+            local_part_alias.alias_full_name,  # Match when no ICP OR Match (with ICP): allowed domain
+            f'{local_part_alias.alias_name}@random.com',  # Match when no ICP OR Match (with ICP): 2nd allowed domain
+            f'{local_part_alias.alias_name}@otherrandom.com',  # Match when no ICP OR No Match (with ICP): not in allowed list
+            f'otherrandomlocalpart@{local_part_alias.alias_domain}',  # Never Matches: local part doesn't exist
+        ]
+
+        # Scenario 1: no system parameter set for 'mail.catchall.domain.allowed'
+        found_no_sys_parameter = self.env['mail.alias.domain']._find_aliases(emails_to_check)
+
+        self.assertEqual(len(found_no_sys_parameter), 3,
+                              "Should only find 3 valid internal aliases when no allowed domains")
+        self.assertListEqual(emails_to_check[:3], found_no_sys_parameter)
+
+        # Scenario 2: Set the system parameter for allowed domains
+        self.env['ir.config_parameter'].sudo().set_param(
+            'mail.catchall.domain.allowed',
+            f'{local_part_alias.alias_domain},random.com'
+        )
+
+        found_with_sys_parameter = self.env['mail.alias.domain']._find_aliases(emails_to_check)
+
+        self.assertEqual(len(found_with_sys_parameter), 2,
+                          "Should only find 2 valid internal aliases when filtering")
+        self.assertListEqual(emails_to_check[:2], found_with_sys_parameter)
+
+    @users('employee')
     def test_mail_partner_find_from_emails(self):
         """ Test '_partner_find_from_emails'. Multi mode is mainly targeting
         finding or creating partners based on record information or message
