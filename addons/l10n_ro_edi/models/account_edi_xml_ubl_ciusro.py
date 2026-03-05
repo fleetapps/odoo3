@@ -70,7 +70,9 @@ class AccountEdiXmlUBLRO(models.AbstractModel):
                     vals.update({'company_id': partner.company_registry, 'tax_scheme_vals': {'id': tax_scheme_id}})
             elif role == 'customer':
                 for vals in vals_list:
-                    vals.update({'company_id': DEFAULT_VAT, 'tax_scheme_vals': {'id': 'NOT_EU_VAT'}})
+                    company_id = partner.company_registry or DEFAULT_VAT
+                    tax_scheme_id = 'VAT' if company_id[:2].isalpha() else 'NOT_EU_VAT'
+                    vals.update({'company_id': company_id, 'tax_scheme_vals': {'id': tax_scheme_id}})
 
         return vals_list
 
@@ -90,7 +92,7 @@ class AccountEdiXmlUBLRO(models.AbstractModel):
             for legal_entity_vals in vals['vals'][f'accounting_{role}_party_vals']['party_vals']['party_legal_entity_vals']:
                 partner = legal_entity_vals['commercial_partner']
                 if not _has_vat(partner.vat):
-                    legal_entity_vals['company_id'] = partner.company_registry if role == 'supplier' else DEFAULT_VAT
+                    legal_entity_vals['company_id'] = partner.company_registry if role == 'supplier' else (partner.company_registry or DEFAULT_VAT)
 
         return vals
 
@@ -220,8 +222,7 @@ class AccountEdiXmlUBLRO(models.AbstractModel):
         company_id = None
 
         if not _has_vat(commercial_partner.vat):
-            if commercial_partner.company_registry:
-                company_id = DEFAULT_VAT
+            company_id = commercial_partner.company_registry or DEFAULT_VAT
         else:
             company_id = commercial_partner.vat
 
@@ -242,7 +243,7 @@ class AccountEdiXmlUBLRO(models.AbstractModel):
             vals['party_node']['cac:PartyLegalEntity'] = [{
                 'cbc:RegistrationName': {'_text': commercial_partner.name},
                 'cbc:CompanyID': {
-                    '_text': DEFAULT_VAT,
+                    '_text': commercial_partner.company_registry or DEFAULT_VAT,
                     'schemeID': None,
                 },
             }]
