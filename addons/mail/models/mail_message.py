@@ -775,7 +775,14 @@ class MailMessage(models.Model):
 
         for message, values, tracking_values_cmd in zip(messages, vals_list, tracking_values_list):
             if tracking_values_cmd:
-                vals_lst = [dict(cmd[2], mail_message_id=message.id) for cmd in tracking_values_cmd if len(cmd) == 3 and cmd[0] == 0]
+                vals_lst = []
+                for cmd in tracking_values_cmd:
+                    if len(cmd) == 3 and cmd[0] == 0:
+                        track_values = dict(cmd[2])
+                        for key in (k for k in ('field_name', 'field_type', 'new_value', 'old_value') if k in cmd[2]):
+                            track_values.pop(key)
+                        track_values['mail_message_id'] = message.id
+                        vals_lst.append(track_values)
                 other_cmd = [cmd for cmd in tracking_values_cmd if len(cmd) != 3 or cmd[0] != 0]
                 if vals_lst:
                     self.env['mail.tracking.value'].sudo().create(vals_lst)

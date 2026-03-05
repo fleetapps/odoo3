@@ -269,7 +269,17 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         move = self.create_move(self.invalid_partner)
         self.invalid_partner.invoice_edi_format = 'ubl_bis3'
         move.action_post()
-        wizard = self.create_send_and_print(move, default=True)
+
+        with self.mock_mail_gateway(), self.mock_mail_app():
+            wizard = self.create_send_and_print(move, default=True)
+            self.flush_tracking()
+        # check manual tracking
+        peppol_track_msg = self._new_msgs
+        self.assertEqual(len(peppol_track_msg), 1)
+        self.assertMessageFields(peppol_track_msg, {
+            'body': '',
+            'tracking_values': [('peppol_verification_state', 'selection', 'Unchecked', 'Partner is not on Peppol')],
+        })
 
         self.assertEqual(wizard.invoice_edi_format, 'ubl_bis3')
         self.assertEqual(self.invalid_partner.peppol_verification_state, 'not_valid')  # not on peppol at all
