@@ -142,6 +142,31 @@ export class SelfOrder extends Reactive {
                     this.paymentError = true;
                 }
             });
+
+            this.data.connectWebSocket("FINALIZE_KIOSK_PAYMENT", ({ status, order_id, error }) => {
+                if (!this.currentOrder || this.currentOrder.id !== order_id) {
+                    return;
+                }
+
+                const payment = this.currentOrder.payment_ids.at(-1);
+                if (status === "success" && payment) {
+                    payment.payment_status = "done";
+                    rpc(`/kiosk/payment/${this.config.id}/kiosk`, {
+                        order: this.currentOrder.serializeForORM(),
+                        access_token: this.access_token,
+                        payment_method_id: payment.payment_method_id.id,
+                    });
+                } else {
+                    for (const payment of this.currentOrder.payment_ids) {
+                        this.currentOrder.removePaymentline(payment);
+                    }
+                    this.paymentError = true;
+                    this.notification.add(_t("Please try again or select another payment method"), {
+                        title: error || _t("Payment failed"),
+                        type: "danger",
+                    });
+                }
+            });
         }
         this.data.connectWebSocket("REMOVE_ORDERS", (data) => {
             this.removeOrdersByAccessTokens(data.deleted_order_tokens);
@@ -489,9 +514,7 @@ export class SelfOrder extends Reactive {
             const PaymentInterface = registry
                 .category("pos_payment_providers")
                 .get(pm.payment_provider, null);
-            if (PaymentInterface) {
-                pm.payment_interface = new PaymentInterface(this, pm);
-            }
+            pm.payment_interface = PaymentInterface ? new PaymentInterface(this, pm) : null;
         }
 
         if (this.ticketPrinter.useLna) {
@@ -656,8 +679,9 @@ export class SelfOrder extends Reactive {
 
     async sendDraftOrderToServer() {
         if (
-            Object.keys(this.currentOrder.changes).length === 0 ||
-            this.currentOrder.lines.length === 0
+            this.currentOrder.payment_ids.every((p) => typeof p.id === "number") &&
+            (Object.keys(this.currentOrder.changes).length === 0 ||
+                this.currentOrder.lines.length === 0)
         ) {
             return this.currentOrder;
         }
