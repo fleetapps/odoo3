@@ -692,7 +692,8 @@ class AccountMove(models.Model):
             'line_note': 2,
             'discount': 3,
         }
-        for line in self.invoice_line_ids.filtered(lambda ln: ln.display_type == 'product'):
+        sale_installed = self.env['ir.module.module']._get('sale').state == 'installed'
+        for line in self.invoice_line_ids.filtered(lambda ln: ln.display_type in code_map):
             # For credit notes amount, we send negative values (reduces the amount of the original invoice)
             sign = 1 if self.move_type == 'out_invoice' else -1
             item_name = line.name.replace('\n', ' ')
@@ -715,13 +716,25 @@ class AccountMove(models.Model):
             }
             if line.display_type in code_map:
                 item_information['selection'] = code_map[line.display_type]
-            if line.display_type == 'discount':
+            if (
+                line.display_type == 'discount'
+                or (sale_installed and self.company_id.sale_discount_product_id and line.product_id == self.company_id.sale_discount_product_id)  # Line is a discount line
+                or (sale_installed and line.is_downpayment)  # Downpayment lines are considered the same as discount lines
+            ):
+                item_information['selection'] = code_map['discount']
                 item_information['isIncreaseItem'] = False
+                item_information['unitPrice'] = abs(item_information['unitPrice'])
+                item_information['quantity'] = abs(item_information['quantity'])
+                item_information['itemTotalAmountWithoutTax'] = abs(item_information['itemTotalAmountWithoutTax'])
+                item_information['itemTotalAmountAfterDiscount'] = abs(item_information['itemTotalAmountAfterDiscount'])
+                item_information['itemTotalAmountWithTax'] = abs(item_information['itemTotalAmountWithTax'])
             if self.move_type == 'out_refund':
                 item_information.update({
                     'adjustmentTaxAmount': item_information['taxAmount'],
                     'isIncreaseItem': False,
                 })
+            if line.display_type == 'line_note':
+                item_information = {'selection': item_information['selection'], 'itemName': item_information['itemName']}
             items_information.append(item_information)
 
         json_values['itemInfo'] = items_information
