@@ -25,6 +25,17 @@
         "web.assets_tests": [
             "test_discuss_full/static/tests/tours/**/*",
         ],
+        'im_livechat.embed_assets_unit_tests_setup': [
+            "hr/static/tests/hr_test_helpers.js",
+            'hr_holidays/static/tests/hr_holidays_test_helpers.js',
+            "test_discuss_full/static/tests/test_discuss_full_test_helpers.js",
+            "resource/static/tests/mock_server/**/*",
+            "hr/static/tests/mock_server/**/*",
+            'hr_holidays/static/tests/mock_server/**/*',
+        ],
+        "im_livechat.embed_assets_unit_tests": [
+            "test_discuss_full/static/tests/embed/**/*",
+        ],
     },
     "author": "Odoo S.A.",
     "license": "LGPL-3",
