@@ -359,15 +359,25 @@ class PurchaseOrderLine(models.Model):
 
             # record product names to avoid resetting custom descriptions
             default_names = []
+            display_names = []
             vendors = line.product_id._prepare_sellers(params=params)
             product_ctx = {'seller_id': None, 'partner_id': None, 'lang': get_lang(line.env, line.partner_id.lang).code}
             default_names.append(line._get_product_purchase_description(line.product_id.with_context(product_ctx)))
             for vendor in vendors:
                 product_ctx = {'seller_id': vendor.id, 'lang': get_lang(line.env, line.partner_id.lang).code}
                 default_names.append(line._get_product_purchase_description(line.product_id.with_context(product_ctx)))
+                display_names.append(line.product_id.with_context(product_ctx).display_name)
             if not line.name or line.name in default_names:
                 product_ctx = {'seller_id': seller.id, 'lang': get_lang(line.env, line.partner_id.lang).code}
                 line.name = line._get_product_purchase_description(line.product_id.with_context(product_ctx))
+            else:
+                # Checks that the product vendor and vendor name are correct
+                for index, vendor in enumerate(vendors):
+                    display_name = display_names[index]
+                    if line.name.startswith(display_name):
+                        if vendor.id != seller.id:
+                            line.name = display_names[vendors.ids.index(seller.id)] + line.name[len(display_name):]
+                        break
 
     @api.depends('product_id', 'product_qty', 'product_uom')
     def _compute_product_packaging_id(self):
