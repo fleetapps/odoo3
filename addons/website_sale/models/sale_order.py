@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import json
 import random
 from datetime import datetime, timedelta
 
@@ -46,6 +47,8 @@ class SaleOrder(models.Model):
     is_abandoned_cart = fields.Boolean(
         string="Abandoned Cart", compute='_compute_abandoned_cart', search='_search_abandoned_cart',
     )
+    is_pickup_required = fields.Boolean(related='carrier_id.support_pickup_locations')
+    partner_zip_code = fields.Char(related='partner_id.zip')  # To pass the value to pickup_location_many2one widget
     # filter related fields
     is_unfulfilled = fields.Boolean(
         string="Unfulfilled Orders", search='_search_is_unfulfilled', store=False
@@ -53,6 +56,13 @@ class SaleOrder(models.Model):
     is_rating_email_sent = fields.Boolean(string="Rating email already sent")
 
     #=== COMPUTE METHODS ===#
+
+    def _compute_partner_shipping_id(self):
+        """ Override to reset the delivery address when a pickup location was selected. """
+        super()._compute_partner_shipping_id()
+        for order in self:
+            if order.partner_shipping_id.pickup_delivery_method_id:
+                order.partner_shipping_id = order.partner_id
 
     @api.depends('order_line')
     def _compute_website_order_line(self):
@@ -202,6 +212,14 @@ class SaleOrder(models.Model):
                 else:
                     vals['company_id'] = website.company_id.id
         return super().create(vals_list)
+
+    def write(self, vals):
+        """Reset the shipping partner when it is a pickup location and the delivery method changes."""
+        if 'carrier_id' in vals:
+            for order in self:
+                if order.partner_shipping_id.pickup_delivery_method_id:
+                    order.partner_shipping_id = order.partner_id
+        return super().write(vals)
 
     #=== ACTION METHODS ===#
 
@@ -821,10 +839,6 @@ class SaleOrder(models.Model):
         """
         return bool(self.order_line.product_id) and not self.only_services
 
-    def _remove_delivery_line(self):
-        super()._remove_delivery_line()
-        self.pickup_location_data = {}  # Reset the pickup location data.
-
     def _get_preferred_delivery_method(self, available_delivery_methods):
         """ Get the preferred delivery method based on available delivery methods for the order.
 
@@ -1082,3 +1096,25 @@ class SaleOrder(models.Model):
             'sales': float_round(total_sales, precision_rounding=0.01),
             'visitors': visitor_count,
         }
+
+    def _get_additional_delivery_wizard_context(self):
+        context = super()._get_additional_delivery_wizard_context()
+        context['partner_zip_code'] = self.partner_zip_code
+        if self.is_pickup_required:
+            context['default_partner_shipping_id'] = self.partner_shipping_id.id
+        return context
+
+    def set_pickup_location(self, pickup_location_data):
+        """Set the pickup location on the current sale order.
+
+        :param str pickup_location_data: The pickup location data in JSON format.
+        """
+        self.ensure_one()
+        if self.is_pickup_required and pickup_location_data:
+            pickup_location_data_json = json.loads(pickup_location_data)
+            address = self.env['res.partner']._address_from_json(
+                pickup_location_data_json,
+                self.partner_id,
+                pickup_delivery_method_id=self.carrier_id.id
+            )
+            self.partner_shipping_id = address or self.partner_id

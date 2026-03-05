@@ -19,6 +19,19 @@ class SaleOrder(models.Model):
             if not order.warehouse_id:
                 order.warehouse_id = self.env.user._get_default_warehouse_id()
 
+    def _remove_delivery_line(self):
+        """ Override to unset the carrier_id on the related pickings when removing the delivery line. """
+        res = super()._remove_delivery_line()
+        for order in self:
+            if order.state != 'sale':
+                continue
+            pending_deliveries = order.picking_ids.filtered(
+                lambda p: p.state not in ('done', 'cancel')
+                          and not any(m.origin_returned_move_id for m in p.move_ids)
+            )
+            pending_deliveries.carrier_id = False
+        return res
+
     def _verify_updated_quantity(self, order_line, product_id, new_qty, uom_id, **kwargs):
         self.ensure_one()
         product = self.env['product.product'].browse(product_id)
