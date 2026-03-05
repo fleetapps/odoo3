@@ -413,7 +413,7 @@ export class Composer extends Component {
                         if (suggestion.isSpecial) {
                             return {
                                 ...suggestion,
-                                group: 1,
+                                group: 3,
                                 optionTemplate: "mail.Composer.suggestionSpecial",
                                 classList: "o-mail-Composer-suggestion",
                             };
@@ -421,6 +421,7 @@ export class Composer extends Component {
                             return {
                                 label: suggestion.name,
                                 role: suggestion,
+                                group: 2,
                                 thread: this.thread,
                                 optionTemplate: "mail.Composer.suggestionRole",
                                 classList: "o-mail-Composer-suggestion",
@@ -428,6 +429,7 @@ export class Composer extends Component {
                         } else {
                             return {
                                 label: this.thread?.getPersonaName(suggestion) ?? suggestion.name,
+                                group: 1,
                                 thread: this.thread,
                                 partner: suggestion,
                                 classList: "o-mail-Composer-suggestion",
