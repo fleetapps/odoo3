@@ -56,6 +56,7 @@ class TestResPartnerBank(SavepointCaseWithUserDemo):
         # updating the sanitized value will also update the account_number
         partner_bank.write({'sanitized_account_number': 'BE001251882303WRONG'})
         self.assertEqual(partner_bank.account_number, partner_bank.sanitized_account_number)
+<<<<<<< c24684948403200733b3c1bfd29942c579ae95b1
 
 
 class TestResPartnerBankForm(TransactionCase):
@@ -64,3 +65,110 @@ class TestResPartnerBankForm(TransactionCase):
             self.env['res.partner.bank'].with_context(default_partner_id=self.env.user.partner_id.id))
         bank_account_form.account_number = '11234'
         bank_account_form.save()
+||||||| e63daac6982ef96080c7e1f2a872f1c3dc8d1ec5
+=======
+
+    def test_find_or_create_bank_account_create(self):
+        partner = self.env['res.partner'].create({'name': 'partner name'})
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=partner,
+            company=self.env.company,
+        )
+        # The bank didn't exist, we should create it
+        self.assertRecordValues(found_bank, [{
+            'account_number': 'account number',
+            'partner_id': partner.id,
+            'company_id': False,
+            'active': True,
+        }])
+
+    def test_find_or_create_bank_account_find_active(self):
+        partner = self.env['res.partner'].create({'name': 'partner name'})
+        bank = self.env['res.partner.bank'].create({
+            'account_number': 'account number',
+            'partner_id': partner.id,
+            'company_id': False,
+            'active': True,
+        })
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=partner,
+            company=self.env.company,
+        )
+        # The bank exists and is active, we should not create a new one
+        self.assertEqual(bank, found_bank)
+
+    def test_find_or_create_bank_account_find_inactive(self):
+        partner = self.env['res.partner'].create({'name': 'partner name'})
+        self.env['res.partner.bank'].create({
+            'account_number': 'account number',
+            'partner_id': partner.id,
+            'company_id': False,
+            'active': False,
+        })
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=partner,
+            company=self.env.company,
+        )
+        # The bank exists but is inactive, we should neither create a new one, neither return it
+        self.assertFalse(found_bank)
+
+    def test_find_or_create_bank_account_find_parent(self):
+        partner = self.env['res.partner'].create({'name': 'partner name'})
+        contact = self.env['res.partner'].create({'name': 'contact', 'parent_id': partner.id})
+        partner_bank = self.env['res.partner.bank'].create({
+            'account_number': 'account number',
+            'partner_id': partner.id,
+        })
+        # Only the bank on the commercial partner exists
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=partner,
+            company=self.env.company,
+        )
+        self.assertEqual(partner_bank, found_bank)
+
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=contact,
+            company=self.env.company,
+        )
+        self.assertEqual(partner_bank, found_bank)
+
+        # Now the bank exists on both partners
+        contact_bank = self.env['res.partner.bank'].create({
+            'account_number': 'account number',
+            'partner_id': contact.id,
+        })
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=partner,
+            company=self.env.company,
+        )
+        self.assertEqual(partner_bank, found_bank)
+
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=contact,
+            company=self.env.company,
+        )
+        self.assertEqual(contact_bank, found_bank)
+
+        # Only the bank on the contact exists
+        partner_bank.unlink()
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=partner,
+            company=self.env.company,
+        )
+        self.assertEqual(contact_bank, found_bank)
+
+        found_bank = self.env['res.partner.bank']._find_or_create_bank_account(
+            account_number='account number',
+            partner=contact,
+            company=self.env.company,
+        )
+        self.assertEqual(contact_bank, found_bank)
+>>>>>>> a867727459e58b3d48e332689b97cdd8a2a0f5bd
