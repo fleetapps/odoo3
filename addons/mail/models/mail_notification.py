@@ -141,5 +141,5 @@ class MailNotification(models.Model):
             )[0]
             data["message"] = Store.one(notif.mail_message_id, only_id=True)
             # sudo: 'mail.notification' - to show all recipients of message regardless of company in multi-company setup
-            data["persona"] = Store.one(notif.sudo().res_partner_id, fields=["name"])
+            data["persona"] = Store.one(notif.sudo().res_partner_id, fields=["display_name", "name"])
             store.add(notif, data)
