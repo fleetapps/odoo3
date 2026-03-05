@@ -1178,6 +1178,9 @@ class PosOrder(models.Model):
         (payment_receivable_lines | invoice_receivable_lines).sudo().with_company(invoice.company_id).reconcile()
 
     def action_pos_order_cancel(self):
+        if self.env.context.get('last_order_date') and self.write_date.strftime("%Y-%m-%d %H:%M:%S") != self.env.context.get("last_order_date"):
+            raise UserError(_('The order has been modified since the last time it was loaded. You cannot cancel it.'))
+
         draft_orders = self.filtered(lambda o: o.state == 'draft')
         if self.env.context.get('active_ids'):
             orders = self.browse(self.env.context.get('active_ids'))

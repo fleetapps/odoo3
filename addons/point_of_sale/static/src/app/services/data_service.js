@@ -29,6 +29,7 @@ export class PosData {
         this.records = {};
         this.opts = new DataServiceOptions();
         this.channels = [];
+        this.requestAdditionalContext = {};
         this.debouncedSynchronizeLocalDataInIndexedDB = debounce(
             this.synchronizeLocalDataInIndexedDB.bind(this),
             300
@@ -39,6 +40,7 @@ export class PosData {
             offline: false,
             loading: true,
             unsyncData: [],
+            requestCount: 0,
         });
 
         if (!navigator.onLine) {
@@ -529,6 +531,7 @@ export class PosData {
 
             let result = true;
             let limitedFields = false;
+            this.network.requestCount++;
             if (fields.length === 0) {
                 fields = this.fields[model] || [];
             }
@@ -540,12 +543,17 @@ export class PosData {
                 limitedFields = true;
             }
 
+            kwargs.context = {
+                ...(kwargs.context || {}),
+                ...this.requestAdditionalContext,
+            };
+
             switch (type) {
                 case "write":
-                    result = await this.orm.write(model, ids, values);
+                    result = await this.orm.write(model, ids, values, kwargs);
                     break;
                 case "delete":
-                    result = await this.orm.unlink(model, ids);
+                    result = await this.orm.unlink(model, ids, kwargs);
                     break;
                 case "call":
                     result = await this.orm.call(model, method, args, kwargs);
@@ -555,6 +563,7 @@ export class PosData {
                     result = await this.orm.read(model, ids, fields, {
                         ...options,
                         load: false,
+                        context: this.requestAdditionalContext,
                     });
                     break;
                 case "search_read":
@@ -562,6 +571,7 @@ export class PosData {
                     result = await this.orm.searchRead(model, args, fields, {
                         ...options,
                         load: false,
+                        context: this.requestAdditionalContext,
                     });
             }
 
@@ -675,6 +685,7 @@ export class PosData {
                 throw error;
             }
         } finally {
+            this.network.requestCount--;
             this.network.loading = false;
         }
     }
