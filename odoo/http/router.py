@@ -261,7 +261,7 @@ class Application:
             _request_stack.push(request)
 
             try:
-                request._post_init()
+                set_session_and_dbname(request)
                 current_thread.url = httprequest.url
 
                 if self.get_static_file(httprequest.path):
@@ -506,5 +506,5 @@ from .requestlib import (
 from .response import Response
 from .retrying import retrying
 from .routing_map import ROUTING_KEYS, _generate_routing_rules
-from .session import SessionExpiredException, logout
+from .session import SessionExpiredException, logout, set_session_and_dbname
 from .stream import STATIC_CACHE, Stream
