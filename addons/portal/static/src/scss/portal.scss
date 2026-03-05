@@ -344,6 +344,12 @@ img, .media_iframe_video, .o_image {
     }
 }
 
+.o_profile_picture_img {
+    aspect-ratio: 1;
+    border: $border-width $border-style $border-color;
+    object-fit: contain;
+}
+
 .o_address_card {
     .o_portal_address {
         display: flex;
