@@ -1,9 +1,6 @@
 import { animationFrame } from "@odoo/hoot-mock";
 import { describe, expect, test } from "@odoo/hoot";
 
-import { OdooBarChart } from "@spreadsheet/chart/odoo_chart/odoo_bar_chart";
-import { OdooChart } from "@spreadsheet/chart/odoo_chart/odoo_chart";
-import { OdooLineChart } from "@spreadsheet/chart/odoo_chart/odoo_line_chart";
 import { ChartDataSource } from "@spreadsheet/chart/data_source/chart_data_source";
 
 import {
@@ -33,7 +30,7 @@ import {
 import { waitForDataLoaded } from "@spreadsheet/helpers/model";
 import { setGlobalFilterValue } from "../../helpers/commands";
 
-const { chartRegistry } = spreadsheet.registries;
+const { chartDataSourceRegistry } = spreadsheet.registries;
 const { toZone } = spreadsheet.helpers;
 
 const cumulativeDateServerData = getBasicServerData();
@@ -46,22 +43,25 @@ cumulativeDateServerData.models.partner.records = [
 ];
 
 const cumulativeChartDefinition = {
-    type: "odoo_line",
-    metaData: {
-        groupBy: ["date"],
-        measure: "probability",
-        order: null,
-        resModel: "partner",
-    },
-    searchParams: {
-        comparison: null,
-        context: {},
-        domain: [
-            ["date", ">=", "2022-01-01"],
-            ["date", "<=", "2022-12-31"],
-        ],
-        groupBy: [],
-        orderBy: [],
+    type: "line",
+    dataSource: {
+        type: "odoo",
+        metaData: {
+            groupBy: ["date"],
+            measure: "probability",
+            order: null,
+            resModel: "partner",
+        },
+        searchParams: {
+            comparison: null,
+            context: {},
+            domain: [
+                ["date", ">=", "2022-01-01"],
+                ["date", "<=", "2022-12-31"],
+            ],
+            groupBy: [],
+            orderBy: [],
+        },
     },
     cumulative: true,
     title: { text: "Partners" },
@@ -108,34 +108,31 @@ defineSpreadsheetModels();
 defineSpreadsheetActions();
 
 test("Can add an Odoo Bar chart", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_bar" });
+    const { model } = await createSpreadsheetWithChart({ type: "bar" });
     const sheetId = model.getters.getActiveSheetId();
     expect(model.getters.getChartIds(sheetId).length).toBe(1);
     const chartId = model.getters.getChartIds(sheetId)[0];
     const chart = model.getters.getChart(chartId);
-    expect(chart instanceof OdooBarChart).toBe(true);
     expect(chart.getDefinitionForExcel()).toBe(undefined);
     expect(model.getters.getChartRuntime(chartId).chartJsConfig.type).toBe("bar");
 });
 
 test("Can add an Odoo Line chart", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_line" });
+    const { model } = await createSpreadsheetWithChart({ type: "line" });
     const sheetId = model.getters.getActiveSheetId();
     expect(model.getters.getChartIds(sheetId).length).toBe(1);
     const chartId = model.getters.getChartIds(sheetId)[0];
     const chart = model.getters.getChart(chartId);
-    expect(chart instanceof OdooLineChart).toBe(true);
     expect(chart.getDefinitionForExcel()).toBe(undefined);
     expect(model.getters.getChartRuntime(chartId).chartJsConfig.type).toBe("line");
 });
 
 test("Can add an Odoo Pie chart", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_pie" });
+    const { model } = await createSpreadsheetWithChart({ type: "pie" });
     const sheetId = model.getters.getActiveSheetId();
     expect(model.getters.getChartIds(sheetId).length).toBe(1);
     const chartId = model.getters.getChartIds(sheetId)[0];
     const chart = model.getters.getChart(chartId);
-    expect(chart instanceof OdooChart).toBe(true);
     expect(chart.getDefinitionForExcel()).toBe(undefined);
     expect(model.getters.getChartRuntime(chartId).chartJsConfig.type).toBe("pie");
 });
@@ -149,7 +146,7 @@ test("A data source is added after a chart creation", async () => {
 
 test("Odoo bar chart runtime loads the data", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         mockRPC: async function (route, args) {
             if (args.method === "formatted_read_group") {
                 expect.step("formatted_read_group");
@@ -189,7 +186,7 @@ test("Odoo bar chart runtime loads the data", async () => {
 
 test("Odoo pie chart runtime loads the data", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_pie",
+        type: "pie",
         mockRPC: async function (route, args) {
             if (args.method === "formatted_read_group") {
                 expect.step("formatted_read_group");
@@ -223,7 +220,7 @@ test("Odoo pie chart runtime loads the data", async () => {
 
 test("Odoo line chart runtime loads the data", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         mockRPC: async function (route, args) {
             if (args.method === "formatted_read_group") {
                 expect.step("formatted_read_group");
@@ -261,7 +258,7 @@ test("Odoo line chart runtime loads the data", async () => {
 });
 
 test("Area charts are supported", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_line" });
+    const { model } = await createSpreadsheetWithChart({ type: "line" });
     await waitForDataLoaded(model);
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
@@ -290,7 +287,7 @@ test("Area charts are supported", async () => {
 
 test("Data reloaded strictly upon domain update", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         mockRPC: async function (route, args) {
             if (args.method === "formatted_read_group") {
                 expect.step("formatted_read_group");
@@ -310,7 +307,10 @@ test("Data reloaded strictly upon domain update", async () => {
     model.dispatch("UPDATE_CHART", {
         definition: {
             ...definition,
-            searchParams: { ...definition.searchParams, domain: [["1", "=", "1"]] },
+            dataSource: {
+                ...definition.dataSource,
+                searchParams: { ...definition.dataSource.searchParams, domain: [["1", "=", "1"]] },
+            },
         },
         figureId: model.getters.getFigureIdFromChartId(chartId),
         chartId,
@@ -341,7 +341,7 @@ test("Data reloaded strictly upon domain update", async () => {
 
 test("Data reloaded upon domain update for charts other than pie/bar/line", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         mockRPC: async function (route, args) {
             if (args.method === "formatted_read_group") {
                 expect.step("formatted_read_group");
@@ -354,13 +354,16 @@ test("Data reloaded upon domain update for charts other than pie/bar/line", asyn
     await waitForDataLoaded(model);
     expect.verifySteps(["formatted_read_group"]); // Data loaded
 
-    updateChart(model, chartId, { type: "odoo_pie" });
+    updateChart(model, chartId, { type: "pie" });
     await waitForDataLoaded(model);
     expect.verifySteps([]); // Chart type changed
 
     const newDefinition = model.getters.getChartDefinition(chartId);
     updateChart(model, chartId, {
-        searchParams: { ...newDefinition.searchParams, domain: [["1", "=", "1"]] },
+        dataSource: {
+            ...newDefinition.dataSource,
+            searchParams: { ...newDefinition.dataSource.searchParams, domain: [["1", "=", "1"]] },
+        },
     });
     await waitForDataLoaded(model);
     expect.verifySteps(["formatted_read_group"]); // Data re-loaded on domain update
@@ -369,7 +372,7 @@ test("Data reloaded upon domain update for charts other than pie/bar/line", asyn
 test("Updating the domain keeps the global filters domain", async () => {
     let lastReadGroupDomain = undefined;
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         mockRPC: async function (route, args) {
             if (args.method === "formatted_read_group") {
                 expect.step("formatted_read_group");
@@ -398,7 +401,10 @@ test("Updating the domain keeps the global filters domain", async () => {
 
     const updatedDefinition = {
         ...definition,
-        searchParams: { ...definition.searchParams, domain: [["1", "=", "1"]] },
+        dataSource: {
+            ...definition.dataSource,
+            searchParams: { ...definition.dataSource.searchParams, domain: [["1", "=", "1"]] },
+        },
     };
     model.dispatch("UPDATE_CHART", {
         definition: updatedDefinition,
@@ -415,13 +421,13 @@ test("Updating the domain keeps the global filters domain", async () => {
 
 test("Can import/export an Odoo chart", async () => {
     const { model } = await createModelWithDataSource();
-    insertChartInSpreadsheet(model, "odoo_line");
+    insertChartInSpreadsheet(model, "line");
     const data = model.exportData();
     const figures = data.sheets[0].figures;
     expect(figures.length).toBe(1);
     const figure = figures[0];
     expect(figure.tag).toBe("chart");
-    expect(figure.data.type).toBe("odoo_line");
+    expect(figure.data.type).toBe("line");
     const { model: m1 } = await createModelWithDataSource({ spreadsheetData: data });
     const sheetId = m1.getters.getActiveSheetId();
     expect(m1.getters.getChartIds(sheetId).length).toBe(1);
@@ -446,19 +452,22 @@ test("can import (export) contextual domain", async function () {
                         tag: "chart",
                         data: {
                             chartId,
-                            type: "odoo_line",
+                            type: "line",
                             title: { text: "Partners" },
+                            dataSource: {
+                                type: "odoo",
+                                searchParams: {
+                                    domain: '[("foo", "=", uid)]',
+                                    groupBy: [],
+                                    orderBy: [],
+                                },
+                                metaData: {
+                                    groupBy: ["foo"],
+                                    measure: "__count",
+                                    resModel: "partner",
+                                },
+                            },
                             legendPosition: "top",
-                            searchParams: {
-                                domain: '[("foo", "=", uid)]',
-                                groupBy: [],
-                                orderBy: [],
-                            },
-                            metaData: {
-                                groupBy: ["foo"],
-                                measure: "__count",
-                                resModel: "partner",
-                            },
                         },
                     },
                 ],
@@ -476,7 +485,7 @@ test("can import (export) contextual domain", async function () {
     });
     model.getters.getChartRuntime(chartId).chartJsConfig.data; // force loading the chart data
     await animationFrame();
-    expect(model.exportData().sheets[0].figures[0].data.searchParams.domain).toBe(
+    expect(model.exportData().sheets[0].figures[0].data.dataSource.searchParams.domain).toBe(
         '[("foo", "=", uid)]',
         { message: "the domain is exported with the dynamic parts" }
     );
@@ -485,7 +494,7 @@ test("can import (export) contextual domain", async function () {
 
 test("Can undo/redo an Odoo chart creation", async () => {
     const { model } = await createModelWithDataSource();
-    insertChartInSpreadsheet(model, "odoo_line");
+    insertChartInSpreadsheet(model, "line");
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     expect(model.getters.getChartDataSource(chartId)).not.toBe(undefined);
@@ -497,9 +506,9 @@ test("Can undo/redo an Odoo chart creation", async () => {
 });
 
 test("charts with no legend", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_pie" });
-    insertChartInSpreadsheet(model, "odoo_bar");
-    insertChartInSpreadsheet(model, "odoo_line");
+    const { model } = await createSpreadsheetWithChart({ type: "pie" });
+    insertChartInSpreadsheet(model, "bar");
+    insertChartInSpreadsheet(model, "line");
     const sheetId = model.getters.getActiveSheetId();
     const [pieChartId, barChartId, lineChartId] = model.getters.getChartIds(sheetId);
     const pie = model.getters.getChartDefinition(pieChartId);
@@ -553,7 +562,7 @@ test("charts with no legend", async () => {
 });
 
 test("Bar chart with stacked attribute is supported", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_bar" });
+    const { model } = await createSpreadsheetWithChart({ type: "bar" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     const definition = model.getters.getChartDefinition(chartId);
@@ -590,7 +599,7 @@ test("Bar chart with stacked attribute is supported", async () => {
 });
 
 test("Can copy/paste Odoo chart", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_pie" });
+    const { model } = await createSpreadsheetWithChart({ type: "pie" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     model.dispatch("SELECT_FIGURE", { figureId: model.getters.getFigureIdFromChartId(chartId) });
@@ -598,7 +607,6 @@ test("Can copy/paste Odoo chart", async () => {
     model.dispatch("PASTE", { target: [toZone("A1")] });
     const chartIds = model.getters.getChartIds(sheetId);
     expect(chartIds.length).toBe(2);
-    expect(model.getters.getChart(chartIds[1]) instanceof OdooChart).toBe(true);
     expect(JSON.stringify(model.getters.getChartRuntime(chartIds[1]))).toBe(
         JSON.stringify(model.getters.getChartRuntime(chartId))
     );
@@ -610,7 +618,7 @@ test("Can copy/paste Odoo chart", async () => {
 });
 
 test("Can cut/paste Odoo chart", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_pie" });
+    const { model } = await createSpreadsheetWithChart({ type: "pie" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     const chartRuntime = model.getters.getChartRuntime(chartId);
@@ -620,14 +628,13 @@ test("Can cut/paste Odoo chart", async () => {
     const chartIds = model.getters.getChartIds(sheetId);
     expect(chartIds.length).toBe(1);
     expect(chartIds[0]).not.toBe(chartId);
-    expect(model.getters.getChart(chartIds[0]) instanceof OdooChart).toBe(true);
     expect(JSON.stringify(model.getters.getChartRuntime(chartIds[0]))).toBe(
         JSON.stringify(chartRuntime)
     );
 });
 
 test("Duplicating a sheet correctly duplicates Odoo chart", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_bar" });
+    const { model } = await createSpreadsheetWithChart({ type: "bar" });
     const sheetId = model.getters.getActiveSheetId();
     const secondSheetId = "secondSheetId";
     const chartId = model.getters.getChartIds(sheetId)[0];
@@ -638,19 +645,18 @@ test("Duplicating a sheet correctly duplicates Odoo chart", async () => {
     });
     const chartIds = model.getters.getChartIds(secondSheetId);
     expect(chartIds.length).toBe(1);
-    expect(model.getters.getChart(chartIds[0]) instanceof OdooChart).toBe(true);
     expect(JSON.stringify(model.getters.getChartRuntime(chartIds[0]))).toBe(
         JSON.stringify(model.getters.getChartRuntime(chartId))
     );
 
-    expect(model.getters.getChart(chartId).dataSource).not.toBe(
-        model.getters.getChart(chartIds[0]).dataSource,
+    expect(model.getters.getChartDataSource(chartId)).not.toBe(
+        model.getters.getChartDataSource(chartIds[0]),
         { message: "The datasource is also duplicated" }
     );
 });
 
 test("Line chart with stacked attribute is supported", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_line" });
+    const { model } = await createSpreadsheetWithChart({ type: "line" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     const definition = model.getters.getChartDefinition(chartId);
@@ -713,7 +719,7 @@ test("Load odoo chart spreadsheet with models that cannot be accessed", async fu
 });
 
 test("Line chart to support cumulative data", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_line" });
+    const { model } = await createSpreadsheetWithChart({ type: "line" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     const definition = model.getters.getChartDefinition(chartId);
@@ -751,7 +757,7 @@ test("Line chart to support cumulative data", async () => {
 
 test("cumulative line chart with past data before domain period without cumulated start", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         serverData: cumulativeDateServerData,
         definition: {
             ...cumulativeChartDefinition,
@@ -770,12 +776,15 @@ test("cumulative line chart with past data before domain period without cumulate
 
 test("cumulative line chart with past data before domain period with cumulated start", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         serverData: cumulativeDateServerData,
         definition: {
             ...cumulativeChartDefinition,
             cumulative: true,
-            cumulatedStart: true,
+            dataSource: {
+                ...cumulativeChartDefinition.dataSource,
+                cumulatedStart: true,
+            },
         },
     });
     const sheetId = model.getters.getActiveSheetId();
@@ -786,17 +795,20 @@ test("cumulative line chart with past data before domain period with cumulated s
     ]);
     const figure = model.exportData().sheets[0].figures[0];
     expect(figure.data.cumulative).toBe(true);
-    expect(figure.data.cumulatedStart).toBe(true);
+    expect(figure.data.dataSource.cumulatedStart).toBe(true);
 });
 
 test("update existing chart to cumulate past data", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         serverData: cumulativeDateServerData,
         definition: {
             ...cumulativeChartDefinition,
             cumulative: true,
-            cumulatedStart: false,
+            dataSource: {
+                ...cumulativeChartDefinition.dataSource,
+                cumulatedStart: false,
+            },
         },
     });
     const sheetId = model.getters.getActiveSheetId();
@@ -807,12 +819,15 @@ test("update existing chart to cumulate past data", async () => {
     ]);
     const figure = model.exportData().sheets[0].figures[0];
     expect(figure.data.cumulative).toBe(true);
-    expect(figure.data.cumulatedStart).toBe(false);
+    expect(figure.data.dataSource.cumulatedStart).toBe(false);
 
     model.dispatch("UPDATE_CHART", {
         definition: {
             ...cumulativeChartDefinition,
-            cumulatedStart: true,
+            dataSource: {
+                ...cumulativeChartDefinition.dataSource,
+                cumulatedStart: true,
+            },
         },
         chartId,
         figureId: model.getters.getFigureIdFromChartId(chartId),
@@ -835,7 +850,7 @@ test("Can insert odoo chart from a different model", async () => {
 });
 
 test("Odoo chart legend color changes with background color update", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_bar" });
+    const { model } = await createSpreadsheetWithChart({ type: "bar" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     const definition = model.getters.getChartDefinition(chartId);
@@ -860,7 +875,7 @@ test("Odoo chart legend color changes with background color update", async () =>
 });
 
 test("Remove odoo chart when sheet is deleted", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_line" });
+    const { model } = await createSpreadsheetWithChart({ type: "line" });
     const sheetId = model.getters.getActiveSheetId();
     model.dispatch("CREATE_SHEET", {
         sheetId: model.uuidGenerator.smallUuid(),
@@ -872,7 +887,7 @@ test("Remove odoo chart when sheet is deleted", async () => {
 });
 
 test("Odoo chart datasource display name has a default when the chart title is empty", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_line" });
+    const { model } = await createSpreadsheetWithChart({ type: "line" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     const definition = model.getters.getChartDefinition(chartId);
@@ -892,12 +907,15 @@ test("Odoo chart datasource display name has a default when the chart title is e
 test("See records when clicking on a bar chart bar", async () => {
     mockService("action", fakeActionService);
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         serverData: cumulativeDateServerData,
         definition: {
             ...cumulativeChartDefinition,
-            type: "odoo_bar",
-            actionXmlId: "test.my_action",
+            dataSource: {
+                ...cumulativeChartDefinition.dataSource,
+                actionXmlId: "test.my_action",
+            },
+            type: "bar",
             cumulative: true,
         },
     });
@@ -925,7 +943,7 @@ test("See records in new tab on middle click of chart element", async () => {
         },
     };
     mockService("action", fakeActionService);
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_bar" });
+    const { model } = await createSpreadsheetWithChart({ type: "bar" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     await waitForDataLoaded(model);
@@ -940,11 +958,14 @@ test("See records in new tab on middle click of chart element", async () => {
 test("See records when clicking on a line chart point", async () => {
     mockService("action", fakeActionService);
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         serverData: cumulativeDateServerData,
         definition: {
             ...cumulativeChartDefinition,
-            actionXmlId: "test.my_action",
+            dataSource: {
+                ...cumulativeChartDefinition.dataSource,
+                actionXmlId: "test.my_action",
+            },
             cumulative: true,
         },
     });
@@ -963,7 +984,7 @@ test("See records when clicking on a line chart point", async () => {
 test("Actions not triggered by trendline clicks", async () => {
     mockService("action", fakeActionService);
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         serverData: cumulativeDateServerData,
         definition: {
             ...cumulativeChartDefinition,
@@ -1001,11 +1022,11 @@ test("See records when clicking on a pie chart slice", async () => {
     };
     mockService("action", fakeActionService);
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_pie",
+        type: "pie",
         serverData: cumulativeDateServerData,
         definition: {
             ...cumulativeChartDefinition,
-            type: "odoo_pie",
+            type: "pie",
             cumulative: true,
         },
     });
@@ -1040,18 +1061,21 @@ test("See records when clicking on a waterfall chart bar", async () => {
         { date: "2020-02-01", probability: 5, bar: false },
     ];
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_waterfall",
+        type: "waterfall",
         serverData,
         definition: {
-            type: "odoo_waterfall",
-            metaData: {
-                groupBy: ["bar", "date"],
-                measure: "probability",
-                order: null,
-                resModel: "partner",
+            type: "waterfall",
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["bar", "date"],
+                    measure: "probability",
+                    order: null,
+                    resModel: "partner",
+                },
+                searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
+                actionXmlId: "test.my_action",
             },
-            searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
-            actionXmlId: "test.my_action",
             title: { text: "Partners" },
             dataSourceId: "42",
             id: "42",
@@ -1118,18 +1142,21 @@ test("See records when clicking on a geo chart country", async () => {
     };
     mockService("action", fakeActionService);
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_geo",
+        type: "geo",
         modelConfig: { external: { geoJsonService: { getAvailableRegions: () => [] } } },
         definition: {
-            type: "odoo_geo",
+            type: "geo",
             legendPosition: "top",
-            metaData: {
-                groupBy: ["country_id"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["country_id"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
+                searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
             },
-            searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
             cumulative: true,
             title: { text: "Partners" },
             dataSourceId: "42",
@@ -1164,17 +1191,20 @@ test("See records when clicking on a sunburst chart slice", async () => {
         { date: "2020-02-01", probability: 5, bar: false },
     ];
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_sunburst",
+        type: "sunburst",
         serverData,
         definition: {
-            type: "odoo_sunburst",
-            metaData: {
-                groupBy: ["date:month", "bar"],
-                measure: "probability",
-                order: null,
-                resModel: "partner",
+            type: "sunburst",
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["date:month", "bar"],
+                    measure: "probability",
+                    order: null,
+                    resModel: "partner",
+                },
+                searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
             },
-            searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
             title: { text: "Partners" },
             dataSourceId: "42",
             id: "42",
@@ -1221,17 +1251,20 @@ test("See records when clicking on a treemap chart item", async () => {
         { date: "2020-02-01", probability: 5, bar: false },
     ];
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_treemap",
+        type: "treemap",
         serverData,
         definition: {
-            type: "odoo_treemap",
-            metaData: {
-                groupBy: ["date:month", "bar"],
-                measure: "probability",
-                order: null,
-                resModel: "partner",
+            type: "treemap",
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["date:month", "bar"],
+                    measure: "probability",
+                    order: null,
+                    resModel: "partner",
+                },
+                searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
             },
-            searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
             title: { text: "Partners" },
             dataSourceId: "42",
             id: "42",
@@ -1275,20 +1308,19 @@ test("See records when clicking on a treemap chart item", async () => {
 
 test("import/export action xml id", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            type: "odoo_bar",
-            metaData: {
-                groupBy: [],
-                measure: "probability",
-                resModel: "partner",
+            type: "bar",
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: [],
+                    measure: "probability",
+                    resModel: "partner",
+                },
+                searchParams: { context: {}, domain: [], groupBy: [], orderBy: [] },
+                actionXmlId: "test.my_action",
             },
-            searchParams: {
-                domain: [],
-                groupBy: [],
-                orderBy: [],
-            },
-            actionXmlId: "test.my_action",
             cumulative: true,
             title: { text: "Partners" },
             dataSourceId: "42",
@@ -1296,16 +1328,18 @@ test("import/export action xml id", async () => {
         },
     });
     const exported = model.exportData();
-    expect(exported.sheets[0].figures[0].data.actionXmlId).toBe("test.my_action");
+    expect(exported.sheets[0].figures[0].data.dataSource.actionXmlId).toBe("test.my_action");
 
     const { model: model2 } = await createModelWithDataSource({ spreadsheetData: exported });
     const sheetId = model2.getters.getActiveSheetId();
     const chartId = model2.getters.getChartIds(sheetId)[0];
-    expect(model2.getters.getChartDefinition(chartId).actionXmlId).toBe("test.my_action");
+    expect(model2.getters.getChartDefinition(chartId).dataSource.actionXmlId).toBe(
+        "test.my_action"
+    );
 });
 
 test("Show values is taken into account in the runtime", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_bar" });
+    const { model } = await createSpreadsheetWithChart({ type: "bar" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     const definition = model.getters.getChartDefinition(chartId);
@@ -1320,12 +1354,12 @@ test("Show values is taken into account in the runtime", async () => {
     });
     const runtime = model.getters.getChartRuntime(chartId);
     expect(runtime.chartJsConfig.options.plugins.chartShowValuesPlugin.showValues).toBe(true);
-    expect(runtime.chartJsConfig.options.plugins.chartShowValuesPlugin.type).toBe("bar"); // Not odoo_bar
+    expect(runtime.chartJsConfig.options.plugins.chartShowValuesPlugin.type).toBe("bar");
 });
 
 test("Odoo line and bar charts display only horizontal grid lines", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
     });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
@@ -1338,7 +1372,7 @@ test("Odoo line and bar charts display only horizontal grid lines", async () => 
     model.dispatch("UPDATE_CHART", {
         definition: {
             ...lineChartDefinition,
-            type: "odoo_bar",
+            type: "bar",
         },
         chartId,
         figureId: model.getters.getFigureIdFromChartId(chartId),
@@ -1365,30 +1399,50 @@ test("Can configure the chart datasets", async () => {
         { name: "Frank", bar: true, probability: 10, foo: 5 },
         { name: "Marc", bar: false, probability: 2, foo: 5 },
     ];
+    const dataSource = {
+        type: "odoo",
+        metaData,
+        searchParams,
+    };
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         serverData,
-        definition: { type: "odoo_bar", metaData, searchParams, id: "42" },
+        definition: { type: "bar", dataSource, id: "42" },
     });
     await waitForDataLoaded(model);
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     let definition = model.getters.getChartDefinition(chartId);
-    expect(definition.dataSets).toEqual([{}, {}]);
 
     model.dispatch("UPDATE_CHART", {
-        definition: { ...definition, dataSets: [{ label: "My dataset" }, { label: "Second" }] },
+        definition: {
+            ...definition,
+            // This is the legacy way to style datasets (before saas-19.3).
+            // we still need to support it because there's no way to upgrade.
+            dataSets: [
+                { label: "My dataset", backgroundColor: "#FF0000" },
+                { label: "Second", backgroundColor: "#00FF00" },
+            ],
+        },
         chartId,
         figureId: model.getters.getFigureIdFromChartId(chartId),
         sheetId,
     });
     definition = model.getters.getChartDefinition(chartId);
-    expect(definition.dataSets).toEqual([{ label: "My dataset" }, { label: "Second" }]);
+    let runtime = model.getters.getChartRuntime(chartId);
+    expect(runtime.chartJsConfig.data.datasets.length).toBe(2);
+    expect(runtime.chartJsConfig.data.datasets[0].label).toBe("My dataset");
+    expect(runtime.chartJsConfig.data.datasets[0].backgroundColor).toBe("#FF0000");
+    expect(runtime.chartJsConfig.data.datasets[1].label).toBe("Second");
+    expect(runtime.chartJsConfig.data.datasets[1].backgroundColor).toBe("#00FF00");
 
     model.dispatch("UPDATE_CHART", {
         definition: {
             ...definition,
-            searchParams: { ...searchParams, domain: [["bar", "=", false]] },
+            dataSource: {
+                ...definition.dataSource,
+                searchParams: { ...searchParams, domain: [["bar", "=", false]] },
+            },
         },
         chartId,
         figureId: model.getters.getFigureIdFromChartId(chartId),
@@ -1398,7 +1452,10 @@ test("Can configure the chart datasets", async () => {
     await waitForDataLoaded(model);
     definition = model.getters.getChartDefinition(chartId);
     // the second dataset was dropped from the definition since there is now only a single dataset in the data source
-    expect(definition.dataSets).toEqual([{ label: "My dataset" }]);
+    runtime = model.getters.getChartRuntime(chartId);
+    expect(runtime.chartJsConfig.data.datasets.length).toBe(1);
+    expect(runtime.chartJsConfig.data.datasets[0].label).toBe("My dataset");
+    expect(runtime.chartJsConfig.data.datasets[0].backgroundColor).toBe("#FF0000");
 });
 
 test("Chart data source is updated when changing chart type", async () => {
@@ -1410,7 +1467,7 @@ test("Chart data source is updated when changing chart type", async () => {
         },
     });
 
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_bar" });
+    const { model } = await createSpreadsheetWithChart({ type: "bar" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
     const chartDataSource = model.getters.getChartDataSource(chartId);
@@ -1418,7 +1475,7 @@ test("Chart data source is updated when changing chart type", async () => {
     model.dispatch("UPDATE_CHART", {
         definition: {
             ...model.getters.getChartDefinition(chartId),
-            type: "odoo_line",
+            type: "line",
         },
         chartId,
         figureId: model.getters.getFigureIdFromChartId(chartId),
@@ -1429,12 +1486,9 @@ test("Chart data source is updated when changing chart type", async () => {
 });
 
 test("Non-web chart types are using data source in 'bar' mode", async () => {
-    const { model } = await createSpreadsheetWithChart({ type: "odoo_radar" });
+    const { model } = await createSpreadsheetWithChart({ type: "radar" });
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
-
-    const chart = model.getters.getChart(chartId);
-    expect(chart.metaData.mode).toBe("bar");
 
     const chartDataSource = model.getters.getChartDataSource(chartId);
     expect(chartDataSource._metaData.mode).toBe("bar");
@@ -1448,17 +1502,20 @@ test("Long labels are only truncated in the axis callback, not in the data given
     ];
     const searchParams = { comparison: null, context: {}, domain: [], groupBy: [], orderBy: [] };
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_line",
+        type: "line",
         serverData,
         definition: {
-            type: "odoo_line",
-            metaData: {
-                groupBy: ["name"],
-                measure: "probability",
-                order: null,
-                resModel: "partner",
+            type: "line",
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["name"],
+                    measure: "probability",
+                    order: null,
+                    resModel: "partner",
+                },
+                searchParams,
             },
-            searchParams,
             title: { text: "Partners" },
             dataSourceId: "42",
             id: "42",
@@ -1478,12 +1535,15 @@ test("Long labels are only truncated in the axis callback, not in the data given
 
 test("can change chart granularity", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["date:month"],
-                measure: "probability",
-                resModel: "partner",
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["date:month"],
+                    measure: "probability",
+                    resModel: "partner",
+                },
             },
         },
     });
@@ -1493,7 +1553,9 @@ test("can change chart granularity", async () => {
         chartId,
         granularity: "year",
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(["date:year"]);
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
+        "date:year",
+    ]);
 });
 
 test("changing chart granularity reloads data source once with global filter", async () => {
@@ -1502,12 +1564,15 @@ test("changing chart granularity reloads data source once with global filter", a
         expect(kwargs.domain.length).toBe(3, { message: "Global filter domain is applied" });
     });
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["date:month"],
-                measure: "probability",
-                resModel: "partner",
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["date:month"],
+                    measure: "probability",
+                    resModel: "partner",
+                },
             },
         },
     });
@@ -1534,13 +1599,16 @@ test("changing chart granularity reloads data source once with global filter", a
 
 test("available granularities without filter", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["date:month"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["date:month"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
             },
         },
     });
@@ -1558,13 +1626,16 @@ test("available granularities without filter", async () => {
 
 test("no available granularities when not grouped by a date", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["name"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["name"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
             },
         },
     });
@@ -1575,13 +1646,16 @@ test("no available granularities when not grouped by a date", async () => {
 
 test("available granularities with a date filter", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["date:month"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["date:month"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
             },
         },
     });
@@ -1624,13 +1698,16 @@ test("available granularities with a date filter", async () => {
 
 test("hour is an available granularity with a filtered datetime field", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["create_date:month"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["create_date:month"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
             },
         },
     });
@@ -1664,13 +1741,16 @@ test("hour is an available granularity with a filtered datetime field", async ()
 
 test("filtering a chart axis changes its granularity", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["create_date:year"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["create_date:year"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
             },
         },
     });
@@ -1702,7 +1782,7 @@ test("filtering a chart axis changes its granularity", async () => {
             id: filterId,
             value,
         });
-        expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(
+        expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual(
             expectedGroupBy,
             {
                 message: `Expected groupBy to be ${expectedGroupBy} for value ${JSON.stringify(
@@ -1715,13 +1795,16 @@ test("filtering a chart axis changes its granularity", async () => {
 
 test("filtering doesn't change its granularity if not the horizontal axis", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["create_date:year"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["create_date:year"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
             },
         },
     });
@@ -1741,20 +1824,22 @@ test("filtering doesn't change its granularity if not the horizontal axis", asyn
         id: filterId,
         value: { type: "relative", period: "last_7_days" },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual([
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
         "create_date:year",
     ]);
 });
 
 test("filtering preserves manually changed granularity", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["create_date:year"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                metaData: {
+                    groupBy: ["create_date:year"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
             },
         },
     });
@@ -1773,7 +1858,9 @@ test("filtering preserves manually changed granularity", async () => {
         id: filterId,
         value: { type: "relative", period: "last_90_days" },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(["create_date:day"]);
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
+        "create_date:day",
+    ]);
     model.dispatch("UPDATE_CHART_GRANULARITY", {
         chartId,
         granularity: "week", // Manually change granularity to from day to week
@@ -1788,7 +1875,7 @@ test("filtering preserves manually changed granularity", async () => {
             to: "2025-04-23",
         },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual([
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
         "create_date:week",
     ]);
 
@@ -1797,20 +1884,23 @@ test("filtering preserves manually changed granularity", async () => {
         id: filterId,
         value: { type: "relative", period: "today" },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual([
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
         "create_date:hour",
     ]);
 });
 
 test("filtering on 'day' doesn't change to hour if not datetime", async () => {
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         definition: {
-            metaData: {
-                groupBy: ["date:year"],
-                measure: "probability",
-                resModel: "partner",
-                order: null,
+            dataSource: {
+                type: "odoo",
+                metaData: {
+                    groupBy: ["date:year"],
+                    measure: "probability",
+                    resModel: "partner",
+                    order: null,
+                },
             },
         },
     });
@@ -1830,7 +1920,9 @@ test("filtering on 'day' doesn't change to hour if not datetime", async () => {
         id: filterId,
         value: { type: "relative", period: "today" },
     });
-    expect(model.getters.getChartDefinition(chartId).metaData.groupBy).toEqual(["date:day"]);
+    expect(model.getters.getChartDefinition(chartId).dataSource.metaData.groupBy).toEqual([
+        "date:day",
+    ]);
 });
 
 test("Odoo charts can have a background color", async () => {
@@ -1843,15 +1935,15 @@ test("Odoo charts can have a background color", async () => {
     };
 
     const { model } = await createSpreadsheetWithChart({
-        type: "odoo_bar",
+        type: "bar",
         modelConfig: { external: { geoJsonService: { getAvailableRegions: () => [] } } },
-        definition: { type: "odoo_bar", metaData, searchParams, id: "42", background: "#FF00FF" },
+        definition: { type: "bar", metaData, searchParams, id: "42", background: "#FF00FF" },
     });
     await waitForDataLoaded(model);
     const sheetId = model.getters.getActiveSheetId();
     const chartId = model.getters.getChartIds(sheetId)[0];
 
-    const chartTypes = chartRegistry.getKeys().filter((type) => type.startsWith("odoo_"));
+    const chartTypes = chartDataSourceRegistry.get("odoo").supportedChartTypes;
 
     for (const type of chartTypes) {
         model.dispatch("UPDATE_CHART", {
