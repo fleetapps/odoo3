@@ -10,6 +10,7 @@ import { browser } from "@web/core/browser/browser";
 import { _t } from "@web/core/l10n/translation";
 import { usePopover } from "@web/core/popover/popover_hook";
 import { useService } from "@web/core/utils/hooks";
+import { isHtmlEmpty } from "@web/core/utils/html";
 import { FileUploader } from "@web/views/fields/file_handler";
 
 /**
@@ -26,6 +27,7 @@ export class Activity extends Component {
 
     setup() {
         super.setup();
+        this.isHtmlEmpty = isHtmlEmpty;
         this.storeService = useService("mail.store");
         this.state = useState({ showDetails: false });
         this.markDonePopover = usePopover(ActivityMarkAsDone, { position: "right" });
