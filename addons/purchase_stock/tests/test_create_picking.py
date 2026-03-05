@@ -851,3 +851,56 @@ class TestCreatePicking(common.TestProductCommon):
         # Exchange: receipt for 1 item
         self.assertEqual(po.picking_ids[2].picking_type_id, picking_type_in)
         self.assertEqual(po.picking_ids[2].move_ids.quantity, 1)
+
+    def test_delivery_slip_quantity_aggregation_with_pack_uom(self):
+        """
+        Ensure aggregated delivery slip quantities are correctly computed when
+        purchase order lines use a secondary UoM (Pack of 6) and products are
+        received in multiple packages.
+
+        Two move lines of 5 packs of 6 (10 packs total) must aggregate to:
+        - 60 units ordered
+        - 60 units delivered
+        - 10 packs as packaging quantity ordered
+        """
+        pack_of_6 = self.env.ref("uom.product_uom_pack_6")
+        self.product_id_1.is_storable = True
+        self.env["stock.quant"]._update_available_quantity(
+            self.product_id_1, self.env.ref("stock.stock_location_stock"), 100
+        )
+
+        package1, package2 = self.env["stock.quant.package"].create(
+            [{"name": "LOTA"}, {"name": "LOTB"}]
+        )
+
+        po = self.env["purchase.order"].create(self.po_vals)
+        po.order_line.update({
+            "product_uom_id": pack_of_6.id,
+            "product_qty": 10,
+        })
+        po.button_confirm()
+
+        picking = po.picking_ids
+        picking.move_ids.move_line_ids.update({
+            "quantity": 5,
+            "product_uom_id": pack_of_6.id,
+            "result_package_id": package1.id,
+        })
+        picking.move_ids.move_line_ids.create(
+            {
+                "picking_id": picking.id,
+                "move_id": picking.move_ids.id,
+                "company_id": self.env.company.id,
+                "product_id": self.product_id_1.id,
+                "quantity": 5,
+                "product_uom_id": pack_of_6.id,
+                "result_package_id": package2.id,
+            }
+        )
+        picking.button_validate()
+        aggregate_values = picking.move_line_ids._get_aggregated_product_quantities()
+        aggregate_val = aggregate_values[next(iter(aggregate_values))]
+        self.assertEqual(aggregate_val["qty_ordered"], 60)
+        self.assertEqual(aggregate_val["quantity"], 60)
+        self.assertEqual(aggregate_val["packaging_quantity"], 10)
+        self.assertEqual(aggregate_val["packaging_qty_ordered"], 10)
