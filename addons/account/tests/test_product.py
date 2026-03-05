@@ -136,3 +136,18 @@ class TestProduct(AccountTestInvoicingCommon):
             "Customer invoice line should use grandparent category's income account")
         self.assertEqual(bill.invoice_line_ids.account_id, child_expense,
             "Vendor bill line should use child category's expense account")
+
+    def test_retrieve_product_by_name(self):
+        ProductProduct = self.env['product.product']
+        ProductProduct.create({'name': 'Samsung Galaxy Phone Case'})
+        ProductProduct.create({'name': '2200209201 K220LS-MS-040140-01'})
+        network_cables_product = ProductProduct.create({'name': 'Network Cables'})
+
+        self.assertFalse(ProductProduct._retrieve_product(name='Samsung Galaxy Phone'))
+        self.assertFalse(ProductProduct._retrieve_product(name='2002092'))  # subpart present in a product
+
+        result = ProductProduct._retrieve_product(name='Network Cable')
+        self.assertEqual(network_cables_product.id, result.id)
+
+        result = ProductProduct._retrieve_product(name='network cables')
+        self.assertEqual(network_cables_product.id, result.id)  # case insensitive exact match
