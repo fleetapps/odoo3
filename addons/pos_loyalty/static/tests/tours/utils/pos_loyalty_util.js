@@ -5,6 +5,7 @@ import * as PaymentScreen from "@point_of_sale/../tests/pos/tours/utils/payment_
 import * as FeedbackScreen from "@point_of_sale/../tests/pos/tours/utils/feedback_screen_util";
 import * as Dialog from "@point_of_sale/../tests/generic_helpers/dialog_util";
 import * as Chrome from "@point_of_sale/../tests/pos/tours/utils/chrome_util";
+import { delay } from "@web/core/utils/concurrency";
 
 export function selectRewardLine(rewardName) {
     return [
@@ -221,10 +222,20 @@ export function createManualGiftCard(code, amount, date = false) {
             run: `edit ${date}`,
         });
     }
-    steps.push({
-        trigger: `.btn-primary:contains("Add Balance")`,
-        run: "click",
-    });
+    steps.push(
+        {
+            trigger: '.btn-primary:contains("Add Balance")',
+            run: "click",
+        },
+        {
+            trigger: "body",
+            async run() {
+                // Wait for the debounced `batchedGiftcardCodeKeydown` handler to complete
+                await delay(500);
+            },
+        }
+    );
+
     return steps;
 }
 
