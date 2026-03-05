@@ -1,5 +1,3 @@
-/* global posmodel */
-
 import * as Dialog from "@point_of_sale/../tests/generic_helpers/dialog_util";
 
 // -------------------------------
@@ -105,22 +103,13 @@ export function mockCallbackBancontactPay(status, fromEnd = 1) {
             content: "mock scan QR code",
             trigger: "body",
             run: async () => {
-                const orm = posmodel.env.services.orm;
-                const response = await orm.searchRead("pos.payment", [], ["bancontact_id"], {
-                    limit: fromEnd,
-                    order: "id desc",
-                });
-                if (!response || response.length < fromEnd) {
-                    throw new Error("Not enough Bancontact payments found to mock scan QR code");
-                }
-
                 fetch("/bancontact_pay/webhook?mode=test", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        paymentId: response[fromEnd - 1].bancontact_id,
+                        paymentId: fromEnd,
                         status: status,
                     }),
                 });

@@ -37,7 +37,9 @@ class TestWebhook(CommonPosTest, TestPointOfSaleHttpCommon):
             self.assertEqual(pos_payment.payment_status, "done")
             self.assertFalse(pos_payment.qr_code)
             self.assertEqual(pos_payment.bancontact_id, "succeeded_id")
-            self._assert_notify_called_once(mock_notify, pos_payment, "SUCCEEDED")
+
+            self._assert_notify_bancontact_pay_payments_notification(mock_notify, pos_payment, "SUCCEEDED")
+            self._assert_notify_count(mock_notify, "BANCONTACT_PAY_PAYMENTS_NOTIFICATION", 1)
 
     def test_bancontact_webhook_payment_status_done_ignore(self):
         pos_payment, payload = self._make_payment_and_payload("not_updated", "done", "not_updated_qr_code")
@@ -49,7 +51,7 @@ class TestWebhook(CommonPosTest, TestPointOfSaleHttpCommon):
                 self.assertEqual(pos_payment.qr_code, "not_updated_qr_code")
                 self.assertEqual(pos_payment.bancontact_id, "not_updated")
 
-            mock_notify.assert_not_called()
+            self._assert_notify_count(mock_notify, "BANCONTACT_PAY_PAYMENTS_NOTIFICATION", 0)
 
     def test_bancontact_webhook_payment_status_error(self):
         for bancontact_status in ("AUTHORIZATION_FAILED", "FAILED", "EXPIRED", "CANCELLED"):
@@ -60,7 +62,8 @@ class TestWebhook(CommonPosTest, TestPointOfSaleHttpCommon):
                 self.assertEqual(pos_payment.payment_status, "retry")
                 self.assertFalse(pos_payment.qr_code)
                 self.assertFalse(pos_payment.bancontact_id)
-                self._assert_notify_called_once(mock_notify, pos_payment, bancontact_status)
+                self._assert_notify_bancontact_pay_payments_notification(mock_notify, pos_payment, bancontact_status)
+                self._assert_notify_count(mock_notify, "BANCONTACT_PAY_PAYMENTS_NOTIFICATION", 1)
 
     def test_bancontact_webhook_payment_status_error_ignore(self):
         pos_payment, payload = self._make_payment_and_payload("not_updated", "retry", "not_updated_qr_code")
@@ -72,7 +75,7 @@ class TestWebhook(CommonPosTest, TestPointOfSaleHttpCommon):
                 self.assertEqual(pos_payment.qr_code, "not_updated_qr_code")
                 self.assertEqual(pos_payment.bancontact_id, "not_updated")
 
-            mock_notify.assert_not_called()
+            self._assert_notify_count(mock_notify, "BANCONTACT_PAY_PAYMENTS_NOTIFICATION", 0)
 
     # ----- Errors ----- #
     def test_bancontact_webhook_payment_not_found(self):
@@ -103,15 +106,22 @@ class TestWebhook(CommonPosTest, TestPointOfSaleHttpCommon):
     def _notify_patcher(self, pos_payment):
         return patch.object(pos_payment.pos_order_id.config_id.__class__, "_notify")
 
-    def _assert_notify_called_once(self, mock_notify, pos_payment, bancontact_status):
-        mock_notify.assert_called_once_with(
-            "BANCONTACT_PAY_PAYMENTS_NOTIFICATION",
-            {
-                "order_id": pos_payment.pos_order_id.id,
-                "payment_id": pos_payment.id,
-                "bancontact_status": bancontact_status,
-            },
-        )
+    def _assert_notify_count(self, mock_notify, name, expected_count):
+        calls = [call for call in mock_notify.mock_calls if call.args and call.args[0] == name]
+        self.assertEqual(len(calls), expected_count, f"Expected {expected_count} calls to _notify with name '{name}', but got {len(calls)} calls.")
+
+    def _assert_notify_with(self, mock_notify, name, expected_payload):
+        args_list = [call.args for call in mock_notify.mock_calls]
+        actual = [args == (name, expected_payload) for args in args_list]
+        self.assertTrue(any(actual), f"Notification not found\nExpected: {(name, expected_payload)}\nActual: {args_list}")
+
+    def _assert_notify_bancontact_pay_payments_notification(self, mock_notify, pos_payment, bancontact_status):
+        expected_payload = {
+            "order_id": pos_payment.pos_order_id.id,
+            "payment_id": pos_payment.id,
+            "bancontact_status": bancontact_status,
+        }
+        self._assert_notify_with(mock_notify, "BANCONTACT_PAY_PAYMENTS_NOTIFICATION", expected_payload)
 
     def _init_bancontact_pos_payment(self, bancontact_id, payment_status, qr_code):
         order, _ = self.create_backend_pos_order(
