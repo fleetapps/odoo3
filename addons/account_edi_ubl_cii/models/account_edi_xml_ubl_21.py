@@ -72,4 +72,4 @@ class AccountEdiXmlUbl_21(models.AbstractModel):
         if node := self._get_line_discount_allowance_charge_node(vals):
             line_node['cac:AllowanceCharge'].append(node)
         if vals['fixed_taxes_as_allowance_charges']:
-            line_node['cac:AllowanceCharge'].extend(self._get_line_fixed_tax_allowance_charge_nodes(vals))
+            line_node['cac:AllowanceCharge'].extend(self._get_line_allowance_charge_nodes(vals))
