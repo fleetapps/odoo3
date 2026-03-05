@@ -11,7 +11,14 @@ class AccountChartTemplate(models.AbstractModel):
         return {
             'property_account_receivable_id': 'co_puc_130500',
             'property_account_payable_id': 'co_puc_220500',
+<<<<<<< 1a02c643ef060d70f4b0bd68ef5631cd0d603ec7
             'code_digits': '0',
+||||||| cfb2aa6493949979667eab830f1c9cef824da3d1
+=======
+            'property_account_expense_categ_id': 'co_puc_610000',
+            'property_account_income_categ_id': 'co_puc_417500',
+            'property_stock_valuation_account_id': 'co_puc_140500',
+>>>>>>> e87d4305430664ac02ca86c0aa27d5f97b0dc6bf
         }
 
     @template('co', 'res.company')
