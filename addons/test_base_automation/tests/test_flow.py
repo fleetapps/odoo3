@@ -376,7 +376,6 @@ else:
             filter_domain="[('deadline', '!=', False)]",
             _actions={
                 'state': 'mail_post',
-                'mail_post_method': 'email',
                 'template_id': self.test_mail_template_automation.id,
             },
         )
