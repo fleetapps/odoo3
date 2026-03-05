@@ -5,6 +5,9 @@ import { markup } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { getTemplate } from "@web/core/templates";
 import { KeepLast } from "@web/core/utils/concurrency";
+import { utils as ui } from "@web/core/ui/ui_service";
+import { _t } from "@web/core/l10n/translation";
+import { renderToElement } from "@web/core/utils/render";
 
 export class SearchBar extends Interaction {
     static selector = ".o_searchbar_form";
@@ -21,6 +24,13 @@ export class SearchBar extends Interaction {
             "t-on-input": this.debounced(this.onInput, 400),
             "t-on-keydown": this.onKeydown,
             "t-on-search": this.onSearch,
+            "t-on-click": this.removeKeyboardNavigation,
+        },
+        ".o_search_result_item a": {
+            "t-on-keydown": this.onKeydown,
+        },
+        ".o_search_input_group, a[title='Search']": {
+            "t-on-click": this.switchInputToModal,
         },
     };
     autocompleteMinWidth = 300;
@@ -28,12 +38,17 @@ export class SearchBar extends Interaction {
     setup() {
         this.keepLast = new KeepLast();
         this.inputEl = this.el.querySelector(".search-query");
+        this.buttonEl = this.el.querySelector(".oe_search_button");
+        this.resultsEl = this.buttonEl.querySelector(".o_search_found_results");
+        this.iconEl = this.buttonEl.querySelector(".oi-search");
+        this.spinnerEl = this.buttonEl.querySelector(".o_search_spinner");
+        this.searchInputGroup = this.el.querySelector(".o_search_input_group");
         this.menuEl = null;
         this.searchType = this.inputEl.dataset.searchType;
         const orderByEl = this.el.querySelector(".o_search_order_by");
         const form = orderByEl.closest("form");
         this.order = orderByEl.value;
-        this.limit = parseInt(this.inputEl.dataset.limit) || 5;
+        this.limit = parseInt(this.inputEl.dataset.limit) || 6;
         this.wasEmpty = !this.inputEl.value;
         this.linkHasFocus = false;
         if (this.limit) {
@@ -41,12 +56,10 @@ export class SearchBar extends Interaction {
         }
         const dataset = this.inputEl.dataset;
         this.options = {
-            displayImage: dataset.displayImage && JSON.parse(dataset.displayImage),
-            displayDescription: dataset.displayDescription && JSON.parse(dataset.displayDescription),
-            displayExtraLink: dataset.displayExtraLink && JSON.parse(dataset.displayExtraLink),
-            displayDetail: dataset.displayDetail && JSON.parse(dataset.displayDetail),
+            searchType: dataset.searchType,
             // Make it easy for customization to disable fuzzy matching on specific searchboxes
             allowFuzzy: !(dataset.noFuzzy && JSON.parse(dataset.noFuzzy)),
+            proportionateAllocation: true,
         };
         for (const fieldEl of form.querySelectorAll("input[type='hidden']")) {
             this.options[fieldEl.name] = fieldEl.value;
@@ -96,18 +109,21 @@ export class SearchBar extends Interaction {
             order: this.order,
             limit: this.limit,
             max_nb_chars: Math.round(
-                Math.max(this.autocompleteMinWidth, parseInt(this.el.clientWidth)) * 0.22
+                Math.max(this.autocompleteMinWidth, this.el.clientWidth / 3) * 0.22
             ),
             options: this.options,
         });
-        const fieldNames = this.getFieldsNames();
-        res.results.forEach((record) => {
-            for (const fieldName of fieldNames) {
-                if (record[fieldName]) {
-                    record[fieldName] = markup(record[fieldName]);
+
+        const field_set = new Set(this.getFieldsNames());
+        for (const group of Object.values(res.results)) {
+            for (const record of group.data) {
+                for (const key of field_set) {
+                    if (record[key]) {
+                        record[key] = markup(record[key]);
+                    }
                 }
             }
-        });
+        }
         return res;
     }
 
@@ -120,7 +136,7 @@ export class SearchBar extends Interaction {
         }
         const prevMenuEl = this.menuEl;
         if (res && this.limit) {
-            const results = res["results"];
+            const results = res.results;
             let template = "website.s_searchbar.autocomplete";
             const candidate = template + "." + this.searchType;
             if (getTemplate(candidate)) {
@@ -131,7 +147,7 @@ export class SearchBar extends Interaction {
                 {
                     results: results,
                     parts: res["parts"],
-                    hasMoreResults: results.length < res["results_count"],
+                    limit: this.limit,
                     search: this.inputEl.value,
                     fuzzySearch: res["fuzzy_search"],
                     widget: this.options,
@@ -143,28 +159,62 @@ export class SearchBar extends Interaction {
         prevMenuEl?.remove();
     }
 
+    /**
+     * @param {number} count
+     */
+    updateButtonContent(count) {
+        this.hideLoadingSpinner();
+        this.buttonEl.toggleAttribute("disabled", count === 0);
+        const countText = count <= 1 ? _t("%s result", count) : _t("%s results", count);
+        this.resultsEl.querySelector(".o_search_count").textContent = countText;
+    }
+
+    hideLoadingSpinner() {
+        this.resultsEl.classList.toggle("d-none", !this.hasDropdown);
+        this.iconEl.classList.toggle("d-none", this.hasDropdown);
+        this.spinnerEl.classList.add("d-none");
+    }
+
+    showLoadingSpinner() {
+        this.resultsEl.classList.add("d-none");
+        this.iconEl.classList.add("d-none");
+        this.spinnerEl.classList.remove("d-none");
+    }
+
     getFieldsNames() {
-        return [
-            "description",
-            "detail",
-            "detail_extra",
-            "detail_strike",
-            "extra_link",
-            "name",
-            "tags",
-        ];
+        return ["description", "name", "search_item_metadata", "tags"];
     }
 
     async onInput() {
         if (!this.limit) {
             return;
         }
-        if (this.searchType === "all" && !this.inputEl.value.trim().length) {
-            this.render();
-        } else {
-            const res = await this.keepLast.add(this.waitFor(this.fetch()));
-            this.render(res);
+        // If the input is empty, we render the initial state
+        const value = this.inputEl.value.trim();
+        let res = null;
+        if (value.length) {
+            this.showLoadingSpinner();
+            if (!this.hasDropdown) {
+                this.renderLoading();
+            }
+            res = await this.keepLast.add(this.waitFor(this.fetch()));
         }
+        this.render(res);
+        this.updateButtonContent(res?.results_count || 0);
+    }
+
+    renderLoading() {
+        if (this.menuEl) {
+            this.services["public.interactions"].stopInteractions(this.menuEl);
+        }
+        const prevMenuEl = this.menuEl;
+        this.menuEl = this.renderAt(
+            "website.s_searchbar.autocomplete.skeleton.loader",
+            {},
+            this.el
+        )[0];
+        this.hasDropdown = true;
+        prevMenuEl?.remove();
     }
 
     onFocusOut() {
@@ -188,7 +238,7 @@ export class SearchBar extends Interaction {
             case "ArrowDown":
                 ev.preventDefault();
                 if (this.menuEl) {
-                    const focusableEls = [this.inputEl, ...this.menuEl.children];
+                    const focusableEls = [this.inputEl, ...this.menuEl.querySelectorAll("li > a")];
                     const focusedEl = document.activeElement;
                     const currentIndex = focusableEls.indexOf(focusedEl) || 0;
                     const delta = ev.key === "ArrowUp" ? focusableEls.length - 1 : 1;
@@ -197,10 +247,62 @@ export class SearchBar extends Interaction {
                     nextFocusedEl.focus();
                 }
                 break;
-            case "Enter":
-                this.limit = 0; // prevent autocomplete
+            case "Tab":
+                this.el.classList.add("o_keyboard_navigation");
                 break;
         }
+    }
+
+    removeKeyboardNavigation() {
+        this.el.classList.remove("o_keyboard_navigation");
+    }
+
+    switchInputToModal(ev) {
+        if (ev.target.closest(".modal")) {
+            return;
+        }
+        const isTooSmall =
+            ui.isSmall() || this.searchInputGroup.getBoundingClientRect().width < 280;
+        const forceModalTrigger = this.searchInputGroup.hasAttribute("data-force-modal-trigger");
+
+        if (isTooSmall || forceModalTrigger) {
+            this.openSearchModal();
+        }
+    }
+
+    openSearchModal() {
+        const values = {
+            action: this.el.getAttribute("action"),
+            placeholder: this.inputEl.getAttribute("placeholder"),
+            limit: this.inputEl.dataset.limit,
+            order: this.inputEl.dataset.orderBy,
+            autocomplete: this.inputEl.getAttribute("autocomplete"),
+            searchType: this.inputEl.dataset.searchType,
+        };
+        const wrapperEl = renderToElement("website.s_searchbar.modal", values);
+        const hiddenInputEls = this.el.querySelectorAll("input[type=hidden]");
+        hiddenInputEls.forEach((el) => {
+            const clone = el.cloneNode(true);
+            wrapperEl.querySelector(".o_searchbar_form").appendChild(clone);
+        });
+        this.insert(wrapperEl, document.body);
+        const modal = new Modal(wrapperEl);
+        wrapperEl.addEventListener(
+            "shown.bs.modal",
+            () => {
+                const modalInput = wrapperEl.querySelector(".search-query");
+                modalInput?.focus();
+            },
+            { once: true }
+        );
+        wrapperEl.addEventListener(
+            "hidden.bs.modal",
+            () => {
+                wrapperEl.remove();
+            },
+            { once: true }
+        );
+        modal.show();
     }
 
     /**
