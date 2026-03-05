@@ -91,7 +91,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         self.assertEqual(
             data["res.users"],
             self._filter_users_fields(
-                {"id": self.user_root.id, "share": False},
+                {"id": self.user_root.id, "active": False, "share": False},
             ),
         )
         # ensure visitor info are correct with real user
@@ -164,7 +164,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         self.assertEqual(
             data["res.users"],
             self._filter_users_fields(
-                {"id": self.user_root.id, "employee_ids": [], "share": False},
+                {"id": self.user_root.id, "active": False, "employee_ids": [], "share": False},
                 {
                     "id": test_user.id,
                     "is_admin": False,
@@ -291,7 +291,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         self.assertEqual(
             data["res.users"],
             self._filter_users_fields(
-                {"id": self.user_root.id, "employee_ids": [], "share": False},
+                {"id": self.user_root.id, "active": False, "employee_ids": [], "share": False},
                 {
                     "id": operator.id,
                     "is_admin": False,

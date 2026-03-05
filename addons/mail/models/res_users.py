@@ -407,7 +407,7 @@ class ResUsers(models.Model):
         res.extend(["notification_type", "share", "signature"])
 
     def _store_main_user_fields(self, res: Store.FieldList):
-        res.attr("share")
+        res.extend(["active", "share"])
 
     @api.model
     def _get_activity_groups(self):
