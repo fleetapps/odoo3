@@ -239,7 +239,7 @@ class TestAccountAccount(TestAccountMergeCommon):
             self.company_data['default_account_revenue'].company_ids = self.company_data_2['company']
 
     def test_toggle_reconcile(self):
-        ''' Test the feature when the user sets an account as reconcile/not reconcile with existing journal entries. '''
+        ''' toggling reconcile flag should have no impact on amount_residual and reconciled. '''
         account = self.company_data['default_account_revenue']
 
         move = self.env['account.move'].create({
@@ -266,8 +266,8 @@ class TestAccountAccount(TestAccountMergeCommon):
         self.env['account.move.line'].flush_model()
 
         self.assertRecordValues(move.line_ids, [
-            {'reconciled': False, 'amount_residual': 0.0, 'amount_residual_currency': 0.0},
-            {'reconciled': False, 'amount_residual': 0.0, 'amount_residual_currency': 0.0},
+            {'reconciled': False, 'amount_residual': 100.0, 'amount_residual_currency': 200.0},
+            {'reconciled': False, 'amount_residual': -100.0, 'amount_residual_currency': -200.0},
         ])
 
         # Set the account as reconcile and fully reconcile something.
@@ -291,8 +291,8 @@ class TestAccountAccount(TestAccountMergeCommon):
         self.env.invalidate_all()
 
         self.assertRecordValues(move.line_ids, [
-            {'reconciled': False, 'amount_residual': 0.0, 'amount_residual_currency': 0.0},
-            {'reconciled': False, 'amount_residual': 0.0, 'amount_residual_currency': 0.0},
+            {'reconciled': False, 'amount_residual': 100.0, 'amount_residual_currency': 200.0},
+            {'reconciled': False, 'amount_residual': -100.0, 'amount_residual_currency': -200.0},
         ])
 
     def test_toggle_reconcile_with_partials(self):
@@ -333,9 +333,8 @@ class TestAccountAccount(TestAccountMergeCommon):
 
         move.line_ids.filtered(lambda line: line.account_id == account).reconcile()
 
-        # Try to set the account as a not-reconcile one.
-        with self.assertRaises(UserError):
-            account.reconcile = False
+        # Try to set the account as a not-reconcile one should not throw an error
+        account.reconcile = False
 
     def test_name_create(self):
         """name_create should only be possible when importing
