@@ -27,8 +27,16 @@
                         <a href="#" class="text-decoration-underline link-underline link-underline-opacity-0 link-underline-opacity-100-hover" t-on-click="onClickNumberOfVotes" t-esc="props.poll.voteCountText(props.poll.numberOfVotes)"/>
                         &#8729;
                         <t t-if="props.poll.end_message_id">Poll closed</t>
+<<<<<<< 48de40f461ac2c09caf764ef565eeeb9e0bcf5fa
                         <t t-else="" t-esc="state.remainingTimeText"/>
                     </div>
+||||||| 72003b6e1eb2d2db26952468491d0f33fa9e7a96
+                        <t t-else="" t-esc="state.remainingTimeText"/>
+                    </p>
+=======
+                        <span t-else="" t-att-title="remainingTimeTextTitle" t-esc="state.remainingTimeText"/>
+                    </p>
+>>>>>>> 33df718ef79cbaa705614ac5333795f09b13bb17
                     <span class="flex-grow-1"/>
                     <t t-if="!props.poll.end_message_id">
                         <t t-if="!props.poll.selfAlreadyVoted">
