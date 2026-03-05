@@ -59,7 +59,7 @@ class DiscussChannelWebclientController(WebclientController):
             )
             self._add_has_unpinned_channels_to_store(store)
         if name == "discuss.channel":
-            channels = request.env["discuss.channel"].search([("id", "in", params)])
+            channels = request.env["discuss.channel"].search_fetch([("id", "in", params)])
             request.update_context(channels=request.env.context["channels"] | channels)
         if name == "/discuss/channel/favorite":
             if member := request.env["discuss.channel.member"].search(
