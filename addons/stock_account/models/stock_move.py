@@ -164,6 +164,7 @@ class StockMove(models.Model):
         # stack. Limitation when validating at same time out and ins
         moves_out = self.filtered(lambda m: m._is_out())
         moves_out._set_value()
+        moves_out = moves_out.filtered(lambda m: m._should_update_standard_price())
         moves = super()._action_done(cancel_backorder=cancel_backorder)
         moves_in = moves.filtered(lambda m: m.is_in or m.is_dropship)
         moves_in._set_value()
@@ -172,6 +173,9 @@ class StockMove(models.Model):
         moves_out.product_id.filtered(lambda p: p.cost_method == 'fifo' or (p.cost_method == 'average' and p.lot_valuated))._update_standard_price()
         (moves_in | moves_out).sudo()._create_analytic_move()
         return moves
+
+    def _should_update_standard_price(self):
+        return True
 
     def _create_account_move(self):
         """ Create account move for specific location or analytic."""
