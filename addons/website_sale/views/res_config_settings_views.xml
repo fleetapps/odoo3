@@ -210,11 +210,11 @@
                 <setting
                     string="Follow up abandoned carts"
                     id="abandoned_carts_setting"
-                    help="Automate abandoned checkout emails"
+                    help="Automate abandoned checkout emails and/or WahtsApp"
                     documentation="/applications/websites/ecommerce/ecommerce_management/order_handling.html#abandoned-cart"
                 >
-                    <field name="send_abandoned_cart_email"/>
-                    <div invisible="not send_abandoned_cart_email" class="content-group">
+                    <field name="send_abandoned_cart_followup"/>
+                    <div invisible="not send_abandoned_cart_followup" class="content-group">
                         <div class="row mt16">
                             <div class="col-12">
                                 <label
@@ -231,8 +231,33 @@
                             </div>
                         </div>
                     </div>
-                    <div invisible="not send_abandoned_cart_email" class="mt8">
-                        <button type="object" name="action_open_abandoned_cart_mail_template" string="Customize Abandoned Email Template" class="btn-link" icon="oi-arrow-right"/>
+                    <div invisible="not send_abandoned_cart_followup" class="content-group">
+                        <div class="row mt16">
+                            <div class="col-12">
+                                <field name="send_abandoned_cart_email" class="w-auto"/>
+                                <label
+                                    for="send_abandoned_cart_email"
+                                    string="Send Email"
+                                    class="o_light_label ms-1"
+                                />
+                            </div>
+                        </div>
+                        <div invisible="not send_abandoned_cart_email" class="mt8">
+                            <button type="object" name="action_open_abandoned_cart_mail_template" string="Customize Abandoned Email Template" class="btn-link" icon="oi-arrow-right"/>
+                        </div>
+                        <div class="row mt16" invisible="not whatsapp_installed">
+                            <div class="col-12">
+                                <field name="send_abandoned_cart_whatsapp" class="w-auto"/>
+                                <label
+                                    for="send_abandoned_cart_whatsapp"
+                                    string="Send WhatsApp messages"
+                                    class="o_light_label ms-1"
+                                />
+                            </div>
+                        </div>
+                        <div invisible="not send_abandoned_cart_whatsapp or not whatsapp_installed" class="mt8">
+                            <button type="object" name="action_open_abandoned_cart_whatsapp_template" string="Customize Abandoned WhatsApp Template" class="btn-link" icon="oi-arrow-right"/>
+                        </div>
                     </div>
                 </setting>
                 <setting
