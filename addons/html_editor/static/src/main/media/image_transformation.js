@@ -251,6 +251,10 @@ export class ImageTransformation extends Component {
             type = "mr";
         }
 
+        // No transformation handle was clicked.
+        if (!type) {
+            return;
+        }
         const { pageX, pageY } = this.normalizeCoordinates(ev);
         this.transfo.active = {
             type: type,
