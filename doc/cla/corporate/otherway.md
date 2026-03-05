@@ -11,5 +11,5 @@ Juan Alfonso Perez juanalfonso@otherway.es https://github.com/otherway
 
 List of contributors:
 
-Juan Alfonso Perez Ruiz juanalfonso@otherway.es https://github.com/otherway
-Pedro Rodriguez Gil pedro@otherway.es https://github.com/otherway
+Juan Alfonso Perez Ruiz juanalfonso@otherway.es https://github.com/juanalfonsopr
+Pedro Rodriguez Gil pedro@otherway.es https://github.com/pedrorgil
