@@ -21,3 +21,7 @@ class SaleOrderLine(models.Model):
 
     def _is_reorder_allowed(self):
         return not self.event_id and super()._is_reorder_allowed()
+    
+    def get_description_following_lines(self):
+        if self.event_ticket_id:
+            return self.name.splitlines()[1:]

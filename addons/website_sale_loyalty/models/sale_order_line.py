@@ -44,3 +44,7 @@ class SaleOrderLine(models.Model):
         return super()._is_sellable() and (
             not self.is_reward_line or self.reward_id.reward_type == 'product'
         )
+
+    def get_description_following_lines(self):
+        if self.reward_id:
+            return []
