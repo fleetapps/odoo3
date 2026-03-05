@@ -148,7 +148,7 @@ class AccountAnalyticLine(models.Model):
                 continue
 
             so_line = self.env['sale.order.line']
-            if line.product_id.expense_policy == 'sales_price':
+            if line.product_id.reinvoice_policy == 'sales_price':
                 so_line = line._get_existing_so_line()
             line.so_line = so_line or line._create_so_line()
 
@@ -178,7 +178,7 @@ class AccountAnalyticLine(models.Model):
             'product_uom_qty': 0,
         }
 
-        if self.product_id.expense_policy == 'cost':
+        if self.product_id.reinvoice_policy == 'cost':
             product = self.product_id.with_company(self.order_id.company_id)
             values['price_unit'] = product.currency_id._convert(
                 product.standard_price, self.order_id.currency_id, round=False
@@ -196,7 +196,7 @@ class AccountAnalyticLine(models.Model):
             if (
                 line.unit_amount
                 and line.so_line
-                and line.product_id.expense_policy == 'cost'
+                and line.product_id.reinvoice_policy == 'cost'
             ):
                 product = line.product_id.with_company(line.order_id.company_id)
                 unit_price = -line.amount / line.unit_amount
@@ -217,7 +217,7 @@ class AccountAnalyticLine(models.Model):
             if not line.so_line._is_analytic_reinvoice_line():
                 continue
             if (
-                line.product_id.expense_policy == 'cost'
+                line.product_id.reinvoice_policy == 'cost'
                 and not line.so_line.product_uom_qty
                 and line.unit_amount == line.so_line.qty_delivered
             ):

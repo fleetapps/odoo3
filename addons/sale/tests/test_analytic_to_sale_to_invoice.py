@@ -14,7 +14,7 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
             'type': 'service',
             'standard_price': 100,
             'list_price': 110,
-            'expense_policy': 'cost',
+            'reinvoice_policy': 'cost',
             'invoice_policy': 'delivery',
         })
         cls.reinvoice_at_sales_price_product = cls.env['product.product'].create({
@@ -22,7 +22,7 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
             'type': 'service',
             'standard_price': 100,
             'list_price': 110,
-            'expense_policy': 'sales_price',
+            'reinvoice_policy': 'sales_price',
             'invoice_policy': 'delivery',
         })
         cls.services_sale_order = cls.env['sale.order'].create({
@@ -231,7 +231,7 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
             'type': 'service',
             'standard_price': 200,
             'list_price': 210,
-            'expense_policy': 'cost',
+            'reinvoice_policy': 'cost',
             'invoice_policy': 'delivery',
             'uom_id': self.uom_hour.id,
         })
@@ -240,7 +240,7 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
             'type': 'service',
             'standard_price': 200,
             'list_price': 210,
-            'expense_policy': 'sales_price',
+            'reinvoice_policy': 'sales_price',
             'invoice_policy': 'delivery',
             'uom_id': self.uom_hour.id,
         })

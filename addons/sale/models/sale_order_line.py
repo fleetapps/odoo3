@@ -618,7 +618,7 @@ class SaleOrderLine(models.Model):
             if (
                 (not force_recompute and has_manual_price(line))
                 or line.qty_invoiced > 0
-                or (line.product_id.expense_policy == 'cost' and line.is_expense)
+                or (line.product_id.reinvoice_policy == 'cost' and line.is_expense)
             ):
                 continue
             line = line.with_context(sale_write_from_compute=True)
@@ -907,8 +907,8 @@ class SaleOrderLine(models.Model):
     @api.depends('is_expense', 'product_id')
     def _compute_qty_delivered_method(self):
         """ Sale module compute delivered qty for product [('type', 'in', ['consu']), ('service_type', '=', 'manual')]
-                - consu + expense_policy : analytic (sum of analytic unit_amount)
-                - consu + no expense_policy : manual (set manually on SOL)
+                - consu + reinvoice_policy : analytic (sum of analytic unit_amount)
+                - consu + no reinvoice_policy : manual (set manually on SOL)
                 - service (+ service_type='manual', the only available option) : manual
 
             This is true when only sale is installed: sale_stock redifine the behavior for 'consu' type,
@@ -928,7 +928,7 @@ class SaleOrderLine(models.Model):
             # For other delivery methods, they are expected to add their own quantities to the
             # quantities already provided by the `_prepare_qty_delivered` method, including
             # analytic lines quantities for reinvoiceable products.
-            if line.qty_delivered_method == 'manual' and line.product_id.expense_policy != 'no':
+            if line.qty_delivered_method == 'manual' and line.product_id.reinvoice_policy != 'no':
                 line.qty_delivered_method = 'analytic'
 
     def _get_consu_qty_delivered_method(self):
@@ -1875,7 +1875,7 @@ class SaleOrderLine(models.Model):
         self.ensure_one()
         return (
             not self.is_expense
-            and self.product_id.expense_policy != 'no'
+            and self.product_id.reinvoice_policy != 'no'
             and self.qty_delivered_method != 'manual'
         )
 
@@ -1890,5 +1890,5 @@ class SaleOrderLine(models.Model):
         return (
             not self.is_expense
             and self.product_id.invoice_policy == 'delivery'
-            and self.product_id.expense_policy != 'no'
+            and self.product_id.reinvoice_policy != 'no'
         )

@@ -78,7 +78,7 @@ class AccountMoveLine(models.Model):
         if self.sale_line_ids:
             return False
         uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit')
-        return float_compare(self.credit or 0.0, self.debit or 0.0, precision_digits=uom_precision_digits) != 1 and self.product_id.expense_policy not in [False, 'no']
+        return float_compare(self.credit or 0.0, self.debit or 0.0, precision_digits=uom_precision_digits) != 1 and self.product_id.reinvoice_policy not in [False, 'no']
 
     def _sale_create_reinvoice_sale_line(self):
 
@@ -123,7 +123,7 @@ class AccountMoveLine(models.Model):
             # find the existing sale.line or keep its creation values to process this in batch
             sale_line = None
             if (
-                move_line.product_id.expense_policy == 'sales_price'
+                move_line.product_id.reinvoice_policy == 'sales_price'
                 and move_line.product_id.invoice_policy == 'delivery'
                 and not self.env.context.get('force_split_lines')
             ):
@@ -205,7 +205,7 @@ class AccountMoveLine(models.Model):
         unit_amount = self.quantity
         amount = (self.credit or 0.0) - (self.debit or 0.0)
 
-        if self.product_id.expense_policy == 'sales_price':
+        if self.product_id.reinvoice_policy == 'sales_price':
             return order.pricelist_id._get_product_price(
                 self.product_id,
                 1.0,

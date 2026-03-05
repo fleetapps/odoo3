@@ -19,17 +19,17 @@ class ProductTemplate(models.Model):
              "Timesheets on contract: Invoice based on the tracked hours on the related timesheet.\n"
              "Create a task and track hours: Create a task on the sales order validation and track the work hours.")
     sale_line_warn_msg = fields.Text(string="Sales Order Line Warning")
-    expense_policy = fields.Selection(
+    reinvoice_policy = fields.Selection(
         selection=[
             ('no', "No"),
             ('cost', "At cost"),
             ('sales_price', "Sales price"),
         ],
         string="Re-Invoice Costs", default='no',
-        compute='_compute_expense_policy', store=True, readonly=False,
+        compute='_compute_reinvoice_policy', store=True, readonly=False,
         help="Validated expenses, vendor bills, or stock pickings (set up to track costs) can be invoiced to the customer at either cost or sales price.")
-    visible_expense_policy = fields.Boolean(
-        string="Re-Invoice Policy visible", compute='_compute_visible_expense_policy')
+    visible_reinvoice_policy = fields.Boolean(
+        string="Re-Invoice Policy visible", compute='_compute_visible_reinvoice_policy')
     sales_count = fields.Float(
         string="Sold", compute='_compute_sales_count', digits='Product Unit')
     invoice_policy = fields.Selection(
@@ -91,14 +91,14 @@ class ProductTemplate(models.Model):
         self.filtered(lambda pt: not pt.sale_ok).service_tracking = 'no'
 
     @api.depends('purchase_ok')
-    def _compute_visible_expense_policy(self):
+    def _compute_visible_reinvoice_policy(self):
         visibility = self.env.user.has_group('analytic.group_analytic_accounting')
         for product_template in self:
-            product_template.visible_expense_policy = visibility and product_template.purchase_ok
+            product_template.visible_reinvoice_policy = visibility and product_template.purchase_ok
 
     @api.depends('sale_ok')
-    def _compute_expense_policy(self):
-        self.filtered(lambda t: not t.sale_ok).expense_policy = 'no'
+    def _compute_reinvoice_policy(self):
+        self.filtered(lambda t: not t.sale_ok).reinvoice_policy = 'no'
 
     @api.depends('product_variant_ids.sales_count')
     def _compute_sales_count(self):
