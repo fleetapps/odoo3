@@ -64,6 +64,7 @@
                 <field name="pos_session_duration"/>
                 <field name="currency_id"/>
                 <field name="statistics_for_current_session" />
+                <field name="kanban_dashboard_graph"/>
                 <templates>
                     <t t-name="menu">
                         <div class="container dropdown-pos-config">
@@ -97,7 +98,7 @@
                         </div>
                     </t>
                     <t t-name="card">
-                        <div name="card_title" class="mb-4 ms-2">
+                        <div name="card_title" class="mb-1 ms-2">
                             <field name="name" class="fw-bold fs-4 d-block"/>
                             <div t-if="!record.current_session_id.raw_value &amp;&amp; record.pos_session_username.value" class="badge rounded-pill text-bg-info d-inline-block">Opened by <field name="pos_session_username"/></div>
                             <div t-if="record.pos_session_state.raw_value == 'opening_control'" class="badge rounded-pill text-bg-info d-inline-block">Opening Control</div>
@@ -108,7 +109,7 @@
                             </div>
                         </div>
                         <div class="row g-0 pb-4 ms-2 mt-auto">
-                            <div name="card_left" class="col-12 col-md-6 d-flex flex-wrap align-items-center gap-2 mb-2 mb-md-0">
+                            <div name="card_left" class="col-12 col-md-6 d-flex flex-wrap align-items-start gap-2 mb-2 mb-md-0">
                                 <button t-if="record.current_session_state.raw_value != 'closing_control'" class="btn btn-primary" name="open_ui" type="object">
                                     <t t-if="record.current_session_state.raw_value === 'opened'">Continue Selling</t>
                                     <t t-else="">Open Register</t>
@@ -165,6 +166,9 @@
                             </div>
                         </div>
                         <field name="current_user_id" widget="many2one_avatar_user" class="mt-auto ms-auto"/>
+                        <div class="px-4">
+                            <field name="kanban_dashboard_graph" widget="dashboard_graph" graph_type="line"/>
+                        </div>
                     </t>
                 </templates>
             </kanban>
