@@ -136,13 +136,21 @@ class ProjectProject(models.Model):
             Note: create it before calling super() to avoid raising the ValidationError from _check_allow_timesheet
         """
         defaults = self.default_get(['allow_timesheets', 'account_id', 'is_template'])
-        analytic_accounts_vals = [
-            vals for vals in vals_list
+
+        analytic_accounts_vals = []
+        for vals in vals_list:
             if (
-                vals.get('allow_timesheets', defaults.get('allow_timesheets')) and
-                not vals.get('account_id', defaults.get('account_id')) and not vals.get('is_template', defaults.get('is_template'))
-            )
-        ]
+                vals.get('allow_timesheets', defaults.get('allow_timesheets'))
+                and not vals.get('account_id', defaults.get('account_id'))
+                and not vals.get('is_template', defaults.get('is_template'))
+            ):
+                if (
+                    (partner_id := self.env['res.partner'].browse(vals.get('partner_id')))
+                    and partner_id.company_id
+                    and vals.get('company_id') != partner_id.company_id.id
+                ):
+                    vals['company_id'] = partner_id.company_id.id
+                analytic_accounts_vals.append(vals)
 
         if analytic_accounts_vals:
             analytic_accounts = self.env['account.analytic.account'].create(self._get_values_analytic_account_batch(analytic_accounts_vals))
