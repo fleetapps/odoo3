@@ -42,3 +42,28 @@ class TestUI(HttpCase):
                                  } for x in range(5)]}):
             self.env['website'].get_current_website().google_places_api_key = MOCK_API_KEY
             self.start_tour('/shop/address', 'autocomplete_tour')
+
+    def test_autocomplete_br(self):
+        if self.env['ir.module.module']._get('l10n_br').state != 'installed':
+            self.skipTest("l10n_br module is not installed")
+
+        website = self.env['website'].get_current_website()
+        website.company_id.account_fiscal_country_id = website.company_id.country_id = self.env.ref("base.br")
+
+        with patch.object(AutoCompleteController, '_perform_complete_place_search',
+                        lambda controller, *args, **kwargs: {
+                            'country': [self.env['res.country'].search([('code', '=', 'BR')]).id, 'Brazil'],
+                            'zip': '12345',
+                            'street': 'Hello world',
+                            'street_number': '42',
+                            'street2': 'Bye Bye',
+                            }), \
+            patch.object(AutoCompleteController, '_perform_place_search',
+                        lambda controller, *args, **kwargs: {
+                            'results': [{
+                                'formatted_address': f'Result {x}',
+                                'google_place_id': MOCK_GOOGLE_ID
+                            } for x in range(5)]}):
+
+            website.google_places_api_key = MOCK_API_KEY
+            self.start_tour('/shop/address', 'autocomplete_extended_tour')
