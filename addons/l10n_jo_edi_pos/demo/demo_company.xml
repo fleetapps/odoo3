@@ -3,7 +3,7 @@
     <data>
         <record id="base.demo_company_jo" model="res.company">
             <field name="l10n_jo_edi_pos_enabled">True</field>
-            <field name="l10n_jo_edi_pos_testing_mode">True</field>
+            <field name="l10n_jo_edi_pos_testing_mode">False</field>
         </record>
     </data>
 </odoo>
