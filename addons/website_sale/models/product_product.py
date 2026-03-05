@@ -133,16 +133,6 @@ class ProductProduct(models.Model):
             product_id=self.id,
             **kwargs)
 
-    def _website_show_quick_add(self):
-        self.ensure_one()
-        if not self.filtered_domain(self.env['website']._product_domain()):
-            return False
-        website = self.env['website'].get_current_website()
-        return not (
-            website.prevent_sale
-            and website._prevent_product_sale(self, not self._get_contextual_price())
-        )
-
     def _is_add_to_cart_allowed(self):
         self.ensure_one()
         if self.env.user.has_group('base.group_system'):
