@@ -276,6 +276,7 @@ class Cart(PaymentPortal):
                 order.currency_id,
             ),
             'shipping_address_update_route': WebsiteSale._express_checkout_delivery_route,
+            'prevent_express_checkout': not order._can_express_checkout(),
         })
         if request.website.is_public_user():
             payment_form_values['partner_id'] = -1
