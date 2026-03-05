@@ -6,7 +6,12 @@ export class MentionPlugin extends Plugin {
     static id = "mention";
     static dependencies = ["baseContainer", "selection", "history"];
     resources = {
+<<<<<<< 440afb248a1bb1510035446abcbd13e066b36793
         on_selectionchange_handlers: this.detectMentions.bind(this),
+||||||| 8ad26f16df89ba80146ff9f39bcdf64d3385865e
+        selectionchange_handlers: this.detectMentions.bind(this),
+=======
+>>>>>>> 234122064b998135ab811bc27f11cd5ab5b1bcf7
         is_node_editable_predicates: (node) => {
             for (const { selector } of this.MENTION_SELECTORS) {
                 if (closestElement(node, selector)) {
@@ -15,6 +20,9 @@ export class MentionPlugin extends Plugin {
             }
         },
         select_all_overrides: this.selectAll.bind(this),
+        selectionchange_handlers: this.detectMentions.bind(this),
+        selectors_for_feff_providers: () =>
+            this.MENTION_SELECTORS.map(({ selector }) => selector).join(", "),
     };
 
     setup() {
