@@ -965,6 +965,7 @@ class StockMoveLine(models.Model):
             'package_id': quant.package_id.id,
             'location_id': quant.location_id.id,
             'owner_id': quant.owner_id.id,
+            'result_package_id': quant.package_id.id
         }
         return line_data
 
