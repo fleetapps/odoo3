@@ -161,7 +161,7 @@
                         <group>
                             <field name="date_deadline"/>
                         </group>
-                        <field name="user_id" widget="many2one_avatar_user"/>
+                        <field name="user_id" widget="many2one_avatar_user" readonly="not res_model" force_save="not res_model"/>
                     </group>
                     <field name="note" class="oe-bordered-editor embedded-editor-height-4" placeholder="Log a note..." widget="html_mail"/>
                     <footer>
