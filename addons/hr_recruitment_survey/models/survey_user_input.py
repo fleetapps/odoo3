@@ -7,6 +7,7 @@ class SurveyUser_Input(models.Model):
     _inherit = "survey.user_input"
 
     applicant_id = fields.Many2one('hr.applicant', string='Applicant', index='btree_not_null')
+    state = fields.Selection(selection_add=[('cancelled', 'Cancelled')])
 
     def _mark_done(self):
         odoobot = self.env.ref('base.partner_root')
