@@ -72,7 +72,7 @@
             }">
             <div class="total text-center text-dark"
                 t-att-style="!ui.isSmall? 'font-size: 125px;' : ''" >
-                <PriceFormatter price="this.env.utils.formatCurrency(currentOrder.totalDue)" />
+                <PriceFormatter price="this.env.utils.formatCurrency(currentOrder.totalDue * (this.currentOrder.currency.rate / this.currentCurrency.rate), true, this.currentCurrency)" />
             </div>
         </section>
     </t>
@@ -163,6 +163,7 @@
     </t>
 
     <t t-name="point_of_sale.PaymentScreenMethods">
+        <t t-set="differentCurrencies" t-value="this.paymentMethodsHaveDifferentCurrencies()" />
         <div class="paymentmethods-container" t-att-class="ui.isSmall ? 'rounded-3' : 'flex-grow-1'">
         <!-- Add scrollbar if more than 4 payment methods are configured -->
             <div class="paymentmethods gap-1 gap-lg-2" t-att-class="{ 'd-grid p-1 gap-1 overflow-y-auto rounded-3 bg-200': ui.isSmall, 'd-flex flex-column gap-lg-2': !ui.isSmall }" t-att-style="ui.isSmall ? 'max-height: 120px;' : ''">
@@ -175,6 +176,7 @@
                             <span class="payment-name" t-out="paymentMethod.name" />
                         </div>
                         <span class="text-muted" t-out="pos.getPaymentMethodFmtAmount(paymentMethod, currentOrder)"/>
+                        <sapn class="text-muted" t-out="paymentMethod.journal_id.currency_id.name" t-if="paymentMethod.journal_id and paymentMethod.journal_id.currency_id and differentCurrencies" />
                     </div>
                 </t>
             </div>
