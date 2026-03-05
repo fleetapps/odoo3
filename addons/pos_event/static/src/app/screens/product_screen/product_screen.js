@@ -192,6 +192,7 @@ patch(ProductScreen.prototype, {
                 product_id: ticket.product_id,
                 product_tmpl_id: ticket.product_id.product_tmpl_id,
                 price_unit: ticket.price,
+                price_extra: ticket.price - ticket.product_id.lst_price,
                 price_type: "original",
                 qty: data.length,
                 event_ticket_id: ticket,
