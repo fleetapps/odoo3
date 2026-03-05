@@ -206,6 +206,7 @@ class TestPeppolParticipant(PeppolConnectorCommon):
             self._mock_cancel_peppol_registration(),
         ]):
             settings.button_peppol_deregister()
+        settings.invalidate_recordset()
         self.assertRecordValues(settings, [{
             'account_peppol_proxy_state': 'not_registered',
             'peppol_use_parent_company': False,
@@ -303,7 +304,13 @@ class TestPeppolParticipant(PeppolConnectorCommon):
             self._mock_get_all_documents(),
             self._mock_participant_status('sender'),
         ]):
+<<<<<<< HEAD
             settings.button_peppol_deregister()
+=======
+            config_wizard = self.env['peppol.config.wizard'].with_context(allowed_company_ids=branch.ids).create({})
+            config_wizard.button_peppol_unregister()
+        settings.invalidate_recordset()
+>>>>>>> 95d2c16de7f7 ([REF] core: refactor ORM unlink())
         self.assertRecordValues(settings, [{
             'account_peppol_proxy_state': 'not_registered',
             'peppol_use_parent_company': False,
