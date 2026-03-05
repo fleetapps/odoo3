@@ -46,6 +46,7 @@ export class LinkPopover extends Component {
         includeStyling: { type: Boolean, optional: true },
         allowTargetBlank: { type: Boolean, optional: true },
         allowStripDomain: { type: Boolean, optional: true },
+        advancedAttributeOptions: { type: Array, optional: true },
     };
     static defaultProps = {
         canEdit: true,
@@ -68,7 +69,6 @@ export class LinkPopover extends Component {
             textContent === linkElement.getAttribute("href") ||
             textContent + "/" === linkElement.getAttribute("href");
 
-        const currentRelValues = linkElement.rel.split(" ");
         this.linkPreviewTarget =
             linkElement.hash?.length && this.isAbsoluteURLInCurrentDomain(linkElement.href)
                 ? "_self"
@@ -88,7 +88,6 @@ export class LinkPopover extends Component {
             linkPreviewName: "",
             imgSrc: "",
             type: this.props.type || getButtonType(linkElement),
-            linkTarget: linkElement.target === "_blank" ? "_blank" : "",
             directDownload: true,
             isDocument: false,
             buttonSize: getButtonSize(linkElement),
@@ -98,30 +97,7 @@ export class LinkPopover extends Component {
             showLabel: !linkElement.childElementCount,
             stripDomain: true,
             showAdvancedOptions: false,
-            relAttributeOptions: {
-                nofollow: {
-                    label: "nofollow",
-                    description: _t("Tells search engines not to follow this link"),
-                    isChecked: currentRelValues.includes("nofollow"),
-                },
-                noreferrer: {
-                    label: "noreferrer",
-                    description: _t("Removes referrer information sent to the target site"),
-                    isChecked: currentRelValues.includes("noreferrer"),
-                },
-                sponsored: {
-                    label: "sponsored",
-                    description: _t("Indicates the link is sponsored or paid content"),
-                    isChecked: currentRelValues.includes("sponsored"),
-                },
-                noopener: {
-                    label: "noopener",
-                    description: _t(
-                        "Prevents the new page from accessing the original window (security)"
-                    ),
-                    isChecked: currentRelValues.includes("noopener"),
-                },
-            },
+            advancedAttributeOptions: this.props.advancedAttributeOptions,
         });
 
         this.updateDocumentState();
@@ -156,41 +132,28 @@ export class LinkPopover extends Component {
         }
     }
 
-    toggleAdvancedOptions() {
-        this.state.showAdvancedOptions = !this.state.showAdvancedOptions;
-    }
-
-    toggleRelAttr(attr) {
-        const option = this.state.relAttributeOptions[attr];
-        option.isChecked = !option.isChecked;
+    prepareParams() {
+        return {
+            label: this.state.label,
+            attachmentId: this.state.attachmentId,
+            attributes: {
+                href: this.state.url || null,
+                class: this.classes,
+            },
+        };
     }
 
     onChange() {
         // Apply changes to update the link preview.
-        this.props.onChange(
-            this.state.url,
-            this.state.label,
-            this.classes,
-            this.state.linkTarget,
-            this.state.attachmentId
-        );
+        const params = this.prepareParams();
+        this.props.onChange(params);
         this.updateDocumentState();
     }
     onClickApply() {
-        const relOptions = this.state.relAttributeOptions;
-        const relValue = Object.keys(relOptions)
-            .filter((key) => relOptions[key].isChecked)
-            .join(" ");
         this.state.editing = false;
         this.applyDeducedUrl();
-        this.props.onApply(
-            this.state.url,
-            this.state.label,
-            this.classes,
-            this.state.linkTarget,
-            this.state.attachmentId,
-            relValue
-        );
+        const params = this.prepareParams();
+        this.props.onApply(params);
     }
     applyDeducedUrl() {
         if (this.state.label === "") {
@@ -269,13 +232,6 @@ export class LinkPopover extends Component {
         this.state.url = this.state.url.replace("&download=true", "");
         if (this.state.directDownload) {
             this.state.url += "&download=true";
-        }
-    }
-
-    onClickNewWindow(checked) {
-        this.state.linkTarget = checked ? "_blank" : "";
-        if (!checked) {
-            this.state.relAttributeOptions.noopener.isChecked = false;
         }
     }
 

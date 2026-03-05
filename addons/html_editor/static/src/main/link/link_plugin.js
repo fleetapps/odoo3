@@ -282,6 +282,8 @@ export class LinkPlugin extends Plugin {
             }),
         ],
 
+        advanced_popover_options: [],
+
         immutable_link_selectors: [
             '[data-bs-toggle="tab"]',
             '[data-bs-toggle="collapse"]',
@@ -494,6 +496,16 @@ export class LinkPlugin extends Plugin {
         );
     }
 
+    applyAttributes(element, attributes) {
+        for (const [attr, value] of Object.entries(attributes || {})) {
+            if (value) {
+                element.setAttribute(attr, value);
+            } else if (value !== undefined) {
+                element.removeAttribute(attr);
+            }
+        }
+    }
+
     /**
      * open the Link popover to edit links
      *
@@ -532,46 +544,25 @@ export class LinkPlugin extends Plugin {
         const selectionTextContent = selection?.textContent();
         const isImage = !!findInSelection(selection, "img");
 
-        const applyCallback = (url, label, classes, linkTarget, attachmentId, relValue) => {
+        const applyCallback = (params) => {
             if (this.linkInDocument) {
-                if (url) {
-                    this.linkInDocument.href = url;
-                } else {
-                    this.linkInDocument.removeAttribute("href");
-                }
-                if (relValue) {
-                    this.linkInDocument.setAttribute("rel", relValue);
-                } else {
-                    this.linkInDocument.removeAttribute("rel");
-                }
-                if (linkTarget) {
-                    this.linkInDocument.setAttribute("target", linkTarget);
-                } else {
-                    this.linkInDocument.removeAttribute("target");
-                }
+                this.applyAttributes(this.linkInDocument, params.attributes);
                 if (!isImage) {
-                    if (classes) {
-                        this.linkInDocument.className = classes;
-                    } else {
-                        this.linkInDocument.removeAttribute("class");
-                    }
+                    this.applyAttributes(this.linkInDocument, params.attributes);
                     if (
                         this.linkInDocument.childElementCount == 0 &&
-                        cleanZWChars(this.linkInDocument.innerText) !== label
+                        cleanZWChars(this.linkInDocument.innerText) !== params.label
                     ) {
-                        this.linkInDocument.innerText = label;
+                        this.linkInDocument.innerText = params.label;
                         cursorsToRestore = null;
                     }
                 }
-            } else if (url) {
+            } else if (params.attributes.href) {
                 // prevent the link creation if the url field was empty
 
                 // create a new link with current selection as a content
-                if ((selectionTextContent && selectionTextContent === label) || isImage) {
-                    const link = this.createLink(url);
-                    if (relValue) {
-                        link.setAttribute("rel", relValue);
-                    }
+                if ((selectionTextContent && selectionTextContent === params.label) || isImage) {
+                    const link = this.createLink(params.attributes.href);
                     const image = isImage && findInSelection(selection, "img");
                     const figure =
                         image?.parentElement?.matches("figure[contenteditable=false]") &&
@@ -604,21 +595,16 @@ export class LinkPlugin extends Plugin {
                         this.dependencies.dom.insert(link);
                     }
                     this.linkInDocument = link;
-                } else if (label) {
-                    const link = this.createLink(url, label);
-                    if (classes) {
-                        link.className = classes;
-                    }
-                    if (linkTarget) {
-                        link.setAttribute("target", linkTarget);
-                    }
+                } else if (params.label) {
+                    const link = this.createLink(params.attributes.href, params.label);
+                    this.applyAttributes(link, params.attributes);
                     this.linkInDocument = link;
                     cursorsToRestore = null;
                     this.dependencies.dom.insert(link);
                 }
             }
-            if (attachmentId) {
-                this.linkInDocument.dataset.attachmentId = attachmentId;
+            if (params.attachmentId) {
+                this.linkInDocument.dataset.attachmentId = params.attachmentId;
             }
         };
 
@@ -677,6 +663,7 @@ export class LinkPlugin extends Plugin {
             includeStyling: !this.config.hideStylingInLinkPopover,
             allowTargetBlank: this.config.allowTargetBlank,
             allowStripDomain: this.config.allowStripDomain,
+            advancedAttributeOptions: this.getResource("advanced_popover_options"),
         };
 
         const popover = this.getActivePopover(linkElement);
