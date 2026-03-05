@@ -39,10 +39,7 @@ class PosPrinter(models.Model):
             ('epson_epos', 'ePoS'),
         ]
     )
-    use_type = fields.Selection(selection=[
-        ('preparation', "Preparation"),
-        ('receipt', "Receipt"),
-    ], string="Type", default="preparation")
+    use_type = fields.Selection(selection=lambda self: self._get_printer_use_types(), string="Type", default="preparation")
     product_categories_ids = fields.Many2many('pos.category', 'printer_category_rel', 'printer_id', 'category_id', string='Printed Product Categories')
     pos_config_ids = fields.Many2many('pos.config', 'pos_config_receipt_printer_rel', 'printer_id', 'config_id', string="Point of Sale")
     printer_ip = fields.Char(
@@ -53,6 +50,9 @@ class PosPrinter(models.Model):
         ),
     )
     use_lna = fields.Boolean(string="Use Local Network Access")
+
+    def _get_printer_use_types(self):
+        return [('preparation', "Preparation"), ('receipt', "Receipt")]
 
     def copy_data(self, default=None):
         default = dict(default or {}, pos_config_ids=[(5, 0, 0)], printer_ip="0.0.0.0")

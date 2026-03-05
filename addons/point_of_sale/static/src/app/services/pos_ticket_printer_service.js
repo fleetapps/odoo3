@@ -291,8 +291,7 @@ export class PosTicketPrinterService {
     }
 
     async initPrinters() {
-        const printers = [...this.preparationPrinters, ...this.receiptPrinters];
-        for (const printer of printers) {
+        for (const printer of this.printers) {
             const instance = await this.createPrinterInstance(printer);
             printer._instance = instance;
         }
