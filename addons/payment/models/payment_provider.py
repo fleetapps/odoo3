@@ -1029,8 +1029,12 @@ class PaymentProvider(models.Model):
         self.ensure_one()
         return self.code
 
-    def _get_status_message(self, status):
+    def _get_status_message(self, tx):
+        custom_mode = tx.provider_id.custom_mode
+        status = tx.state
         match status:
+            case 'pending' if custom_mode in ['pay_on_invoice', 'cash_on_delivery', 'on_site']:
+                status_message = self.done_msg
             case 'pending':
                 status_message = self.pending_msg
             case 'authorized':
