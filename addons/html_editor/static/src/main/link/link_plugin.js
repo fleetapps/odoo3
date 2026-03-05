@@ -494,6 +494,64 @@ export class LinkPlugin extends Plugin {
         );
     }
 
+    getProps({ linkElement, isImage, selection, applyCallback, cursorsToRestore }) {
+        return {
+            document: this.document,
+            linkElement,
+            isImage: isImage,
+            containerElement: closestElement(selection.anchorNode),
+            ignoreDOMMutations: this.dependencies.history.ignoreDOMMutations,
+            onApply: (...args) => {
+                delete this._isNavigatingByMouse;
+                applyCallback(...args);
+                this.closeLinkTools(cursorsToRestore);
+                this.dependencies.selection.focusEditable();
+                this.dependencies.history.addStep();
+            },
+            onChange: applyCallback,
+            onDiscard: () => {
+                this.restoreSavePoint();
+                if (linkElement.isConnected) {
+                    this.openLinkTools(linkElement);
+                } else {
+                    this.linkInDocument = null;
+                    this.currentOverlay.close();
+                }
+                this.dependencies.selection.focusEditable();
+            },
+            onRemove: () => {
+                this.removeLinkInDocument();
+                this.linkInDocument = null;
+                this.currentOverlay.close();
+            },
+            onCopy: () => {
+                this.linkInDocument = null;
+                this.currentOverlay.close();
+            },
+            onEdit: () => {
+                this.restoreSavePoint = this.dependencies.history.makeSavePoint();
+            },
+            getInternalMetaData: this.getInternalMetaData,
+            getExternalMetaData: this.getExternalMetaData,
+            getAttachmentMetadata: this.getAttachmentMetadata,
+            recordInfo: this.config.getRecordInfo?.() || {},
+            canEdit:
+                !this.linkInDocument || !this.linkInDocument.classList.contains("o_link_readonly"),
+            canRemove:
+                this.linkInDocument &&
+                this.linkInDocument.parentElement.isContentEditable &&
+                !this.dependencies.delete.isUnremovable(this.linkInDocument),
+            canUpload: this.config.allowFile,
+            onUpload: this.config.onAttachmentChange,
+            type: this.type || "",
+            LinkPopoverState: this.LinkPopoverState,
+            showReplaceTitleBanner: this.newlyInsertedLinks.has(linkElement),
+            includeStyling: !this.config.hideStylingInLinkPopover,
+            allowTargetBlank: this.config.allowTargetBlank,
+            allowStripDomain: this.config.allowStripDomain,
+        };
+    }
+
     /**
      * open the Link popover to edit links
      *
@@ -623,61 +681,13 @@ export class LinkPlugin extends Plugin {
         };
 
         this.restoreSavePoint = this.dependencies.history.makeSavePoint();
-        const props = {
-            document: this.document,
+        const props = this.getProps({
             linkElement,
-            isImage: isImage,
-            containerElement: closestElement(selection.anchorNode),
-            ignoreDOMMutations: this.dependencies.history.ignoreDOMMutations,
-            onApply: (...args) => {
-                delete this._isNavigatingByMouse;
-                applyCallback(...args);
-                this.closeLinkTools(cursorsToRestore);
-                this.dependencies.selection.focusEditable();
-                this.dependencies.history.addStep();
-            },
-            onChange: applyCallback,
-            onDiscard: () => {
-                this.restoreSavePoint();
-                if (linkElement.isConnected) {
-                    this.openLinkTools(linkElement);
-                } else {
-                    this.linkInDocument = null;
-                    this.currentOverlay.close();
-                }
-                this.dependencies.selection.focusEditable();
-            },
-            onRemove: () => {
-                this.removeLinkInDocument();
-                this.linkInDocument = null;
-                this.currentOverlay.close();
-            },
-            onCopy: () => {
-                this.linkInDocument = null;
-                this.currentOverlay.close();
-            },
-            onEdit: () => {
-                this.restoreSavePoint = this.dependencies.history.makeSavePoint();
-            },
-            getInternalMetaData: this.getInternalMetaData,
-            getExternalMetaData: this.getExternalMetaData,
-            getAttachmentMetadata: this.getAttachmentMetadata,
-            recordInfo: this.config.getRecordInfo?.() || {},
-            canEdit:
-                !this.linkInDocument || !this.linkInDocument.classList.contains("o_link_readonly"),
-            canRemove:
-                this.linkInDocument &&
-                this.linkInDocument.parentElement.isContentEditable &&
-                !this.dependencies.delete.isUnremovable(this.linkInDocument),
-            canUpload: this.config.allowFile,
-            onUpload: this.config.onAttachmentChange,
-            type: this.type || "",
-            LinkPopoverState: this.LinkPopoverState,
-            showReplaceTitleBanner: this.newlyInsertedLinks.has(linkElement),
-            includeStyling: !this.config.hideStylingInLinkPopover,
-            allowTargetBlank: this.config.allowTargetBlank,
-            allowStripDomain: this.config.allowStripDomain,
-        };
+            isImage,
+            selection,
+            applyCallback,
+            cursorsToRestore,
+        });
 
         const popover = this.getActivePopover(linkElement);
         if (popover) {
