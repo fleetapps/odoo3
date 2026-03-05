@@ -32,6 +32,7 @@ declare module "plugins" {
     import { fontCssVariables } from "@html_builder/plugins/font/font_plugin";
     import { apply_custom_css_style_overrides } from "@html_builder/core/core_builder_action_plugin";
     import { on_bg_color_updated_handlers } from "@html_builder/core/color_style_plugin";
+    import { uncrossable_element_selector, restricted_to_paragraph_blocks_selector, ignore_ctrl_a_predicates } from "@html_builder/core/builder_selection_restriction_plugin";
 
     interface SharedMethods {
         // Main
@@ -112,6 +113,7 @@ declare module "plugins" {
         is_element_in_invisible_panel_predicates: is_element_in_invisible_panel_predicates;
         is_node_empty_predicates: is_node_empty_predicates;
         is_valid_for_sibling_dropzone_predicates: is_valid_for_sibling_dropzone_predicates;
+        ignore_ctrl_a_predicates: ignore_ctrl_a_predicates;
 
         // Processors
         snippet_preview_dialog_stylesheets_processors: snippet_preview_dialog_stylesheets_processors;
@@ -157,5 +159,7 @@ declare module "plugins" {
         so_content_addition_selector: so_content_addition_selector;
         so_snippet_addition_selector: so_snippet_addition_selector;
         snippet_preview_dialog_bundles: snippet_preview_dialog_bundles;
+        uncrossable_element_selector: uncrossable_element_selector;
+        restricted_to_paragraph_blocks_selector: restricted_to_paragraph_blocks_selector;
     }
 }

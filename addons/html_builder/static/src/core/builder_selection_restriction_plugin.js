@@ -4,10 +4,19 @@ import { getDeepestPosition, isElement, isIconElement } from "@html_editor/utils
 import { DIRECTIONS, nodeSize } from "@html_editor/utils/position";
 import { closestElement } from "@html_editor/utils/dom_traversal";
 
+/** @typedef {import("plugins").CSSSelector} CSSSelector */
+/**
+ * @typedef {CSSSelector[]} uncrossable_element_selector
+ * @typedef {CSSSelector[]} restricted_to_paragraph_blocks_selector
+ *
+ * @typedef {((selection: EditorSelection) => boolean)[]} ignore_ctrl_a_predicates
+ */
+
 export class BuilderSelectionRestrictionPlugin extends Plugin {
     static id = "builderSelectionRestriction";
     static dependencies = ["selection", "operation", "builderOptions"];
 
+    /** @type {import("plugins").BuilderResources} */
     resources = {
         // uncrossable_element_selector: CSS selectors of elements that should
         // not be crossed by the selection.
@@ -55,6 +64,7 @@ export class BuilderSelectionRestrictionPlugin extends Plugin {
     }
 
     destroy() {
+        super.destroy();
         this.editable.removeEventListener("click", this.onClick, { capture: true });
     }
 

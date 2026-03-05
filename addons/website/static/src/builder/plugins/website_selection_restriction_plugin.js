@@ -17,7 +17,9 @@ class WebsiteSelectionRestrictionPlugin extends Plugin {
             // container then ctrl+a, the selection is collapsed in editable but
             // to the main body div, which causes options updating.
             const isMainBodyEmpty = anchorNode.isContentEditable === false && selection.isCollapsed;
-            return isFigure || isMainBodyEmpty;
+            if (isFigure || isMainBodyEmpty) {
+                return true;
+            }
         },
         uncrossable_element_selector: [".s_cta_badge"],
     };
