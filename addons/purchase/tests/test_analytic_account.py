@@ -1,0 +1,36 @@
+from datetime import datetime
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.tests import tagged, Command
+
+
+@tagged('post_install', '-at_install')
+class TestAnalyticAccount(AccountTestInvoicingCommon):
+
+    def test_compute_po_count_with_different_plan(self):
+        analytic_plan_1, analytic_plan_2 = self.env['account.analytic.plan'].create([
+            {'name': 'Plan 1'}, {'name': 'Plan 2'}
+        ])
+        analytic_account = self.env['account.analytic.account'].create({'name': 'Account', 'plan_id': analytic_plan_1.id})
+        purchase_order = self.env['purchase.order'].create({
+            'partner_id': self.partner_a.id,
+            'order_line': [
+                Command.create({
+                    'product_id': self.product_a.id,
+                    'analytic_distribution': {analytic_account.id: 100},
+                }),
+            ]
+        })
+        purchase_order.button_confirm()
+        purchase_order.order_line.qty_received = 1
+
+        bill = self.env['account.move'].browse(purchase_order.action_create_invoice()['res_id'])
+        bill.invoice_date = datetime.today()
+        bill.action_post()
+
+        analytic_account.invalidate_recordset()
+        self.assertEqual(analytic_account.with_context(analytic_plan_id=analytic_plan_1.id).purchase_order_count, 1)
+        analytic_account.plan_id = analytic_plan_2.id
+        analytic_account.invalidate_recordset()
+        self.assertEqual(analytic_account.with_context(analytic_plan_id=analytic_plan_2.id).purchase_order_count, 1)
+        analytic_account.invalidate_recordset()
+        self.assertEqual(analytic_account.with_context(analytic_plan_id=analytic_plan_1.id).purchase_order_count, 0)
