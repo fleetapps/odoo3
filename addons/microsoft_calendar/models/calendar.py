@@ -39,6 +39,23 @@ class CalendarEvent(models.Model):
     _inherit = ['calendar.event', 'microsoft.calendar.sync']
 
     microsoft_recurrence_master_id = fields.Char('Microsoft Recurrence Master Id')
+    microsoft_sync_active = fields.Boolean('Microsoft Sync Active', compute='_compute_microsoft_sync_active')
+
+    @api.depends_context('uid')
+    def _compute_microsoft_sync_active(self):
+        sync_active = (
+            bool(self.env.user.sudo().microsoft_calendar_rtoken)
+            and not self.env.user.sudo().microsoft_synchronization_stopped
+        )
+        for event in self:
+            event.microsoft_sync_active = sync_active
+
+    @api.depends('microsoft_id', 'recurrency')
+    def _compute_user_can_edit(self):
+        super()._compute_user_can_edit()
+        for event in self:
+            if event.microsoft_id and event.recurrency:
+                event.user_can_edit = False
 
     def _get_organizer(self):
         return self.user_id
