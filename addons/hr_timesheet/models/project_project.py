@@ -1,5 +1,4 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-from collections import defaultdict
 
 from odoo import api, fields, models
 from odoo.exceptions import RedirectWarning, ValidationError
@@ -164,26 +163,12 @@ class ProjectProject(models.Model):
 
     @api.depends('timesheet_ids', 'timesheet_encode_uom_id')
     def _compute_total_timesheet_time(self):
-        timesheets_read_group = self.env['account.analytic.line']._read_group(
-            [('project_id', 'in', self.ids)],
-            ['project_id', 'product_uom_id'],
-            ['unit_amount:sum'],
-        )
-        timesheet_time_dict = defaultdict(list)
-        for project, product_uom, unit_amount_sum in timesheets_read_group:
-            timesheet_time_dict[project.id].append((product_uom, unit_amount_sum))
-
+        hour_factor = self.env.ref('uom.product_uom_hour').factor
         for project in self:
-            # Timesheets may be stored in a different unit of measure, so first
-            # we convert all of them to the reference unit
-            # if the timesheet has no product_uom_id then we take the one of the project
-            total_time = 0.0
-            for product_uom, unit_amount in timesheet_time_dict[project.id]:
-                factor = (product_uom or project.timesheet_encode_uom_id).factor
-                total_time += unit_amount * (1.0 if project.encode_uom_in_days else factor)
-            # Now convert to the proper unit of measure set in the settings
-            total_time /= project.timesheet_encode_uom_id.factor
-            project.total_timesheet_time = float_round(total_time, precision_digits=2)
+            project.total_timesheet_time = float_round(
+                project.effective_hours / project.timesheet_encode_uom_id.factor * hour_factor,
+                precision_digits=2,
+            )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -249,11 +234,6 @@ class ProjectProject(models.Model):
     @api.model
     def get_create_edit_project_ids(self):
         return []
-
-    def _convert_project_uom_to_timesheet_encode_uom(self, time):
-        uom_from = self.company_id.project_time_mode_id
-        uom_to = self.env.company.timesheet_encode_uom_id
-        return round(uom_from._compute_quantity(time, uom_to, raise_if_failure=False), 2)
 
     def action_project_timesheets(self):
         action = self.env['ir.actions.act_window']._for_xml_id('hr_timesheet.act_hr_timesheet_line_by_project')
