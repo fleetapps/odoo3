@@ -24,6 +24,10 @@ _logger = logging.getLogger(__name__)
 
 @odoo.tests.tagged('post_install', '-at_install', 'post_install_l10n')
 class TestReports(odoo.tests.TransactionCase):
+    def _get_additional_specific_model_domains(self, invoice_domain):
+        """Hook to extend specific model domains."""
+        return {}
+
     def test_reports(self):
         invoice_domain = [('move_type', 'in', ('out_invoice', 'out_refund', 'out_receipt', 'in_invoice', 'in_refund', 'in_receipt'))]
         specific_model_domains = {
@@ -32,6 +36,7 @@ class TestReports(odoo.tests.TransactionCase):
             'account.report_invoice': invoice_domain,
             'l10n_th.report_commercial_invoice': invoice_domain,
         }
+        specific_model_domains.update(self._get_additional_specific_model_domains(invoice_domain))
         Report = self.env['ir.actions.report']
         for report in Report.search([('report_type', 'like', 'qweb')]):
             report_model = 'report.%s' % report.report_name
