@@ -86,7 +86,7 @@ class AccountMove(models.Model):
         credit_notes = self.filtered(lambda move: move.move_type == 'out_refund' and move.reversed_entry_id)
         timesheets_sudo = self.env['account.analytic.line'].sudo().search([
             ('reinvoice_move_id', 'in', credit_notes.reversed_entry_id.ids),
-            ('so_line', 'in', credit_notes.invoice_line_ids.sale_line_ids.ids),
+            ('sale_order_line_id', 'in', credit_notes.invoice_line_ids.sale_line_ids.ids),
             ('project_id', '!=', False),
         ])
         timesheets_sudo.write({'reinvoice_move_id': False})

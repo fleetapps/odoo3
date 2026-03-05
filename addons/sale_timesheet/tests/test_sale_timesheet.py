@@ -474,7 +474,7 @@ class TestSaleTimesheet(TestCommonSaleTimesheet):
             'task_id': task_serv2.id,
             'unit_amount': 10,
             'employee_id': self.employee_without_sales_access.id,
-            'so_line': so_line_deliver_timesheet.id,
+            'sale_order_line_id': so_line_deliver_timesheet.id,
         })
 
         self.assertEqual(so_line_deliver_global_project.invoice_status, 'to invoice')
@@ -678,8 +678,8 @@ class TestSaleTimesheet(TestCommonSaleTimesheet):
 
         self.assertEqual(self.partner_a, task_so1_timesheet1.partner_id, "The Task's first Timesheet entry should not have changed as it was already invoiced (its partner should still be partner_a).")
         self.assertEqual(self.partner_b, task_so1_timesheet2.partner_id, "The Task's second Timesheet entry should have its partner changed, as it was not invoiced and the Task's partner/customer changed.")
-        self.assertEqual(so1_product_global_project_so_line, task_so1_timesheet1.so_line, "The Task's first Timesheet entry should not have changed as it was already invoiced (its so_line should still be equal to the first Sales Order line).")
-        self.assertEqual(so2_product_global_project_so_line, task_so1_timesheet2.so_line, "The Task's second Timesheet entry should have it's so_line changed, as the Sales Order Item of the Task changed, and this entry was not invoiced.")
+        self.assertEqual(so1_product_global_project_so_line, task_so1_timesheet1.sale_order_line_id, "The Task's first Timesheet entry should not have changed as it was already invoiced (its sale_order_line_id should still be equal to the first Sales Order line).")
+        self.assertEqual(so2_product_global_project_so_line, task_so1_timesheet2.sale_order_line_id, "The Task's second Timesheet entry should have it's sale_order_line_id changed, as the Sales Order Item of the Task changed, and this entry was not invoiced.")
 
     def test_timesheet_upsell(self):
         """ Test timesheet upselling and email """
@@ -1210,7 +1210,7 @@ class TestSaleTimesheetAnalyticPlan(TestCommonSaleTimesheet):
             'project_id': self.project_global.id,
             'unit_amount': 50,
             'employee_id': self.employee_manager.id,
-            'so_line': so_line1.id,
+            'sale_order_line_id': so_line1.id,
         })
         self.assertEqual(timesheet.account_id, analytic_account1)
         self.assertEqual(timesheet[other_analytic_plan2._column_name()], analytic_account2)
@@ -1227,7 +1227,7 @@ class TestSaleTimesheetAnalyticPlan(TestCommonSaleTimesheet):
             'order_id': sale_order.id,
             'analytic_distribution': {f'{analytic_account1.id}, {analytic_account3.id}': 100},
         })
-        timesheet.so_line = so_line2
+        timesheet.sale_order_line_id = so_line2
         self.assertEqual(timesheet.account_id, analytic_account1)
         self.assertFalse(timesheet[other_analytic_plan2._column_name()])
         self.assertEqual(timesheet[other_analytic_plan3._column_name()], analytic_account3)
@@ -1255,7 +1255,7 @@ class TestSaleTimesheetAnalyticPlan(TestCommonSaleTimesheet):
             'project_id': so_project.id,
             'unit_amount': 1,
             'employee_id': self.employee_manager.id,
-            'so_line': so_line.id,
+            'sale_order_line_id': so_line.id,
         })
         self.assertEqual(
             timesheet._get_analytic_accounts(),
@@ -1292,7 +1292,7 @@ class TestSaleTimesheetAnalyticPlan(TestCommonSaleTimesheet):
             'project_id': self.project_global.id,
             'unit_amount': 50,
             'employee_id': self.employee_manager.id,
-            'so_line': so_line.id,
+            'sale_order_line_id': so_line.id,
         })
 
     def test_timesheet_get_accounts_from_sol_with_fallback_on_project_accounts(self):
@@ -1328,7 +1328,7 @@ class TestSaleTimesheetAnalyticPlan(TestCommonSaleTimesheet):
             'project_id': project.id,
             'unit_amount': 50,
             'employee_id': self.employee_manager.id,
-            'so_line': so_line.id,
+            'sale_order_line_id': so_line.id,
         })
         self.assertEqual(
             timesheet._get_analytic_accounts(),

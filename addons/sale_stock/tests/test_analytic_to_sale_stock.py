@@ -44,7 +44,7 @@ class TestAnalyticToSaleStock(TestStockCommon):
         """Ensure that qty_delivered aggregates quantities from stock moves and upsell analytic lines."""
 
         self.assertEqual(
-            self.product_to_upsell_aal.so_line,
+            self.product_to_upsell_aal.sale_order_line_id,
             self.product_to_upsell_sol,
             "The upsell AALs should be linked to the same sale order line.",
         )

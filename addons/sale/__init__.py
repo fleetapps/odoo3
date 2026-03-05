@@ -20,7 +20,7 @@ def _pre_init_sale(env):
     env.cr.execute(SQL("""
        ALTER TABLE account_analytic_line
        ADD COLUMN IF NOT EXISTS order_id INT4,
-       ADD COLUMN IF NOT EXISTS so_line  INT4
+       ADD COLUMN IF NOT EXISTS sale_order_line_id  INT4
     """))
 
 

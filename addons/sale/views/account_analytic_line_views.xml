@@ -54,7 +54,7 @@
                     width="150px"
                 />
                 <field
-                    name="so_line"
+                    name="sale_order_line_id"
                     string="Sales Order Line"
                     optional="hide"
                     domain="[

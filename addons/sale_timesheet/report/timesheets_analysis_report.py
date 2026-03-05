@@ -10,7 +10,7 @@ class TimesheetsAnalysisReport(models.Model):
     _inherit = "timesheets.analysis.report"
 
     order_id = fields.Many2one("sale.order", string="Sales Order", readonly=True)
-    so_line = fields.Many2one("sale.order.line", string="Sales Order Item", readonly=True)
+    sale_order_line_id = fields.Many2one("sale.order.line", string="Sales Order Item", readonly=True)
     billable_type = fields.Selection(BILLABLE_TYPES, string="Billable Type", readonly=True)
     reinvoice_move_id = fields.Many2one("account.move", string="Invoice", readonly=True, help="Invoice created from the timesheet")
     timesheet_revenues = fields.Monetary("Timesheet Revenues", currency_field="currency_id", readonly=True, help="Number of hours spent multiplied by the unit price per hour/day.")
@@ -33,7 +33,7 @@ class TimesheetsAnalysisReport(models.Model):
     def _select(self):
         return super()._select() + """,
             A.order_id AS order_id,
-            A.so_line AS so_line,
+            A.sale_order_line_id AS sale_order_line_id,
             A.billable_type AS billable_type,
             A.reinvoice_move_id AS reinvoice_move_id,
             CASE
@@ -49,7 +49,7 @@ class TimesheetsAnalysisReport(models.Model):
     @api.model
     def _from(self):
         return super()._from() + """
-            LEFT JOIN sale_order_line SOL ON A.so_line = SOL.id
+            LEFT JOIN sale_order_line SOL ON A.sale_order_line_id = SOL.id
             LEFT JOIN uom_uom sol_product_uom ON sol_product_uom.id = SOL.product_uom_id
             INNER JOIN uom_uom a_product_uom ON a_product_uom.id = A.product_uom_id
             LEFT JOIN product_product P ON P.id = SOL.product_id

@@ -253,7 +253,7 @@ class AccountMove(models.Model):
     @api.model
     def _analytic_line_domain_get_invoiced_lines(self, so_lines):
         return (
-            Domain('so_line', 'in', so_lines.ids)
+            Domain('sale_order_line_id', 'in', so_lines.ids)
             & (
                 Domain('reinvoice_move_id', '=', False)
                 | Domain('reinvoice_move_id', 'any', (

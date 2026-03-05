@@ -77,7 +77,7 @@ class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
             'project_id': sale_order.project_ids.id,
             'task_id': sale_order.order_line.task_id.id,
             'account_id': self.analytic_account_sale.id,
-            'so_line': sale_order.order_line.id,
+            'sale_order_line_id': sale_order.order_line.id,
         })
         sale_order.order_line._compute_purchase_price()
         # Cost is expressed in SO line uom
@@ -163,7 +163,7 @@ class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
             'project_id': project.id,
             'task_id': sale_order.order_line[0].task_id.id,
             'account_id': self.analytic_account_sale.id,
-            'so_line': sale_order.order_line[0].id,
+            'sale_order_line_id': sale_order.order_line[0].id,
         })
         self.env['account.analytic.line'].create({
             'name': 'Test Line 333',
@@ -173,7 +173,7 @@ class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
             'project_id': project.id,
             'task_id': sale_order.order_line[1].task_id.id,
             'account_id': self.analytic_account_sale.id,
-            'so_line': sale_order.order_line[1].id,
+            'sale_order_line_id': sale_order.order_line[1].id,
         })
         self.env['account.analytic.line'].create({
             'name': 'Test Line 444',
@@ -183,7 +183,7 @@ class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
             'project_id': project.id,
             'task_id': sale_order.order_line[2].task_id.id,
             'account_id': self.analytic_account_sale.id,
-            'so_line': sale_order.order_line[2].id,
+            'sale_order_line_id': sale_order.order_line[2].id,
         })
         self.env.flush_all()
         self.assertEqual(sale_order.order_line.filtered(lambda sol: sol.product_id == self.product_1).purchase_price, 3)

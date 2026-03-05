@@ -5,7 +5,7 @@
         <th name="t_label" position="before">
             <t t-set="display_sol" t-value="False"/>
             <t t-foreach="timesheets" t-as="timesheet">
-                <t t-if="task and timesheet.so_line != task.sale_line_id">
+                <t t-if="task and timesheet.sale_order_line_id != task.sale_line_id">
                     <t t-set="display_sol" t-value="True"/>
                 </t>
             </t>
@@ -13,8 +13,8 @@
         </th>
         <xpath expr="//tr/td[t[@t-out='timesheet.name']]" position="after">
             <td  t-if="display_sol">
-	        <t t-if="timesheet.so_line.order_id.access_url and so_accessible"><a t-att-href="'%s' % timesheet.so_line.order_id.access_url"><t t-out="timesheet.so_line.display_name"/></a></t>
-		    <t t-elif="timesheet.so_line.display_name" t-out="timesheet.so_line.display_name"></t>
+	        <t t-if="timesheet.sale_order_line_id.order_id.access_url and so_accessible"><a t-att-href="'%s' % timesheet.sale_order_line_id.order_id.access_url"><t t-out="timesheet.sale_order_line_id.display_name"/></a></t>
+		    <t t-elif="timesheet.sale_order_line_id.display_name" t-out="timesheet.sale_order_line_id.display_name"></t>
             <span t-else="" class="text-muted">Non-billable</span>
 	    </td>
         </xpath>

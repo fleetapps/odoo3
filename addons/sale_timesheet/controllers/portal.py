@@ -66,13 +66,13 @@ class SaleTimesheetCustomerPortal(TimesheetCustomerPortal):
 
     def _get_searchbar_groupby(self):
         return super()._get_searchbar_groupby() | {
-            'so_line': {'label': _('Sales Order Item'), 'sequence': 80},
+            'sale_order_line_id': {'label': _('Sales Order Item'), 'sequence': 80},
             'reinvoice_move_id': {'label': _('Invoice'), 'sequence': 90},
         }
 
     def _get_search_domain(self, search_in, search):
         if search_in == 'so':
-            return Domain('so_line', 'ilike', search) | Domain('so_line.order_id.name', 'ilike', search)
+            return Domain('sale_order_line_id', 'ilike', search) | Domain('sale_order_line_id.order_id.name', 'ilike', search)
         elif search_in == 'invoice':
             invoices = request.env['account.move'].sudo().search(['|', ('name', 'ilike', search), ('id', 'ilike', search)])
             return Domain(request.env['account.analytic.line']._timesheet_get_sale_domain(invoices.mapped('invoice_line_ids.sale_line_ids'), invoices))
@@ -81,7 +81,7 @@ class SaleTimesheetCustomerPortal(TimesheetCustomerPortal):
 
     def _get_searchbar_sortings(self):
         return super()._get_searchbar_sortings() | {
-            'so_line': {'label': _('Sales Order Item')},
+            'sale_order_line_id': {'label': _('Sales Order Item')},
             'reinvoice_move_id': {'label': _('Invoice')},
         }
 
@@ -118,5 +118,5 @@ class SaleTimesheetCustomerPortal(TimesheetCustomerPortal):
         return values
 
     @http.route()
-    def portal_my_timesheets(self, *args, groupby='so_line', **kw):
+    def portal_my_timesheets(self, *args, groupby='sale_order_line_id', **kw):
         return super().portal_my_timesheets(*args, groupby=groupby, **kw)

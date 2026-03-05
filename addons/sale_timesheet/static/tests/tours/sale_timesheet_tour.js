@@ -121,11 +121,11 @@ registry.category("web_tour.tours").add('sale_timesheet_tour', {
     run: "edit 1",
 }, {
     trigger: 'i.o_optional_columns_dropdown_toggle',
-    content: 'The so_line field should be hidden by default. We check if it is the case by adding this field in the timesheet list view',
+    content: 'The sale_order_line_id field should be hidden by default. We check if it is the case by adding this field in the timesheet list view',
     run: "click",
 }, {
-    trigger: 'input[name="so_line"]',
-    content: 'Check the so_line field to display the column on the list view.',
+    trigger: 'input[name="sale_order_line_id"]',
+    content: 'Check the sale_order_line_id field to display the column on the list view.',
     run: function (actions) {
         if (!this.anchor.checked) {
             actions.click();

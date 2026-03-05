@@ -56,7 +56,7 @@ class AccountMoveLine(models.Model):
         if len(values_list) > 0:
             for index, move_line in enumerate(self):
                 values = values_list[index]
-                if 'so_line' not in values:
+                if 'sale_order_line_id' not in values:
                     if move_line._sale_can_be_reinvoice():
                         move_to_reinvoice |= move_line
 
@@ -66,7 +66,7 @@ class AccountMoveLine(models.Model):
             for values in values_list:
                 sale_line = map_sale_line_per_move.get(values.get('move_line_id'))
                 if sale_line:
-                    values['so_line'] = sale_line.id
+                    values['sale_order_line_id'] = sale_line.id
 
         return values_list
 

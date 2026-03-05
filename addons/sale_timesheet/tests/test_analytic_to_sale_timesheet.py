@@ -70,12 +70,12 @@ class TestAnalyticToSaleTimesheet(TestCommonSaleTimesheet):
         })
 
         self.assertEqual(
-            invoice_ordered_qty_aal.so_line,
+            invoice_ordered_qty_aal.sale_order_line_id,
             self.invoice_ordered_qty_sol,
             "The upsell AALs should be linked to the same sale order line.",
         )
         self.assertEqual(
-            invoice_delivered_qty_aal.so_line,
+            invoice_delivered_qty_aal.sale_order_line_id,
             self.invoice_delivered_qty_sol,
             "The upsell AALs should be linked to the same sale order line.",
         )

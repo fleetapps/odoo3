@@ -16,10 +16,10 @@ class AccountAnalyticLine(models.Model):
         help="Invoice created from related SO line",
         index='btree_not_null',
     )
-    so_line = fields.Many2one(
+    sale_order_line_id = fields.Many2one(
         string='Sales Order Item',
         comodel_name='sale.order.line',
-        compute='_compute_so_line',
+        compute='_compute_sale_order_line_id',
         store=True,
         readonly=False,
         index='btree_not_null',
@@ -34,7 +34,7 @@ class AccountAnalyticLine(models.Model):
         index=True,
     )
 
-    def _compute_so_line(self):
+    def _compute_sale_order_line_id(self):
         return
 
     def _domain_so_line(self):
@@ -96,13 +96,13 @@ class AccountAnalyticLine(models.Model):
             if any(field_name in vals for field_name in self._restricted_fields_when_invoiced()):
                 raise UserError(self._get_invoiced_line_write_error())
 
-        if 'unit_amount' in vals and vals['unit_amount'] < 0 and self.so_line:
+        if 'unit_amount' in vals and vals['unit_amount'] < 0 and self.sale_order_line_id:
             raise UserError(self.env._("You cannot set a negative quantity on services."))
 
         super()._check_can_write(vals)
 
     def _restricted_fields_when_invoiced(self):
-        return ['unit_amount', 'order_id', 'product_id', 'so_line', 'date', 'partner_id']
+        return ['unit_amount', 'order_id', 'product_id', 'sale_order_line_id', 'date', 'partner_id']
 
     def _get_invoiced_line_write_error(self):
         return self.env._("You cannot modify already invoiced services.")
@@ -150,7 +150,7 @@ class AccountAnalyticLine(models.Model):
             so_line = self.env['sale.order.line']
             if line.product_id.reinvoice_policy == 'sales_price':
                 so_line = line._get_existing_so_line()
-            line.so_line = so_line or line._create_so_line()
+            line.sale_order_line_id = so_line or line._create_so_line()
 
     def _get_existing_so_line(self):
         """Retrieve the first matching sale order line from the related order, if any."""
@@ -195,12 +195,12 @@ class AccountAnalyticLine(models.Model):
         for line in self:
             if (
                 line.unit_amount
-                and line.so_line
+                and line.sale_order_line_id
                 and line.product_id.reinvoice_policy == 'cost'
             ):
                 product = line.product_id.with_company(line.order_id.company_id)
                 unit_price = -line.amount / line.unit_amount
-                line.so_line.price_unit = product.currency_id._convert(
+                line.sale_order_line_id.price_unit = product.currency_id._convert(
                     unit_price, line.order_id.currency_id, round=False
                 )
 
@@ -213,15 +213,15 @@ class AccountAnalyticLine(models.Model):
         If not, the analytic line update will automatically trigger the recomputation
         of the `qty_delivered` field on the linked so lines .
         """
-        for line in self.filtered(lambda line: line.so_line):
-            if not line.so_line._is_analytic_reinvoice_line():
+        for line in self.filtered(lambda line: line.sale_order_line_id):
+            if not line.sale_order_line_id._is_analytic_reinvoice_line():
                 continue
             if (
                 line.product_id.reinvoice_policy == 'cost'
-                and not line.so_line.product_uom_qty
-                and line.unit_amount == line.so_line.qty_delivered
+                and not line.sale_order_line_id.product_uom_qty
+                and line.unit_amount == line.sale_order_line_id.qty_delivered
             ):
-                line.so_line.unlink()
+                line.sale_order_line_id.unlink()
 
     def _sync_so_accounts_and_partners(self):
         """Synchronize analytic account fields and partner with the related sale order.

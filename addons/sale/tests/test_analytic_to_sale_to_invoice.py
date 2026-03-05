@@ -102,12 +102,12 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
 
         self.assertEqual(
             at_sale_price_upsale_order_line,
-            self.at_sale_price_aal.so_line,
+            self.at_sale_price_aal.sale_order_line_id,
             "Existing line should be linked with the analytic line",
         )
         self.assertEqual(
             at_cost_upsale_order_line,
-            self.at_cost_aal.so_line,
+            self.at_cost_aal.sale_order_line_id,
             "Newly created line should be linked with the analytic line",
         )
 
@@ -144,8 +144,8 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
         self.at_cost_aal.unit_amount = 3
         self.at_sale_price_aal.unit_amount = 0
 
-        at_cost_upsale_order_line = self.at_cost_aal.so_line
-        at_sale_price_upsale_order_line = self.at_sale_price_aal.so_line
+        at_cost_upsale_order_line = self.at_cost_aal.sale_order_line_id
+        at_sale_price_upsale_order_line = self.at_sale_price_aal.sale_order_line_id
 
         self.assertEqual(
             at_cost_upsale_order_line.qty_delivered,
@@ -166,8 +166,8 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
         - Delivered quantities are reset or preserved appropriately.
         - New upsale lines are created on the new order with correct values.
         """
-        at_cost_upsale_order_line = self.at_cost_aal.so_line
-        at_sale_price_upsale_order_line = self.at_sale_price_aal.so_line
+        at_cost_upsale_order_line = self.at_cost_aal.sale_order_line_id
+        at_sale_price_upsale_order_line = self.at_sale_price_aal.sale_order_line_id
 
         empty_services_sale_order = self.env['sale.order'].create({
             'partner_id': self.partner.id,
@@ -223,8 +223,8 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
         - New lines are created for the new products.
         - Delivered quantities and price units are correctly recomputed.
         """
-        at_cost_upsale_order_line = self.at_cost_aal.so_line
-        at_sale_price_upsale_order_line = self.at_sale_price_aal.so_line
+        at_cost_upsale_order_line = self.at_cost_aal.sale_order_line_id
+        at_sale_price_upsale_order_line = self.at_sale_price_aal.sale_order_line_id
 
         reinvoice_at_cost_product_new = self.env['product.product'].create({
             'name': 'New Reinvoice at Cost product',
@@ -258,8 +258,8 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
             "Delivered quantity increased by analytic line should be reset when the product is changed from analytic line",
         )
 
-        new_at_cost_upsale_order_line = self.at_cost_aal.so_line
-        new_at_sale_price_upsale_order_line = self.at_sale_price_aal.so_line
+        new_at_cost_upsale_order_line = self.at_cost_aal.sale_order_line_id
+        new_at_sale_price_upsale_order_line = self.at_sale_price_aal.sale_order_line_id
 
         self.assertEqual(
             len(self.services_sale_order.order_line),
@@ -340,13 +340,13 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
         })
 
         self.assertEqual(
-            extra_at_sale_price_aal.so_line,
-            self.at_sale_price_aal.so_line,
+            extra_at_sale_price_aal.sale_order_line_id,
+            self.at_sale_price_aal.sale_order_line_id,
             "Existing line should be linked to the same sale order line.",
         )
 
         self.assertEqual(
-            self.at_sale_price_aal.so_line.qty_delivered,
+            self.at_sale_price_aal.sale_order_line_id.qty_delivered,
             3,
             "Delivered quantity should aggregate from multiple analytic lines."
         )
@@ -375,9 +375,9 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
 
         # we need to replicate the case when some nasty user deliberately changes the quantity
         # of the upsale line
-        extra_at_cost_aal.so_line.product_uom_qty = 2
-        new_at_cost_upsale_order_line = extra_at_cost_aal.so_line
-        at_cost_upsale_order_line = self.at_cost_aal.so_line
+        extra_at_cost_aal.sale_order_line_id.product_uom_qty = 2
+        new_at_cost_upsale_order_line = extra_at_cost_aal.sale_order_line_id
+        at_cost_upsale_order_line = self.at_cost_aal.sale_order_line_id
 
         extra_at_sale_price_aal.unlink()
         self.at_cost_aal.unlink()
@@ -400,7 +400,7 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
         )
 
         self.assertEqual(
-            self.at_sale_price_aal.so_line.qty_delivered,
+            self.at_sale_price_aal.sale_order_line_id.qty_delivered,
             1,
             "Delivered quantity of upsale line should be decreased for at sale price analytic line.",
         )
@@ -424,12 +424,12 @@ class TestAnalyticToSaleToInvoice(SaleCommon):
         })
 
         self.assertEqual(
-            self.at_cost_aal.so_line.price_unit,
+            self.at_cost_aal.sale_order_line_id.price_unit,
             10,
             "Unit Price should be recomputed when AAL amount is changed."
         )
         self.assertEqual(
-            extra_work_at_cost.so_line.price_unit,
+            extra_work_at_cost.sale_order_line_id.price_unit,
             15,
             "Unit Price should be recomputed when AAL amount is changed."
         )

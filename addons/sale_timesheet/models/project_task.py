@@ -36,17 +36,17 @@ class ProjectTask(models.Model):
 
     @api.depends('sale_line_id', 'timesheet_ids', 'timesheet_ids.unit_amount')
     def _compute_remaining_hours_so(self):
-        # TODO This is not yet perfectly working as timesheet.so_line stick to its old value although changed
+        # TODO This is not yet perfectly working as timesheet.sale_order_line_id stick to its old value although changed
         #      in the task From View.
-        timesheets = self.timesheet_ids.filtered(lambda t: t.task_id.sale_line_id in (t.so_line, t._origin.so_line) and t.so_line.remaining_hours_available)
+        timesheets = self.timesheet_ids.filtered(lambda t: t.task_id.sale_line_id in (t.sale_order_line_id, t._origin.sale_order_line_id) and t.sale_order_line_id.remaining_hours_available)
 
         mapped_remaining_hours = {task._origin.id: task.sale_line_id and task.sale_line_id.remaining_hours or 0.0 for task in self}
         uom_hour = self.env.ref('uom.product_uom_hour')
         for timesheet in timesheets:
             delta = 0
-            if timesheet._origin.so_line == timesheet.task_id.sale_line_id:
+            if timesheet._origin.sale_order_line_id == timesheet.task_id.sale_line_id:
                 delta += timesheet._origin.unit_amount
-            if timesheet.so_line == timesheet.task_id.sale_line_id:
+            if timesheet.sale_order_line_id == timesheet.task_id.sale_line_id:
                 delta -= timesheet.unit_amount
             if delta:
                 mapped_remaining_hours[timesheet.task_id._origin.id] += timesheet.product_uom_id._compute_quantity(delta, uom_hour)
@@ -90,7 +90,7 @@ class ProjectTask(models.Model):
     @api.depends('timesheet_ids')
     def _compute_has_multi_sol(self):
         for task in self:
-            task.has_multi_sol = task.timesheet_ids and task.timesheet_ids.so_line != task.sale_line_id
+            task.has_multi_sol = task.timesheet_ids and task.timesheet_ids.sale_order_line_id != task.sale_line_id
 
     def _get_last_sol_of_customer_domain(self):
         # Get the domain of the last SOL made for the customer in the current task where we need to compute
@@ -111,9 +111,9 @@ class ProjectTask(models.Model):
         return domain
 
     def _get_timesheet(self):
-        # return not invoiced timesheet and timesheet without so_line or so_line linked to task
+        # return not invoiced timesheet and timesheet without sale_order_line_id or sale_order_line_id linked to task
         timesheet_ids = super()._get_timesheet()
         return timesheet_ids.filtered(lambda t: t._is_not_billed())
 
     def _get_action_view_so_ids(self):
-        return list(set((self.sale_order_id + self.timesheet_ids.so_line.order_id).ids))
+        return list(set((self.sale_order_id + self.timesheet_ids.sale_order_line_id.order_id).ids))

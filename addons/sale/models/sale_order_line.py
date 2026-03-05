@@ -256,7 +256,7 @@ class SaleOrderLine(models.Model):
         store=True)
 
     analytic_line_ids = fields.One2many(
-        comodel_name='account.analytic.line', inverse_name='so_line',
+        comodel_name='account.analytic.line', inverse_name='sale_order_line_id',
         string="Analytic lines")
 
     invoice_lines = fields.Many2many(
@@ -937,7 +937,7 @@ class SaleOrderLine(models.Model):
     @api.depends(
         'qty_delivered_method',
         'analytic_line_ids',
-        'analytic_line_ids.so_line',
+        'analytic_line_ids.sale_order_line_id',
         'analytic_line_ids.unit_amount',
         'analytic_line_ids.product_uom_id',
         'analytic_line_ids.product_id',
@@ -1008,10 +1008,10 @@ class SaleOrderLine(models.Model):
             return result
 
         # group analytic lines by product uom and so line
-        domain = Domain.AND([[('so_line', 'in', self.ids)], additional_domain])
+        domain = Domain.AND([[('sale_order_line_id', 'in', self.ids)], additional_domain])
         data = self.env['account.analytic.line']._read_group(
             domain,
-            ['product_uom_id', 'so_line'],
+            ['product_uom_id', 'sale_order_line_id'],
             ['unit_amount:sum', 'move_line_id:count_distinct', '__count'],
         )
 
