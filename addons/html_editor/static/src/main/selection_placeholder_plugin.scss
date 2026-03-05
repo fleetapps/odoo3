@@ -23,4 +23,8 @@
     &:after {
         content: none !important;
     }
+
+    ::selection {
+        background-color: transparent !important;
+    }
 }
