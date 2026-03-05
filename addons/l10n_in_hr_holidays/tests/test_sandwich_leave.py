@@ -161,6 +161,34 @@ class TestSandwichLeave(TransactionCase):
         self.assertEqual(holiday_leave.number_of_days, 4)
 
     @freeze_time('2025-01-15')
+    def test_updating_older_leave_does_not_reclaim_sandwich_days(self):
+        friday_leave = self.env['hr.leave'].create({
+            'name': 'Friday Leave',
+            'employee_id': self.rahul_emp.id,
+            'work_entry_type_id': self.work_entry_type_day.id,
+            'request_date_from': "2025-01-17",
+            'request_date_to': "2025-01-17",
+        })
+        monday_leave = self.env['hr.leave'].create({
+            'name': 'Monday Leave',
+            'employee_id': self.rahul_emp.id,
+            'work_entry_type_id': self.work_entry_type_day.id,
+            'request_date_from': "2025-01-20",
+            'request_date_to': "2025-01-20",
+        })
+        self.assertTrue(monday_leave.l10n_in_contains_sandwich_leaves)
+        self.assertEqual(monday_leave.number_of_days, 3)
+
+        friday_leave.write({
+            'request_date_from': "2025-01-16",
+            'request_date_to': "2025-01-17",
+        })
+        self.assertFalse(friday_leave.l10n_in_contains_sandwich_leaves)
+        self.assertEqual(friday_leave.number_of_days, 2)
+        self.assertTrue(monday_leave.l10n_in_contains_sandwich_leaves)
+        self.assertEqual(monday_leave.number_of_days, 3)
+
+    @freeze_time('2025-01-15')
     def test_sandwich_leave_saturday_monday(self):
         holiday_leave = self.env['hr.leave'].create({
             'name': 'Test Leave',
