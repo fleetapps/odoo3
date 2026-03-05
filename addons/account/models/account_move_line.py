@@ -617,6 +617,7 @@ class AccountMoveLine(models.Model):
                     move_type=line.move_id.move_type,
                     journal_id=line.journal_id.id,
                 )
+
                 if account_id:
                     line.account_id = account_id
         for line in self:
