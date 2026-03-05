@@ -2786,3 +2786,11 @@ class TestStockFlowPostInstall(TestStockCommon):
 
         new_location_complete_name = self.env['stock.location'].name_create('NoPrefixLocation')[1]
         self.assertEqual(new_location_complete_name, 'NoPrefixLocation')
+
+    def test_create_scrap_without_scrap_location(self):
+        self.env['stock.location'].search([('scrap_location', '=', True)]).action_archive()
+        with self.assertRaises(AssertionError):
+            scrap_form = Form(self.env['stock.scrap'])
+            scrap_form.product_id = self.productA.id
+            scrap_form.scrap_qty = 1
+            scrap_form.save()
