@@ -1341,7 +1341,7 @@
             <t t-set="attrib_categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
             <t t-if="attrib_categories">
                 <section class="pt32 pb32" id="product_full_spec">
-                    <div class="container">
+                    <div class="container o_wsale_specss">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h2 class="m-0 h3">Specifications</h2>
                         </div>
@@ -1407,7 +1407,7 @@
         <table t-attf-class="table {{is_accordion and 'table-sm mb-0'}}">
             <t t-if="len(attrib_categories) > 1 and not is_accordion">
                 <tr>
-                    <th class="text-start" colspan="2">
+                    <th class="ps-0" colspan="2">
                         <span t-if="category" t-field="category.name"/>
                         <span t-else="">Others</span>
                     </th>

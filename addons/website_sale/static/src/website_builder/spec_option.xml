@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="website_sale.SpecificationsOption">
+    <BuilderRow label.translate="Specifications">
+        <BuilderButton
+            action="''"
+            type="'success'"
+            t-on-click="() => state.showField = true"
+        >
+           + Field
+        </BuilderButton>
+    </BuilderRow>
+    <t t-if="state.showField">
+        <BuilderRow label.translate="Field" level="1">
+            <BuilderSelect action="''">
+                <t t-foreach="state.fields" t-as="field" t-key="field.id">
+                    <BuilderSelectItem>
+                        <t t-out="field.field_description"/>
+                    </BuilderSelectItem>
+                </t>
+            </BuilderSelect>
+        </BuilderRow>
+        <BuilderRow label.translate="Category" level="1">
+            <BuilderSelect>
+                <t t-foreach="state.categories" t-as="category" t-key="category.id">
+                    <BuilderSelectItem>
+                        <t t-out="category.name"/>
+                    </BuilderSelectItem>
+                </t>
+            </BuilderSelect>
+        </BuilderRow>
+    </t>
+</t>
+
+</templates>
