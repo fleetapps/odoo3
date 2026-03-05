@@ -1,6 +1,6 @@
-import { defineMailModels } from '@mail/../tests/mail_test_helpers';
 import { expect, test } from '@odoo/hoot';
 import { queryAllTexts } from '@odoo/hoot-dom';
+import { saleManagementModels } from '@sale_management/../tests/sale_management_test_helpers';
 import {
     clickSave,
     contains,
@@ -9,9 +9,8 @@ import {
     mountView,
     onRpc,
 } from '@web/../tests/web_test_helpers';
-import { saleModels } from '@sale/../tests/sale_test_helpers';
 
-class SaleOrderLine extends saleModels.SaleOrderLine {
+class SaleOrderLine extends saleManagementModels.SaleOrderLine {
     // for skipping tax setup required for prices computation to run correctly
     price_unit = fields.Float({ default: 3.00 });
     price_total = fields.Float({ default: 3.00 });
@@ -101,7 +100,7 @@ class SaleOrderLine extends saleModels.SaleOrderLine {
     ];
 }
 
-class SaleOrder extends saleModels.SaleOrder {
+class SaleOrder extends saleManagementModels.SaleOrder {
     _records = [
         {
             id: 1,
@@ -140,8 +139,7 @@ class SaleOrder extends saleModels.SaleOrder {
     };
 }
 
-defineModels({ SaleOrderLine, SaleOrder });
-defineMailModels();
+defineModels({ ...saleManagementModels, SaleOrderLine, SaleOrder });
 
 const EXPECTED_LINE_RECORDS = [
     "r1",

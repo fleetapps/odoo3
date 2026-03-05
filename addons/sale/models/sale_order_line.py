@@ -1628,7 +1628,11 @@ class SaleOrderLine(models.Model):
         """
         self.ensure_one()
 
-        section_lines = self.order_id.order_line.filtered(self._is_line_in_section)
+        section_lines = self.order_id.order_line.filtered(
+            lambda line:
+                not line.display_type
+                and self._is_line_in_section(line)
+        )
 
         if display_taxes:
             res = [
@@ -1686,7 +1690,7 @@ class SaleOrderLine(models.Model):
     def _is_line_in_section(self, line):
         """Return whether the line is a direct or indirect child of the section."""
         self.ensure_one()
-        is_direct_child = line.parent_id == self and not line.display_type
+        is_direct_child = line.parent_id == self
         is_indirect_child = (
             self.display_type == 'line_section'
             and line.parent_id

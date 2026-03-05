@@ -73,6 +73,19 @@ class SaleOrderTemplateLine(models.Model):
     collapse_composition = fields.Boolean()
     collapse_prices = fields.Boolean()
 
+    # Technical fields which stores values for SO line without product_id
+    price_unit = fields.Float(
+        string="Unit Price",
+        digits='Product Price',
+    )
+    tax_ids = fields.Many2many(
+        comodel_name='account.tax',
+        string="Taxes",
+    )
+    discount = fields.Float(
+        string="Discount (%)",
+        digits='Discount',
+    )
     #=== COMPUTE METHODS ===#
 
     @api.depends('product_id', 'product_id.uom_id', 'product_id.uom_ids')
@@ -128,7 +141,11 @@ class SaleOrderTemplateLine(models.Model):
         return [('sale_ok', '=', True), ('type', '!=', 'combo')]
 
     def _prepare_order_line_values(self):
-        """ Give the values to create the corresponding order line.
+        """Prepare values to create a sale order line from a template line.
+
+        Product lines keep the product reference so pricing is computed
+        normally. Product Lines without a product explicitly copy price, discount,
+        and taxes.
 
         :return: `sale.order.line` create values
         :rtype: dict
@@ -139,11 +156,21 @@ class SaleOrderTemplateLine(models.Model):
             'collapse_prices': self.collapse_prices,
             'display_type': self.display_type,
             'is_optional': self.is_optional,
-            'product_id': self.product_id.id,
             'product_uom_qty': self.product_uom_qty,
             'product_uom_id': self.product_uom_id.id,
             'sequence': self.sequence,
         }
+
         if self.name:
             vals['name'] = self.name
+
+        if not self.product_id and not self.display_type:
+            vals.update({
+                'tax_ids': self.tax_ids.ids,
+                'discount': self.discount,
+                'price_unit': self.price_unit,
+            })
+        else:
+            vals['product_id'] = self.product_id.id
+
         return vals

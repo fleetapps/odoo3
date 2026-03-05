@@ -14,6 +14,7 @@ class SaleOrderTemplate(models.Model):
         default=True,
         help="If unchecked, it will allow you to hide the quotation template without removing it.")
     company_id = fields.Many2one(comodel_name='res.company', default=lambda self: self.env.company)
+    user_id = fields.Many2one(comodel_name='res.users', default=lambda self: self.env.user)
 
     name = fields.Char(string="Quotation Template", required=True)
     note = fields.Html(string="Terms and conditions", translate=True)
@@ -53,6 +54,10 @@ class SaleOrderTemplate(models.Model):
         domain=[('type', '=', 'sale')], company_dependent=True, check_company=True,
         help="If set, SO with this template will invoice in this journal; "
              "otherwise the sales journal with the lowest sequence is used.")
+
+    is_section_template = fields.Boolean(string="Is Section Template")
+    # order from which this template was created
+    source_order_id = fields.Many2one('sale.order', string="Source order")
 
     #=== COMPUTE METHODS ===#
 
