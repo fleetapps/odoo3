@@ -110,6 +110,8 @@ EAS_MAPPING = {
     'TF': {'0009': 'siret', '9957': 'vat', '0002': None},  # French Southern and Antarctic Lands
     'WF': {'0009': 'siret', '9957': 'vat', '0002': None},  # Wallis and Futuna
     'YT': {'0009': 'siret', '9957': 'vat', '0002': None},  # Mayotte
+
+    'AX': {'0216': None, '0213': 'vat'},  # Åland Islands
 }
 
 # -------------------------------------------------------------------------
