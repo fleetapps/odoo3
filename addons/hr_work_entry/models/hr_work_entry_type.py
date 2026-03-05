@@ -42,6 +42,9 @@ class HrWorkEntryType(models.Model):
         help="Check this setting if you want the hours to be considered as extra time and added as a bonus to the basic salary.")
     description = fields.Text(translate=True)
 
+    def write(self, vals):
+        return super().write(vals)
+
     @api.constrains('code', 'country_id')
     def _check_code_unicity(self):
         similar_work_entry_types_by_code = self.search([

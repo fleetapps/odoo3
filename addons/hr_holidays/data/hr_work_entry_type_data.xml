@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo><data noupdate="1">
 <!-- Global Leave Types -->
+    <function model="hr.work.entry.type" name="write">
+        <value model="hr.work.entry.type" eval="obj().sudo().search([('code', '=', 'WORK100')]).ids"/>
+        <value eval="{'request_unit': 'hour'}"/>
+    </function>
     <!-- Paid Time Off -->
     <function model="hr.work.entry.type" name="write">
         <value model="hr.work.entry.type" eval="obj().sudo().search([('code', '=', 'LEAVE120')]).ids"/>
@@ -56,7 +60,6 @@
             'requires_allocation': False,
             'leave_validation_type': 'both',
             'allocation_validation_type': 'hr',
-            'request_unit': 'hour',
             'unit_of_measure': 'hour',
             'hide_on_dashboard': True,
             'unpaid': True,
@@ -675,5 +678,10 @@
         <field name="request_unit">day</field>
         <field name="country_id" ref="base.tr"/>
     </record>
+
+    <function model="hr.work.entry.type" name="write">
+        <value model="hr.work.entry.type" eval="obj().sudo().search([('code', 'in', ['LEAVE100', 'LEAVE105', 'WORK110', 'LEAVE90', 'LEAVE110', 'LEAVE120', 'OUT'])]).ids"/>
+        <value eval="{'request_unit': 'half_day'}"/>
+    </function>
 
 </data></odoo>
