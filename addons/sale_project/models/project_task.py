@@ -180,6 +180,16 @@ class ProjectTask(models.Model):
             self._ensure_sale_order_linked([sol_id])
         return task
 
+    def _creation_message(self):
+        self.ensure_one()
+        if self.sale_line_id:
+            return self.env._(
+                "This task has been created from: %(order_link)s (%(product_name)s)",
+                order_link=self.sale_line_id.order_id._get_html_link(),
+                product_name=self.sale_line_id.product_id.display_name,
+            )
+        return super()._creation_message()
+
     # ---------------------------------------------------
     # Actions
     # ---------------------------------------------------
