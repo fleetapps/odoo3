@@ -302,12 +302,12 @@ class TestUiTranslate(odoo.tests.HttpCase):
             'default_lang_id': fake_user_lang.id,
         })
 
-        self.start_tour(f"/website/force/{website.id}", 'snippet_translation', login='admin')
-        self.start_tour(f"/website/force/{website_2.id}", 'snippet_translation_changing_lang', login='admin')
+        self.start_tour(f"/odoo/action-website.website_preview?fw={website.id}", 'snippet_translation', login='admin')
+        self.start_tour(f"/odoo/action-website.website_preview?fw={website_2.id}", 'snippet_translation_changing_lang', login='admin')
         self.start_tour(f"/website/force/{website_2.id}", 'snippet_translation_switching_website', login='admin', cookies={
             'websiteIdMapping': json.dumps({website_3.name: website_3.id})
         })
-        self.start_tour(f"/website/force/{website.id}", 'snippet_dialog_rtl', login='admin')
+        self.start_tour(f"/odoo/action-website.website_preview?fw={website.id}", 'snippet_dialog_rtl', login='admin')
 
     def test_multiple_websites_add_language(self):
         self.env['res.lang'].create({
@@ -337,7 +337,7 @@ class TestUiTranslate(odoo.tests.HttpCase):
 class TestUi(HttpCaseWithWebsiteUser):
 
     def test_01_admin_tour_homepage(self):
-        self.start_tour("/odoo", 'homepage', login='admin')
+        self.start_tour(self.env['website'].get_client_action_url('/'), 'homepage', login='admin')
 
     def test_02_restricted_editor(self):
         self.start_tour(self.env['website'].get_client_action_url('/'), 'restricted_editor', login="website_user")
@@ -386,7 +386,7 @@ class TestUi(HttpCaseWithWebsiteUser):
         self.assertNotEqual(new_website_bundle_modified.get_version('js'), base_website_js_version, "js version for new website should now have been changed")
 
         url_params = url_encode({'path': '/@/'})
-        self.start_tour(f'/website/force/{website_default.id}?{url_params}', "generic_website_editor", login="website_user")
+        self.start_tour(f'/odoo/action-website.website_preview?{url_params}&enable_editor=1', "generic_website_editor", login="website_user")
         self.start_tour(f'/website/force/{new_website.id}?{url_params}', "specific_website_editor", login="website_user")
 
     def test_07_snippet_version(self):
