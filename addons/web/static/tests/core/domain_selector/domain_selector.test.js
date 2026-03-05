@@ -1061,7 +1061,7 @@ test("support properties", async () => {
         },
         {
             name: "xphone_prop_5",
-            domain: `[("properties", "any", ["&", ("xphone_prop_5", ">=", "today"), ("xphone_prop_5", "<", "today +1d")])]`,
+            domain: `["&", ("properties.xphone_prop_5", ">=", "today"), ("properties.xphone_prop_5", "<", "today +1d")]`,
             options: [
                 label("in range"),
                 label("="),
