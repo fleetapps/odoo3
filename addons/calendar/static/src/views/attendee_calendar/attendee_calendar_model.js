@@ -204,6 +204,10 @@ export class AttendeeCalendarModel extends CalendarModel {
         await this._archiveRecord(record.id, recurrenceUpdate);
     }
 
+    get businessHoursMode() {
+        return "none";
+    }
+
     async _archiveRecord(id, recurrenceUpdate) {
         if (!recurrenceUpdate && recurrenceUpdate !== "self_only") {
             await this.orm.call(this.resModel, "action_archive", [[id]]);
