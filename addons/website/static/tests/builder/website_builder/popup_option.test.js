@@ -8,6 +8,7 @@ import {
     setupWebsiteBuilder,
 } from "@website/../tests/builder/website_helpers";
 import { Plugin } from "@html_editor/plugin";
+import { withSequence } from "@html_editor/utils/resource";
 import { insertText, redo, undo } from "@html_editor/../tests/_helpers/user_actions";
 import { setSelection } from "@html_editor/../tests/_helpers/selection";
 
@@ -43,6 +44,10 @@ describe("Popup options: empty page before edit", () => {
         // Check if the popup is visible.
         expect(":iframe .s_popup .modal").toHaveClass("show");
         expect(":iframe .s_popup .modal").toHaveStyle({ display: "block" });
+    });
+    test("dropping the popup snippet sets data-show-on='currentPage'", async () => {
+        await insertCategorySnippet({ group: "content", snippet: "s_popup" });
+        expect(":iframe .s_popup").toHaveAttribute("data-show-on", "currentPage");
     });
 });
 describe("Popup options: popup in page before edit", () => {
@@ -200,5 +205,154 @@ describe("Popup options: popup in page before edit", () => {
         expect(":iframe .s_popup").toHaveCount(1);
         expect("div[data-container-title='Block']").toHaveCount(1);
         expect(".o_we_invisible_entry .fa").toHaveClass("fa-eye");
+    });
+});
+
+// ─── "Show on" builder option ──────────────────────────────────────────────
+
+const popupSnippetHtml = `
+    <div class="s_popup" id="sPopup1" data-snippet="s_popup" data-name="Popup">
+        <div class="modal s_popup_middle"
+             data-display="afterDelay" data-show-after="5000" data-consents-duration="7"
+             data-bs-focus="false" data-bs-backdrop="false">
+            <div class="modal-dialog d-flex">
+                <div class="modal-content oe_structure">
+                    <div class="s_popup_close js_close_popup">×</div>
+                    <section><p>Popup content</p></section>
+                </div>
+            </div>
+        </div>
+    </div>
+`;
+
+describe("Popup 'Show on' dropdown", () => {
+    beforeEach(() => {
+        // Provide a custom page-type option and a predictable "This page" container
+        // so tests don't depend on the real website page structure.
+        addPlugin(
+            class extends Plugin {
+                static id = "showOnTestPlugin";
+                resources = {
+                    popup_show_on_options: withSequence(30, {
+                        value: "allTests",
+                        label: "All Tests",
+                        pageSelector: ".o_test_page_marker",
+                    }),
+                    // Lower sequence wins: used as the "This page" container in tests.
+                    popup_container_selectors: withSequence(1, ".test-popup-container"),
+                };
+            }
+        );
+    });
+
+    test("backward compat: popup in #o_shared_blocks without data-show-on shows 'All pages'", async () => {
+        const { waitSidebarUpdated } = await setupWebsiteBuilder("", {
+            footerContent: `<div id="o_shared_blocks">${popupSnippetHtml}</div>`,
+        });
+        await contains(":iframe #o_shared_blocks .s_popup section p").click();
+        await waitSidebarUpdated();
+        expect("[data-label='Show on'] button.o-dropdown").toHaveText("All pages");
+    });
+
+    test("backward compat: popup in page container without data-show-on shows 'This page'", async () => {
+        const { waitSidebarUpdated } = await setupWebsiteBuilder(popupSnippetHtml);
+        await contains(":iframe .s_popup section p").click();
+        await waitSidebarUpdated();
+        expect("[data-label='Show on'] button.o-dropdown").toHaveText("This page");
+    });
+
+    test("switching to 'All pages' sets data-show-on and moves popup to #o_shared_blocks", async () => {
+        const { waitSidebarUpdated } = await setupWebsiteBuilder(popupSnippetHtml, {
+            footerContent: `<div id="o_shared_blocks"></div>`,
+        });
+        await contains(":iframe .s_popup section p").click();
+        await waitSidebarUpdated();
+        await contains("[data-label='Show on'] button.o-dropdown").click();
+        await contains(".o_popover[role=menu] [data-action-value='allPages']").click();
+        await animationFrame();
+        expect(":iframe #o_shared_blocks .s_popup").toHaveCount(1);
+        expect(":iframe .s_popup").toHaveAttribute("data-show-on", "allPages");
+        expect(":iframe .s_popup[data-show-on-selector]").toHaveCount(0);
+    });
+
+    test("switching to a page-type option sets both data-show-on and data-show-on-selector", async () => {
+        const { waitSidebarUpdated } = await setupWebsiteBuilder(popupSnippetHtml, {
+            footerContent: `<div id="o_shared_blocks"></div>`,
+        });
+        await contains(":iframe .s_popup section p").click();
+        await waitSidebarUpdated();
+        await contains("[data-label='Show on'] button.o-dropdown").click();
+        await contains(".o_popover[role=menu] [data-action-value='allTests']").click();
+        await animationFrame();
+        expect(":iframe .s_popup").toHaveAttribute("data-show-on", "allTests");
+        expect(":iframe .s_popup").toHaveAttribute("data-show-on-selector", ".o_test_page_marker");
+    });
+
+    test("switching from page-type to 'This page' clears data-show-on-selector", async () => {
+        const { waitSidebarUpdated } = await setupWebsiteBuilder(`
+            <div class="test-popup-container">
+                <div class="s_popup" id="sPopup1" data-snippet="s_popup" data-name="Popup"
+                     data-show-on="allTests" data-show-on-selector=".o_test_page_marker">
+                    <div class="modal s_popup_middle"
+                         data-display="afterDelay" data-show-after="5000" data-consents-duration="7"
+                         data-bs-focus="false" data-bs-backdrop="false">
+                        <div class="modal-dialog d-flex">
+                            <div class="modal-content oe_structure">
+                                <div class="s_popup_close js_close_popup">×</div>
+                                <section><p>Popup content</p></section>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+        await contains(":iframe .s_popup section p").click();
+        await waitSidebarUpdated();
+        await contains("[data-label='Show on'] button.o-dropdown").click();
+        await contains(".o_popover[role=menu] [data-action-value='currentPage']").click();
+        await animationFrame();
+        expect(":iframe .s_popup").toHaveAttribute("data-show-on", "currentPage");
+        expect(":iframe .s_popup[data-show-on-selector]").toHaveCount(0);
+    });
+});
+
+// ─── Runtime canShowPopup() ────────────────────────────────────────────────
+
+describe("Popup canShowPopup() runtime filtering", () => {
+    const makeRuntimePopup = (selectorAttr) => `
+        <div class="s_popup" id="sPopup1" data-snippet="s_popup" data-name="Popup"
+             ${selectorAttr ? `data-show-on-selector="${selectorAttr}"` : ""}>
+            <div class="modal s_popup_middle"
+                 data-display="afterDelay" data-show-after="0" data-consents-duration="7"
+                 data-bs-focus="false" data-bs-backdrop="false"
+                 style="display: none;" tabindex="-1" aria-label="Popup" aria-hidden="true">
+                <div class="modal-dialog d-flex">
+                    <div class="modal-content oe_structure">
+                        <section><p>Popup content</p></section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    test("popup with data-show-on-selector matching page DOM is displayed", async () => {
+        await setupWebsiteBuilder(
+            `<div class="o_test_page_marker">marker</div>
+             ${makeRuntimePopup(".o_test_page_marker")}`,
+            { loadIframeBundles: true, loadAssetsFrontendJS: true, openEditor: false }
+        );
+        await advanceTime(1);
+        await waitFor(":iframe .s_popup .modal.show");
+    });
+
+    test("popup with data-show-on-selector not matching page DOM is not displayed", async () => {
+        await setupWebsiteBuilder(makeRuntimePopup(".o_nonexistent_marker"), {
+            loadIframeBundles: true,
+            loadAssetsFrontendJS: true,
+            openEditor: false,
+        });
+        await advanceTime(1);
+        await animationFrame();
+        expect(":iframe .s_popup .modal").not.toHaveClass("show");
     });
 });
