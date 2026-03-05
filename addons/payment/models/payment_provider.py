@@ -144,7 +144,7 @@ class PaymentProvider(models.Model):
         translate=True)
     pending_msg = fields.Html(
         string="Pending Message",
-        help="The message displayed if the order pending after the payment process",
+        help="The message displayed if the order is handled by a deferred payment method",
         default=lambda self: _(
             "Your payment has been processed but is waiting for approval."
         ), translate=True)
@@ -1029,8 +1029,12 @@ class PaymentProvider(models.Model):
         self.ensure_one()
         return self.code
 
-    def _get_status_message(self, status):
+    def _get_status_message(self, tx):
+        custom_mode = tx.provider_id.custom_mode
+        status = tx.state
         match status:
+            case 'pending' if custom_mode in ['pay_on_invoice', 'cash_on_delivery', 'on_site']:
+                status_message = self.done_msg
             case 'pending':
                 status_message = self.pending_msg
             case 'authorized':

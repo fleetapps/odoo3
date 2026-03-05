@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="payment_custom.payment_provider_form"/>
         <field name="arch" type="xml">
             <field name="pending_msg" position="attributes">
-                <attribute name="invisible" separator="or" add="custom_mode == 'cash_on_delivery'"/>
+                <attribute name="invisible" separator="or" add="custom_mode == 'on_site'"/>
             </field>
         </field>
     </record>
