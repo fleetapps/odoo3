@@ -600,6 +600,7 @@ class AccountPaymentRegister(models.TransientModel):
         for wizard in self:
             wizard.writeoff_is_exchange_account = all((
                 wizard.can_edit_wizard,
+                wizard.payment_difference_handling == 'reconcile',
                 wizard.currency_id != wizard.source_currency_id,
                 wizard.writeoff_account_id,
                 wizard.writeoff_account_id in (
