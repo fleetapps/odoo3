@@ -97,15 +97,25 @@
             }
         }
 
-        @each $status, $color in (danger: $danger, success: $success) {
+        @each $status, $color in (danger: $danger, success: $success, primary: $primary) {
             &.o-dropdown-item.btn-#{$status}:not(.o-tag-JOIN_LEAVE_CALL) {
                 &.focus {
                     background-color: rgba($color, 0.75);
                     color: white;
                 }
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
 
+||||||| d8fa7af27cf600050d471c2218fb23af6ee1dd82
+=======
+                &.o-tag-PRIMARY {
+                    background-color: rgba($color, .9);
+                }
+>>>>>>> 664bcdd2bfaf99cd791d84695964389d9644753d
                 &:not(.focus) {
                     color: var(--o-mail-ActionList-#{$status}NoBgColor, #{$color});
+                    &.o-tag-PRIMARY {
+                        background-color: rgba($color, .35);
+                    }
                 }
             }
 

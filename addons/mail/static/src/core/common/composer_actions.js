@@ -6,7 +6,13 @@ import { useEmojiPicker } from "@web/core/emoji_picker/emoji_picker";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { markEventHandled } from "@web/core/utils/misc";
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
 import { Action, useAction, UseActions } from "@mail/core/common/action";
+||||||| d8fa7af27cf600050d471c2218fb23af6ee1dd82
+import { Action, UseActions } from "@mail/core/common/action";
+=======
+import { Action, ACTION_TAGS, UseActions } from "@mail/core/common/action";
+>>>>>>> 664bcdd2bfaf99cd791d84695964389d9644753d
 import { useService } from "@web/core/utils/hooks";
 
 export const composerActionsRegistry = registry.category("mail.composer/actions");
@@ -134,11 +140,19 @@ registerComposerAction("open-full-composer", {
         composer.targetThread &&
         composer.targetThread.model !== "discuss.channel" &&
         !owner.env.inFrontendPortalChatter,
+    hasBtnBg: ({ composer, owner }) =>
+        (composer.restoredFromFullComposer && !owner.state.isFullComposerOpen) || undefined,
     hotkey: "shift+c",
     icon: "fa fa-expand",
+    isActive: ({ composer, owner }) =>
+        (composer.restoredFromFullComposer && !owner.state.isFullComposerOpen) || undefined,
     name: _t("Open Full Composer"),
     onSelected: ({ owner }) => owner.onClickFullComposer(),
     sequence: 30,
+    tags: ({ composer, owner }) =>
+        composer.restoredFromFullComposer && !owner.state.isFullComposerOpen
+            ? [ACTION_TAGS.PRIMARY]
+            : undefined,
 });
 registerComposerAction("add-canned-response", {
     condition: ({ composer, store }) =>
@@ -179,6 +193,17 @@ export class ComposerAction extends Action {
     constructor({ composer }) {
         super(...arguments);
         this.composerFn = typeof composer === "function" ? composer : () => composer;
+    }
+
+    /**
+     * @param {Object} param0
+     * @param {Composer|() => Composer} composer
+     */
+    _disabledCondition({ composer }) {
+        if (composer.restoredFromFullComposer && this.id !== "open-full-composer") {
+            return true;
+        }
+        return super._disabledCondition(...arguments);
     }
 
     get params() {
