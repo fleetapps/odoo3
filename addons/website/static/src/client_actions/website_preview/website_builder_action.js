@@ -71,6 +71,8 @@ export class WebsiteBuilderClientAction extends Component {
         this.websiteService.websiteRootInstance = undefined;
         this.iframeFallbackUrl = "/website/iframefallback";
         this.iframefallback = useRef("iframefallback");
+        this.themeColorsPreviewUrl = "/website/theme_colors_preview";
+        this.themeColorsPreviewIframeRef = useRef("themeColorsPreviewIframe");
 
         this.websiteContent = useRef("iframe");
         this.builderSidebarRef = useRef("builder_sidebar");
@@ -83,7 +85,13 @@ export class WebsiteBuilderClientAction extends Component {
         useSubEnv({
             builderRef: useRef("container"),
         });
-        this.state = useState({ isEditing: false, showSidebar: true, key: 1, is404: false });
+        this.state = useState({
+            isEditing: false,
+            showSidebar: true,
+            key: 1,
+            is404: false,
+            isThemeColorsPreviewLoaded: false,
+        });
         this.websiteContext = useState(this.websiteService.context);
         this.component = useComponent();
 
@@ -102,6 +110,9 @@ export class WebsiteBuilderClientAction extends Component {
                         return;
                     }
                     this.toggleIsMobile(websiteContext.isMobile);
+                    if (!websiteContext.showThemeColorsPreview) {
+                        this.state.isThemeColorsPreviewLoaded = false;
+                    }
                 },
                 [this.websiteContext]
             );
@@ -219,10 +230,19 @@ export class WebsiteBuilderClientAction extends Component {
             overlayRef: this.overlayRef,
             iframeLoaded: iframeLoaded,
             isMobile: this.websiteContext.isMobile,
+            mobileBtnDisabled: this.websiteContext.showThemeColorsPreview,
             initialTab: this.initialTab,
             onlyCustomizeTab: this.translation,
             config: {
                 initialTarget: this.target,
+                getThemeColorsPreviewDocument: () =>
+                    this.themeColorsPreviewIframeRef.el?.contentDocument,
+                getOperationLoadingDocument: () => {
+                    if (!this.websiteContext.showThemeColorsPreview) {
+                        return undefined;
+                    }
+                    return this.themeColorsPreviewIframeRef.el?.contentDocument || null;
+                },
                 builderSidebar: {
                     withHiddenSidebar: async (cb) => {
                         try {
@@ -680,6 +700,14 @@ export class WebsiteBuilderClientAction extends Component {
         // Adding the mobile class directly, to not wait for the component
         // re-rendering.
         this.websiteService.context.isMobile = !this.websiteService.context.isMobile;
+    }
+
+    closeThemeColorsPreview() {
+        this.websiteService.bus.trigger("CLOSE-THEME-COLORS-PREVIEW");
+    }
+
+    onThemeColorsPreviewIframeLoad() {
+        this.state.isThemeColorsPreviewLoaded = true;
     }
 
     toggleIsMobile(isMobile) {

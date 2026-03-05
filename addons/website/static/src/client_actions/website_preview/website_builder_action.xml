@@ -14,6 +14,16 @@
                 <div t-if="this.websiteContext.isMobile" class="o_mobile_preview_layout">
                     <img alt="phone" src="/html_builder/static/img/phone.svg"/>
                 </div>
+                <t t-if="this.websiteContext.showThemeColorsPreview">
+                    <div class="o_theme_colors_preview_backdrop" t-if="state.isThemeColorsPreviewLoaded"></div>
+                    <iframe class="o_theme_colors_preview_iframe rounded" t-att-src="themeColorsPreviewUrl"
+                        t-att-class="{ 'd-none': !state.isThemeColorsPreviewLoaded }"
+                        t-ref="themeColorsPreviewIframe"
+                        t-on-load="onThemeColorsPreviewIframeLoad"/>
+                    <button t-if="state.isThemeColorsPreviewLoaded" t-on-click="closeThemeColorsPreview"
+                        class="btn-close btn btn-light position-absolute top-0 end-0">
+                    </button>
+                </t>
             </div>
         </div>
         <ResizablePanel t-if="this.websiteContext.showResourceEditor" handleSide="'start'" class="'o_resource_editor_wrapper'" onResize.bind="onResourceEditorResize" initialWidth="aceEditorWidth">
