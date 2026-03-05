@@ -24,6 +24,7 @@ import { patch } from "@web/core/utils/patch";
 import { isMobileOS } from "@web/core/browser/feature_detection";
 import { getOrigin } from "@web/core/utils/urls";
 import { cookie } from "@web/core/browser/cookie";
+import { isMarkup } from "@web/core/utils/html";
 
 /**
  * @typedef {{isSpecial: boolean, channel_types: string[], label: string, displayName: string, description: string}} SpecialMention
@@ -587,6 +588,12 @@ export class Store extends BaseStore {
         body,
         { mentionedChannels = [], mentionedPartners = [], mentionedRoles = [], thread } = {}
     ) {
+        if (isMarkup(body)) {
+            // Decode the markup HTML to it's textual representation, allowing accurate matching of
+            // mentions that contain special characters like '&', '<', '>', etc.
+            const bodyParsed = new DOMParser().parseFromString(body, "text/html");
+            body = bodyParsed.body.innerText;
+        }
         const validMentions = {};
         validMentions.threads = mentionedChannels.filter((thread) => {
             if (thread.parent_channel_id) {
