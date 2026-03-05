@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="translate_ui_settings_form" model="ir.ui.view">
+        <field name="name">translate_ui.settings.form</field>
+        <field name="model">translate_ui.settings</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="language" />
+                    <field name="translation_url" />
+                </group>
+                <footer>
+                    <button class="btn btn-primary" type="object" name="save_and_reload" string="Save" />
+                    <button special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="translate_ui_dialog_action" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">translate_ui.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
