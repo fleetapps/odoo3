@@ -16,10 +16,12 @@ from odoo.fields import Domain
 from odoo.http import request
 from odoo.tools.translate import LazyTranslate
 
+from odoo.addons.website.controllers.main import Website
+
 _lt = LazyTranslate(__name__)
 
 
-class WebsiteProfile(http.Controller):
+class WebsiteProfile(Website):
     _users_per_page = 30
     _pager_max_pages = 5
 

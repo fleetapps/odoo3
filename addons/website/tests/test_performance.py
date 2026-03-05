@@ -262,8 +262,8 @@ class TestWebsitePerformance(TestWebsitePerformanceCommon):
                 insert_tables_perf = {}
                 if not readonly_enabled:
                     insert_tables_perf = {
-                        'website_visitor': 1,
-                        # Visitor upsert
+                        'website_visitor': 0,
+                        # Visitor upsert will not execute as it requires js
                     }
                     expected_query_count += 1
                 self.page.track = True
@@ -284,8 +284,8 @@ class TestWebsitePerformance(TestWebsitePerformanceCommon):
                 insert_tables_perf = {}
                 if not readonly_enabled:
                     insert_tables_perf = {
-                        'website_visitor': 1,
-                        # Visitor upsert
+                        'website_visitor': 0,
+                        # Visitor upsert will not execute as it requires js
                     }
                     expected_query_count += 1
                 self._check_url_hot_query('/', expected_query_count, select_tables_perf, insert_tables_perf)

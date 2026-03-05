@@ -280,3 +280,14 @@ class ProductProduct(models.Model):
         """
         self.ensure_one()
         return self.env['website'].image_url(self, 'image_1024')
+
+    def _get_extra_tracking_values(self, **kwargs):
+        # NOT USED - REMOVE: the product page is actually product.template
+        # unless the track route can be adapted to function without URL
+        etv = super()._get_extra_tracking_values(**kwargs)
+        if (
+            kwargs.get('res_model') == self._name
+            and (res_id := kwargs.get('res_id'))
+        ):
+            etv['product_id'] = res_id
+        return etv

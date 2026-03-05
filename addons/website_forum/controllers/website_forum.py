@@ -63,6 +63,18 @@ class WebsiteForum(WebsiteProfile):
         })
         return values
 
+    # Tracking
+    # --------------------------------------------------
+
+    @http.route()
+    def track(self, res_model, res_id, url, **kwargs):
+        # EXTENDS website
+        super().track(res_model, res_id, url, **kwargs)
+        if res_model == 'forum.post':
+            # increment view counter
+            question = self.env['forum.post'].browse(res_id)
+            question.sudo()._set_viewed()
+
     # Forum
     # --------------------------------------------------
 
@@ -344,8 +356,6 @@ class WebsiteForum(WebsiteProfile):
             redirect_url = "/forum/%s/%s" % (slug(forum), slug(question.parent_id))
             return request.redirect(redirect_url, 301)
         values = self._prepare_question_template_vals(forum, post, question)
-        # increment view counter
-        question.sudo()._set_viewed()
 
         return request.render("website_forum.post_description_full", values)
 
