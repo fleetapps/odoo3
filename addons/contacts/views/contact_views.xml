@@ -34,6 +34,47 @@
         <field name="act_window_id" ref="action_contacts"/>
     </record>
 
+    <record id="contacts_hierarchy_view" model="ir.ui.view">
+        <field name="name">Contacts.view.hierarchy</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <hierarchy child_field="child_ids" js_class="contacts_hierarchy" icon="fa-address-book">
+                <field name="name" />
+                <field name="function" />
+                <field name="type_address_label" />
+                <field name="type" />
+                <field name="commercial_partner_id" />
+                <templates>
+                    <t t-name="hierarchy-box">
+                        <div t-attf-class="o_hierarchy_node_header d-flex justify-content-center pb-4
+                                o_hierarchy_node_color_{{
+                                    record.commercial_partner_id.raw_value ? ((record.commercial_partner_id.raw_value - 1) % 11) + 1 : 0
+                                }}"
+                            t-att-title="record.type.value"
+                        >
+                            <field name="avatar_1024" preview_image="avatar_128" options="{'zoom': true, 'zoom_delay': 1000}" widget="image" />
+                        </div>
+                        <div class="d-flex flex-column text-center">
+                            <field name="name" />
+                            <t t-if="record.type and record.type.raw_value == 'contact'">
+                                <field name="function"/>
+                            </t>
+                            <t t-else="">
+                                <field name="type_address_label" />
+                            </t>
+                        </div>
+                    </t>
+                </templates>
+            </hierarchy>
+        </field>
+    </record>
+
+    <record id="action_contacts_view_hierarchy" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">hierarchy</field>
+        <field name="view_id" ref="contacts_hierarchy_view"/>
+        <field name="act_window_id" ref="action_contacts"/>
+    </record>
 
     <menuitem name="Contacts"
         id="menu_contacts"
