@@ -677,6 +677,10 @@ class DiscussChannel(models.Model):
                 'guest_id': guest.id,
                 'channel_id': channel.id,
             } for guest in guests - existing_members.guest_id]
+            channel_last_message_id = channel._get_last_messages().id
+            if channel_last_message_id:
+                for member_vals in members_to_create:
+                    member_vals.setdefault("new_message_separator", channel_last_message_id + 1)
             if channel.parent_channel_id and channel.parent_channel_id.has_access("write"):
                 new_members = self.env["discuss.channel.member"].sudo().create(members_to_create)
             else:
