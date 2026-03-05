@@ -117,7 +117,7 @@ class HrAttendance(models.Model):
     @api.depends('check_in', 'check_out', 'employee_id')
     def _compute_overtime_hours(self):
         for attendance in self:
-            attendance.overtime_hours = sum(attendance.linked_overtime_ids.mapped('manual_duration'))
+            attendance.overtime_hours = sum(attendance.linked_overtime_ids.mapped('duration'))
 
     @api.depends('check_in', 'check_out', 'employee_id')
     def _compute_validated_overtime_hours(self):
@@ -310,6 +310,7 @@ class HrAttendance(models.Model):
             )
         self.env['hr.attendance.overtime.line'].create(overtime_vals_list)
         self.env.add_to_compute(self._fields['overtime_hours'], all_attendances)
+        self.env.add_to_compute(self._fields['expected_hours'], all_attendances)
         self.env.add_to_compute(self._fields['validated_overtime_hours'], all_attendances)
         self.env.add_to_compute(self._fields['overtime_status'], all_attendances)
 
