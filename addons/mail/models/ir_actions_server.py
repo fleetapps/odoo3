@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+from markupsafe import Markup
 
 from dateutil.relativedelta import relativedelta
 
@@ -66,10 +67,7 @@ class IrActionsServer(models.Model):
         compute='_compute_template_id',
         ondelete='set null', readonly=False, store=True,
     )
-    # Message post
-    mail_post_in_chatter = fields.Boolean(
-        'Mail Post in Chatter', compute='_compute_mail_post_in_chatter', readonly=False, store=True,
-        help='The email will be posted as a message in the chatter of the record, notifying all followers')
+
     mail_post_autofollow = fields.Boolean(
         'Subscribe Recipients', compute='_compute_mail_post_autofollow',
         readonly=False, store=True)
@@ -157,14 +155,8 @@ class IrActionsServer(models.Model):
             to_reset.template_id = False
 
     @api.depends('state')
-    def _compute_mail_post_in_chatter(self):
-        to_reset = self.filtered(lambda act: act.state not in ('mail_post', 'log_note'))
-        to_reset.mail_post_in_chatter = False
-        (self - to_reset).mail_post_in_chatter = True
-
-    @api.depends('state', 'mail_post_in_chatter')
     def _compute_mail_post_autofollow(self):
-        to_reset = self.filtered(lambda act: act.state not in ['mail_post', 'log_note'] or not act.mail_post_in_chatter)
+        to_reset = self.filtered(lambda act: act.state not in ['mail_post', 'log_note'])
         to_reset.mail_post_autofollow = False
         (self - to_reset).mail_post_autofollow = True
 
@@ -280,7 +272,6 @@ class IrActionsServer(models.Model):
             'followers_partner_field_name',
             'activity_user_type',
             'activity_user_field_name',
-            'mail_post_in_chatter',
         ]
 
     def _get_warning_messages(self):
@@ -297,7 +288,7 @@ class IrActionsServer(models.Model):
 
         if (
             (self.state in {"followers", "remove_followers"}
-            or (self.state == "mail_post" and self.mail_post_in_chatter))
+            or (self.state == "mail_post"))
             and not self.model_id.is_mail_thread
         ):
             warnings.append(_("This action can only be done on a mail thread models"))
@@ -386,19 +377,12 @@ class IrActionsServer(models.Model):
         cleaned_ctx['mail_post_autofollow_author_skip'] = True  # do not subscribe random people to records
         cleaned_ctx['mail_post_autofollow'] = self.mail_post_autofollow
 
-        # Creating a virtual template record
-        template = self.env['mail.template'].new({
-            'model_id': self.env['ir.model'].search([('model', '=', self.model_name)], limit=1).id,
-            'body_html': self.log_note_note,
-        })
-
         records = self.env[self.model_name].with_context(cleaned_ctx).browse(res_ids)
         subtype_id = self.env['ir.model.data']._xmlid_to_res_id('mail.mt_note')
-        records.message_post_with_source(
-            template,
-            message_type='auto_comment',
+        records.message_post(
+            message_type='comment',
             subtype_id=subtype_id,
-            # body_is_html=True,
+            body=Markup(self.log_note_note)
         )
         return False
 
@@ -415,22 +399,13 @@ class IrActionsServer(models.Model):
         cleaned_ctx['mail_post_autofollow_author_skip'] = True  # do not subscribe random people to records
         cleaned_ctx['mail_post_autofollow'] = self.mail_post_autofollow
 
-        if self.mail_post_in_chatter:
-            records = self.env[self.model_name].with_context(cleaned_ctx).browse(res_ids)
-            subtype_id = self.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment')
-            records.message_post_with_source(
-                self.template_id,
-                message_type='auto_comment',
-                subtype_id=subtype_id,
-            )
-        else:
-            template = self.template_id.with_context(cleaned_ctx)
-            for res_id in res_ids:
-                template.send_mail(
-                    res_id,
-                    force_send=False,
-                    raise_exception=False
-                )
+        records = self.env[self.model_name].with_context(cleaned_ctx).browse(res_ids)
+        subtype_id = self.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment')
+        records.message_post_with_source(
+            self.template_id,
+            message_type='auto_comment',
+            subtype_id=subtype_id,
+        )
         return False
 
     def _run_action_next_activity_multi(self, eval_context=None):

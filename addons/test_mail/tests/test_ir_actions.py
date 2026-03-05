@@ -30,7 +30,6 @@ class TestServerActionsEmail(MailCommon, TestServerActionsBase):
 
         # update action: send an email
         self.action.write({
-            'mail_post_in_chatter': False,
             'state': 'mail_post',
             'template_id': self.template.id,
         })
@@ -356,7 +355,6 @@ class TestServerActionsEmail(MailCommon, TestServerActionsBase):
 
         # update action: send an email
         self.action.write({
-            'mail_post_in_chatter': False,
             'state': 'mail_post',
             'model_id': self.env['ir.model'].search([('model', '=', 'mail.test.nothread')], limit=1).id,
             'model_name': 'mail.test.nothread',

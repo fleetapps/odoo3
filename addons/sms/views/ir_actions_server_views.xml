@@ -14,7 +14,6 @@
                             placeholder="Choose a template..."
                             context="{'default_model': model_name}"
                             required="state == 'sms'"/>
-                        <field name="sms_post_in_chatter" string="Post in Chatter"/>
                     </group>
                 </group>
             </xpath>

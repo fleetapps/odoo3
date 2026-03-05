@@ -29,7 +29,6 @@ class TestServerAction(SMSCommon, TestSMSRecipients):
             'name': 'Test SMS Action',
             'model_id': cls.env['ir.model']._get('mail.test.sms').id,
             'state': 'sms',
-            'sms_post_in_chatter': False,
             'sms_template_id': cls.sms_template.id,
             'group_ids': cls.env.ref('base.group_user'),
         })
@@ -74,7 +73,6 @@ class TestServerAction(SMSCommon, TestSMSRecipients):
 
     @mute_logger('odoo.addons.sms.models.sms_sms')
     def test_action_sms_w_post(self):
-        self.action.sms_post_in_chatter = True
         context = {
             'active_model': 'mail.test.sms',
             'active_ids': (self.test_record | self.test_record_2).ids,

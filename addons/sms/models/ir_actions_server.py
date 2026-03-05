@@ -18,9 +18,6 @@ class IrActionsServer(models.Model):
         ondelete='set null', readonly=False, store=True,
         domain="[('model_id', '=', model_id)]",
     )
-    sms_post_in_chatter = fields.Boolean(
-        'SMS Post in Chatter', compute='_compute_sms_post_in_chatter', readonly=False, store=True,
-        help='The SMS will be posted as a log note in the chatter of the record')
 
     def _name_depends(self):
         return [*super()._name_depends(), "sms_template_id"]
@@ -48,12 +45,6 @@ class IrActionsServer(models.Model):
         )
         if to_reset:
             to_reset.sms_template_id = False
-
-    @api.depends('state')
-    def _compute_sms_post_in_chatter(self):
-        to_reset = self.filtered(lambda act: act.state != 'sms')
-        to_reset.sms_post_in_chatter = False
-        (self - to_reset).sms_post_in_chatter = True
 
     @api.model
     def _warning_depends(self):
@@ -91,7 +82,7 @@ class IrActionsServer(models.Model):
         composer = self.env['sms.composer'].with_context(
             default_res_model=records._name,
             default_res_ids=records.ids,
-            default_composition_mode='comment' if self.sms_post_in_chatter else 'mass',
+            default_composition_mode='comment',
             default_template_id=self.sms_template_id.id,
             default_mass_keep_log=False,
         ).create({})

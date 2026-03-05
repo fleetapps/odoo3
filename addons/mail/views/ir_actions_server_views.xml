@@ -89,7 +89,6 @@
                                 required="state == 'mail_post'"
                                 context="{'default_model': model_name,
                                             'default_use_default_to': True}"/>
-                            <field name="mail_post_in_chatter" string="Post in Chatter"/>
                             <field name="mail_post_autofollow" invisible="1"/>
                         </group>
                     </group>
