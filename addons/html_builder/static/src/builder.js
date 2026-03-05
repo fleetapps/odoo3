@@ -11,6 +11,7 @@ import {
     status,
 } from "@odoo/owl";
 import { useHotkey } from "@web/core/hotkeys/hotkey_hook";
+import { localization } from "@web/core/l10n/localization";
 import { _t } from "@web/core/l10n/translation";
 import { SIZES, MEDIAS_BREAKPOINTS } from "@web/core/ui/ui_service";
 import { useService } from "@web/core/utils/hooks";
@@ -82,6 +83,7 @@ export class Builder extends Component {
         this.notification = useService("notification");
 
         this.snippetModel = useSnippets(this.props.snippetsName);
+        this.languageDirection = { content: "ltr", builder: localization.direction };
 
         this.lastTrigerUpdateId = 0;
         this.editorBus = new EventBus();
@@ -217,6 +219,7 @@ export class Builder extends Component {
 
             if (this.editableEl.matches(".o_rtl")) {
                 this.editor.config.isEditableRTL = true;
+                this.languageDirection.content = "rtl";
             }
 
             // Prevent image dragging in the website builder. Not via css because
@@ -237,6 +240,7 @@ export class Builder extends Component {
             triggerDomUpdated: this.triggerDomUpdated.bind(this),
             editColorCombination: this.editColorCombination.bind(this),
             editShadow: this.editShadow.bind(this),
+            langDir: this.languageDirection,
         });
         onWillDestroy(() => {
             this.editor.destroy();

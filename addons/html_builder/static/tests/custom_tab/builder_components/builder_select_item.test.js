@@ -5,7 +5,7 @@ import {
 } from "@html_builder/../tests/helpers";
 import { BuilderAction } from "@html_builder/core/builder_action";
 import { setSelection } from "@html_editor/../tests/_helpers/selection";
-import { expect, test, describe } from "@odoo/hoot";
+import { expect, test, describe, before, getFixture } from "@odoo/hoot";
 import {
     animationFrame,
     click,
@@ -16,7 +16,7 @@ import {
     tick,
 } from "@odoo/hoot-dom";
 import { xml } from "@odoo/owl";
-import { contains } from "@web/../tests/web_test_helpers";
+import { contains, onRpc } from "@web/../tests/web_test_helpers";
 import { BaseOptionComponent } from "@html_builder/core/utils";
 
 describe.current.tags("desktop");
@@ -366,4 +366,147 @@ test("isApplied shouldn't be called when the element is removed from the DOM", a
     await contains(":iframe .test").click();
     await contains(".fa-trash ").click();
     expect(":iframe .test").toHaveCount(0);
+});
+
+describe("LTR - RTL compatibility", () => {
+    before(() => {
+        class TestDirOption extends BaseOptionComponent {
+            static selector = ".selector";
+            static template = xml`
+                <BuilderSelect>
+                    <BuilderSelectItem ltrRtlSharedId="'left-right'" title="'Left'" classAction="'class-a'">Left</BuilderSelectItem>
+                    <BuilderSelectItem ltrRtlSharedId="'left-right'" title="'Right'" classAction="'class-b'">Right</BuilderSelectItem>
+                </BuilderSelect>
+            `;
+        }
+        addBuilderOption(TestDirOption);
+    });
+
+    test("Iframe and Builder LTR", async () => {
+        const { waitSidebarUpdated } = await setupHTMLBuilder(`<div class="selector">Hello</div>`);
+        await contains(":iframe .selector").click();
+        await waitSidebarUpdated();
+        await contains(".we-bg-options-container .dropdown").click();
+        await waitSidebarUpdated();
+        expect(".o-dropdown--menu div.o-dropdown-item:first-of-type").toHaveAttribute(
+            "title",
+            "Left"
+        );
+        await contains(".o-dropdown--menu div.o-dropdown-item:first-of-type").click();
+        expect(":iframe .selector").toHaveClass("class-a");
+        expect(":iframe .selector").not.toHaveClass("class-b");
+        await contains(".we-bg-options-container .dropdown").click();
+        await waitSidebarUpdated();
+        expect(".o-dropdown--menu div.o-dropdown-item:nth-of-type(2)").toHaveAttribute(
+            "title",
+            "Right"
+        );
+        await contains(".o-dropdown--menu div.o-dropdown-item:nth-of-type(2)").click();
+        expect(":iframe .selector").toHaveClass("class-b");
+        expect(":iframe .selector").not.toHaveClass("class-a");
+    });
+
+    test("Iframe and Builder RTL", async () => {
+        onRpc("/web/webclient/translations", () => ({
+            hash: "aaa",
+            lang: "ar-001",
+            lang_parameters: {
+                direction: "rtl",
+                grouping: "[3,0]",
+                date_format: "%m/%d/%Y",
+                time_format: "%H:%M:%S",
+            },
+            modules: {},
+        }));
+        // Visual styling to run the test in debug.
+        getFixture().style.setProperty("direction", "rtl");
+
+        const { waitSidebarUpdated } = await setupHTMLBuilder(`<div class="selector">Hello</div>`, {
+            iframeLangDir: "rtl",
+        });
+        await contains(":iframe .selector").click();
+        await waitSidebarUpdated();
+        await contains(".we-bg-options-container .dropdown").click();
+        await waitSidebarUpdated();
+        expect(".o-dropdown--menu div.o-dropdown-item:first-of-type").toHaveAttribute(
+            "title",
+            "Right"
+        );
+        await contains(".o-dropdown--menu div.o-dropdown-item:first-of-type").click();
+        expect(":iframe .selector").toHaveClass("class-a");
+        expect(":iframe .selector").not.toHaveClass("class-b");
+        await contains(".we-bg-options-container .dropdown").click();
+        await waitSidebarUpdated();
+        expect(".o-dropdown--menu div.o-dropdown-item:nth-of-type(2)").toHaveAttribute(
+            "title",
+            "Left"
+        );
+        await contains(".o-dropdown--menu div.o-dropdown-item:nth-of-type(2)").click();
+        expect(":iframe .selector").toHaveClass("class-b");
+        expect(":iframe .selector").not.toHaveClass("class-a");
+    });
+
+    test("Iframe LTR and Builder RTL", async () => {
+        onRpc("/web/webclient/translations", () => ({
+            hash: "aaa",
+            lang: "ar-001",
+            lang_parameters: {
+                direction: "rtl",
+                grouping: "[3,0]",
+                date_format: "%m/%d/%Y",
+                time_format: "%H:%M:%S",
+            },
+            modules: {},
+        }));
+        // Visual styling to run the test in debug.
+        getFixture().style.setProperty("direction", "rtl");
+
+        const { waitSidebarUpdated } = await setupHTMLBuilder(`<div class="selector">Hello</div>`);
+        await contains(":iframe .selector").click();
+        await waitSidebarUpdated();
+        await contains(".we-bg-options-container .dropdown").click();
+        await waitSidebarUpdated();
+        expect(".o-dropdown--menu div.o-dropdown-item:first-of-type").toHaveAttribute(
+            "title",
+            "Right"
+        );
+        await contains(".o-dropdown--menu div.o-dropdown-item:first-of-type").click();
+        expect(":iframe .selector").toHaveClass("class-b");
+        expect(":iframe .selector").not.toHaveClass("class-a");
+        await contains(".we-bg-options-container .dropdown").click();
+        await waitSidebarUpdated();
+        expect(".o-dropdown--menu div.o-dropdown-item:nth-of-type(2)").toHaveAttribute(
+            "title",
+            "Left"
+        );
+        await contains(".o-dropdown--menu div.o-dropdown-item:nth-of-type(2)").click();
+        expect(":iframe .selector").toHaveClass("class-a");
+        expect(":iframe .selector").not.toHaveClass("class-b");
+    });
+
+    test("Iframe RTL and Builder LTR", async () => {
+        const { waitSidebarUpdated } = await setupHTMLBuilder(`<div class="selector">Hello</div>`, {
+            iframeLangDir: "rtl",
+        });
+        await contains(":iframe .selector").click();
+        await waitSidebarUpdated();
+        await contains(".we-bg-options-container .dropdown").click();
+        await waitSidebarUpdated();
+        expect(".o-dropdown--menu div.o-dropdown-item:first-of-type").toHaveAttribute(
+            "title",
+            "Left"
+        );
+        await contains(".o-dropdown--menu div.o-dropdown-item:first-of-type").click();
+        expect(":iframe .selector").toHaveClass("class-b");
+        expect(":iframe .selector").not.toHaveClass("class-a");
+        await contains(".we-bg-options-container .dropdown").click();
+        await waitSidebarUpdated();
+        expect(".o-dropdown--menu div.o-dropdown-item:nth-of-type(2)").toHaveAttribute(
+            "title",
+            "Right"
+        );
+        await contains(".o-dropdown--menu div.o-dropdown-item:nth-of-type(2)").click();
+        expect(":iframe .selector").toHaveClass("class-a");
+        expect(":iframe .selector").not.toHaveClass("class-b");
+    });
 });

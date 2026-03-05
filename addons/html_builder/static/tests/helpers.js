@@ -119,6 +119,7 @@ class BuilderContainer extends Component {
         headerContent: String,
         Plugins: Array,
         onEditorLoad: Function,
+        iframeLangDir: String,
     };
 
     setup() {
@@ -138,7 +139,13 @@ class BuilderContainer extends Component {
                 }
 
                 const el = this.iframeRef.el;
-                el.contentDocument.body.innerHTML = `<div id="wrapwrap">${this.props.headerContent}<div id="wrap" class="oe_structure oe_empty" data-oe-model="ir.ui.view" data-oe-id="539" data-oe-field="arch">${this.props.content}</div></div>`;
+                el.contentDocument.body.innerHTML = `<div id="wrapwrap" ${
+                    this.props.iframeLangDir === "rtl" ? 'class="o_rtl"' : ""
+                }">${
+                    this.props.headerContent
+                }<div id="wrap" class="oe_structure oe_empty" data-oe-model="ir.ui.view" data-oe-id="539" data-oe-field="arch">${
+                    this.props.content
+                }</div></div>`;
                 resolve(el);
             });
         });
@@ -203,6 +210,7 @@ export async function setupHTMLBuilder(
         dropzoneSelectors,
         snippets,
         styleContent,
+        iframeLangDir = "ltr",
     } = {}
 ) {
     defineMailModels();
@@ -321,6 +329,7 @@ export async function setupHTMLBuilder(
             onEditorLoad: (editor) => {
                 attachedEditor = editor;
             },
+            iframeLangDir,
         },
     });
     await comp.iframeLoaded;

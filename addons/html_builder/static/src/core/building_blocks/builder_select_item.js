@@ -1,5 +1,5 @@
 import { useRef } from "@web/owl2/utils";
-import { Component, markup, onMounted } from "@odoo/owl";
+import { Component, markup, onMounted, xml } from "@odoo/owl";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
 import {
     clickableBuilderComponentProps,
@@ -7,9 +7,10 @@ import {
     useSelectableItemComponent,
 } from "../utils";
 import { BuilderComponent } from "./builder_component";
+import { BuilderSelectableWrapperComponent } from "./builder_selectable_wrapper_component";
 
-export class BuilderSelectItem extends Component {
-    static template = "html_builder.BuilderSelectItem";
+export class BuilderSelectItemInternal extends Component {
+    static template = "html_builder.BuilderSelectItemInternal";
     static props = {
         ...clickableBuilderComponentProps,
         title: { type: String, optional: true },
@@ -72,4 +73,13 @@ export class BuilderSelectItem extends Component {
         this.operation.revert();
         this.removeKeydown();
     }
+}
+
+export class BuilderSelectItem extends BuilderSelectableWrapperComponent {
+    static template = xml`
+        <BuilderSelectItemInternal t-props="this.itemProps">
+            <t t-slot="default"/>
+        </BuilderSelectItemInternal>
+        `;
+    static components = { BuilderSelectItemInternal };
 }
