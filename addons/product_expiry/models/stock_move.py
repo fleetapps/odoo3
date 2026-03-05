@@ -93,3 +93,9 @@ class StockMove(models.Model):
         if self.product_id.use_expiration_date:
             return super(StockMove, self.with_context(with_expiration=self.date))._get_available_quantity(location_id, lot_id, package_id, owner_id, strict, allow_negative)
         return super()._get_available_quantity(location_id, lot_id, package_id, owner_id, strict, allow_negative)
+
+    def action_show_details(self):
+        self.ensure_one()
+        action = super().action_show_details()
+        action['context']['use_expiration_date'] = self.use_expiration_date
+        return action
