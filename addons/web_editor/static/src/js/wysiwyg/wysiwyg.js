@@ -1346,6 +1346,7 @@ export class Wysiwyg extends Component {
                                 const text = $node.text();
                                 if (node.innerText !== text) {
                                     node.innerText = text;
+                                    node.classList.add("o_dirty");
                                 }
                                 continue;
                             }
