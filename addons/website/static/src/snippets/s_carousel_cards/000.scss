@@ -45,10 +45,10 @@
         @include media-breakpoint-up(lg) {
             &.s_carousel_cards_with_img {
 
-                .o_horizontal_controllers_row {
+                .o_horizontal_controllers_container {
                     margin: 0 0 0 var(--card-img-size-h);
                 }
-                &:has(.s_card.flex-lg-row-reverse) .o_horizontal_controllers_row {
+                &:has(.s_card.flex-lg-row-reverse) .o_horizontal_controllers_container {
                     margin: 0 var(--card-img-size-h) 0 0;
                 }
             }
