@@ -121,8 +121,15 @@ class MailNotification(models.Model):
     def _filtered_for_web_client(self):
         """Returns only the notifications to show on the web client."""
         def _filter_unimportant_notifications(notif):
+            # sudo: 'mail.notification' - to check partner_share for all recipients of message regardless of company in multi-company setup
             if notif.notification_status in ['bounce', 'exception', 'canceled'] \
+<<<<<<< 9b35073c3120e59c25e6df12e6561399924aa2f1
                     or notif.res_partner_id.partner_share or notif.mail_email_address:
+||||||| b76a6fd3a892a8410e805f3f793f0268a06ffb96
+                    or notif.res_partner_id.partner_share:
+=======
+                    or notif.sudo().res_partner_id.partner_share:
+>>>>>>> 02b60282419448f31dcefa85dc21b0423174f3eb
                 return True
             subtype = notif.mail_message_id.subtype_id
             return not subtype or subtype.track_recipients
