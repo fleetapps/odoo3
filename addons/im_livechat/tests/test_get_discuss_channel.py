@@ -91,7 +91,7 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         self.assertEqual(
             data["res.users"],
             self._filter_users_fields(
-                {"id": self.user_root.id, "share": False},
+                {"id": self.user_root.id, "partner_id": self.partner_root.id, "share": False},
             ),
         )
         # ensure visitor info are correct with real user
@@ -165,7 +165,12 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         self.assertEqual(
             data["res.users"],
             self._filter_users_fields(
-                {"id": self.user_root.id, "employee_ids": [], "share": False},
+                {
+                    "id": self.user_root.id,
+                    "employee_ids": [],
+                    "partner_id": self.partner_root.id,
+                    "share": False,
+                },
                 {
                     "employee_ids": [],
                     "id": test_user.id,
@@ -176,7 +181,11 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
                     "signature": ["markup", str(test_user.signature)],
                     "share": False,
                 },
-                {"id": operator.id, "employee_ids": []},
+                {
+                    "id": operator.id,
+                    "employee_ids": [],
+                    "partner_id": operator.partner_id.id,
+                },
             ),
         )
         self.assertEqual(
@@ -288,7 +297,12 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         self.assertEqual(
             data["res.users"],
             self._filter_users_fields(
-                {"id": self.user_root.id, "employee_ids": [], "share": False},
+                {
+                    "id": self.user_root.id,
+                    "employee_ids": [],
+                    "partner_id": self.partner_root.id,
+                    "share": False,
+                },
                 {
                     "employee_ids": [],
                     "id": operator.id,
