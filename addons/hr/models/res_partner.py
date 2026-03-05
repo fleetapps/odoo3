@@ -107,5 +107,9 @@ class ResPartner(models.Model):
         if target.is_internal(self.env):
             # sudo: res.partner - internal users can access employee information of partner
             employee_fields = self.sudo().employee_ids._get_store_avatar_card_fields(target)
-            avatar_card_fields.append(Store.Many("employee_ids", employee_fields, mode="ADD", sudo=True))
+            avatar_card_fields.append(
+                Store.Many(
+                    "employee_ids", employee_fields, mode="ADD", sudo=True, sort="user_id",
+                ),
+            )
         return avatar_card_fields
