@@ -889,7 +889,7 @@ test("[text composer] Current user is last suggested partner", async () => {
     await openFormView("res.partner", serverState.partnerId);
     await click("button:text('Send message')");
     await insertText(".o-mail-Composer-input", "@");
-    await contains(".o-mail-Composer-suggestion", { count: 5 });
+    await contains(".o-mail-Composer-suggestion", { count: 4 });
     await contains(".o-mail-Composer-suggestion:has(:text('Person B (b@test.com)'))", {
         before: [".o-mail-Composer-suggestion:has(:text('Mitchell Admin'))"],
     });
@@ -926,7 +926,7 @@ test("Current user is last suggested partner", async () => {
     };
     await focus(".o-mail-Composer-html.odoo-editor-editable");
     await htmlInsertText(editor, "@");
-    await contains(".o-mail-Composer-suggestion", { count: 5 });
+    await contains(".o-mail-Composer-suggestion", { count: 4 });
     await contains(".o-mail-Composer-suggestion:has(:text('Person B (b@test.com)'))", {
         before: [".o-mail-Composer-suggestion:has(:text('Mitchell Admin'))"],
     });
