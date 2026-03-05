@@ -265,6 +265,7 @@ class ResPartner(models.Model):
     def _store_mention_fields(self, res: Store.FieldList):
         res.attr("mention_token", lambda p: p._get_mention_token())
 
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
     def _store_avatar_card_fields(self, res: Store.FieldList):
         res.extend(["name", "partner_share"])
         self._store_avatar_fields(res)
@@ -280,6 +281,34 @@ class ResPartner(models.Model):
         res.one("main_user_id", "_store_main_user_fields", sudo=True)
         if res.is_for_internal_users():
             res.extend(["email", "tz"])
+||||||| b44295bb6ce621ff87cbc96860492650d90d0ad7
+    def _to_store_defaults(self, target: Store.Target):
+        res = [
+            "active",
+            "avatar_128",
+            "im_status",
+            "is_company",
+            Store.One("main_user_id", ["share"], sudo=True),  # sudo: to access portal user of another company in chatter
+            "name",
+        ]
+        if target.is_internal(self.env):
+            res.append("email")
+        return res
+=======
+    def _to_store_defaults(self, target: Store.Target):
+        res = [
+            "active",
+            "avatar_128",
+            "im_status",
+            "is_company",
+            # sudo: res.partner - to access portal user of another company in chatter
+            Store.One("main_user_id", ["partner_id", "share"], sudo=True),
+            "name",
+        ]
+        if target.is_internal(self.env):
+            res.append("email")
+        return res
+>>>>>>> 816b45921eb6ae85d417c235083dc96e391f2ae4
 
     @api.readonly
     @api.model

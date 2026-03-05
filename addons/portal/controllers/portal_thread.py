@@ -33,7 +33,59 @@ class PortalChatter(ThreadController):
         store = Store().add_global_values(request.env.user.sudo(False)._store_init_global_fields)
         if request.env.user.has_group("website.group_website_restricted_editor"):
             store.add(request.env.user.partner_id, {"is_user_publisher": True})
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
         if thread := self._get_thread_with_access(thread_model, thread_id, **kwargs):
+||||||| b44295bb6ce621ff87cbc96860492650d90d0ad7
+        thread = self._get_thread_with_access(thread_model, thread_id, **kwargs)
+        if thread:
+            has_react_access = self._get_thread_with_access_for_post(thread_model, thread_id, **kwargs)
+            can_react = has_react_access
+            if request.env.user._is_public():
+                if portal_partner := get_portal_partner(
+                    thread, kwargs.get("hash"), kwargs.get("pid"), kwargs.get("token")
+                ):
+                    store.add(
+                        thread,
+                        {
+                            "portal_partner": Store.One(
+                                portal_partner,
+                                fields=[
+                                    "active",
+                                    "avatar_128",
+                                    Store.One("main_user_id", "share"),
+                                    "name",
+                                ],
+                            )
+                        },
+                        as_thread=True,
+                    )
+                can_react = has_react_access and portal_partner
+=======
+        thread = self._get_thread_with_access(thread_model, thread_id, **kwargs)
+        if thread:
+            has_react_access = self._get_thread_with_access_for_post(thread_model, thread_id, **kwargs)
+            can_react = has_react_access
+            if request.env.user._is_public():
+                if portal_partner := get_portal_partner(
+                    thread, kwargs.get("hash"), kwargs.get("pid"), kwargs.get("token")
+                ):
+                    store.add(
+                        thread,
+                        {
+                            "portal_partner": Store.One(
+                                portal_partner,
+                                fields=[
+                                    "active",
+                                    "avatar_128",
+                                    Store.One("main_user_id", ["partner_id", "share"]),
+                                    "name",
+                                ],
+                            )
+                        },
+                        as_thread=True,
+                    )
+                can_react = has_react_access and portal_partner
+>>>>>>> 816b45921eb6ae85d417c235083dc96e391f2ae4
             store.add(
                 thread,
                 lambda res: self._store_portal_thread_fields(res, **kwargs),

@@ -378,6 +378,7 @@ class ResUsers(models.Model):
         xmlid_to_res_id = self.env["ir.model.data"]._xmlid_to_res_id
         # sudo: res.partner - exposing OdooBot data is considered acceptable
         odoobot = self.env.ref("base.partner_root").sudo()
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
         if not self._is_public():
             odoobot = odoobot.with_prefetch((odoobot + self.partner_id).ids)
         res.attr("action_discuss_id", xmlid_to_res_id("mail.action_discuss"))
@@ -390,6 +391,76 @@ class ResUsers(models.Model):
             settings = self.env["res.users.settings"]._find_or_create_for_user(self)
             res.one("self_user", "_store_init_fields", value=self)
             res.attr("settings", settings._res_users_settings_format())
+||||||| b44295bb6ce621ff87cbc96860492650d90d0ad7
+        if not self.env.user._is_public():
+            odoobot = odoobot.with_prefetch((odoobot + self.env.user.partner_id).ids)
+        store.add_global_values(
+            action_discuss_id=xmlid_to_res_id("mail.action_discuss"),
+            hasLinkPreviewFeature=self.env["mail.link.preview"]._is_link_preview_enabled(),
+            internalUserGroupId=self.env.ref("base.group_user").id,
+            mt_comment=xmlid_to_res_id("mail.mt_comment"),
+            mt_note=xmlid_to_res_id("mail.mt_note"),
+            odoobot=Store.One(odoobot),
+        )
+        if not self.env.user._is_public():
+            settings = self.env["res.users.settings"]._find_or_create_for_user(self.env.user)
+            store.add_global_values(
+                self_partner=Store.One(
+                    self.env.user.partner_id,
+                    [
+                        "active",
+                        "avatar_128",
+                        "im_status",
+                        Store.One(
+                            "main_user_id",
+                            [
+                                Store.Attr("is_admin", lambda u: u._is_admin()),
+                                "notification_type",
+                                "share",
+                                "signature",
+                            ],
+                        ),
+                        "name",
+                    ],
+                ),
+                settings=settings._res_users_settings_format(),
+            )
+=======
+        if not self.env.user._is_public():
+            odoobot = odoobot.with_prefetch((odoobot + self.env.user.partner_id).ids)
+        store.add_global_values(
+            action_discuss_id=xmlid_to_res_id("mail.action_discuss"),
+            hasLinkPreviewFeature=self.env["mail.link.preview"]._is_link_preview_enabled(),
+            internalUserGroupId=self.env.ref("base.group_user").id,
+            mt_comment=xmlid_to_res_id("mail.mt_comment"),
+            mt_note=xmlid_to_res_id("mail.mt_note"),
+            odoobot=Store.One(odoobot),
+        )
+        if not self.env.user._is_public():
+            settings = self.env["res.users.settings"]._find_or_create_for_user(self.env.user)
+            store.add_global_values(
+                self_partner=Store.One(
+                    self.env.user.partner_id,
+                    [
+                        "active",
+                        "avatar_128",
+                        "im_status",
+                        Store.One(
+                            "main_user_id",
+                            [
+                                Store.Attr("is_admin", lambda u: u._is_admin()),
+                                "notification_type",
+                                "partner_id",
+                                "share",
+                                "signature",
+                            ],
+                        ),
+                        "name",
+                    ],
+                ),
+                settings=settings._res_users_settings_format(),
+            )
+>>>>>>> 816b45921eb6ae85d417c235083dc96e391f2ae4
         if guest := self.env["mail.guest"]._get_guest_from_context():
             # sudo: mail.guest - guest can read its own init fields
             res.one("self_guest", "_store_avatar_fields", value=guest.sudo())

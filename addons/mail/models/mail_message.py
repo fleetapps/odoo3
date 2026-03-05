@@ -1106,6 +1106,7 @@ class MailMessage(models.Model):
     # STORE / NOTIFICATIONS
     # ------------------------------------------------------
 
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
     def _store_message_fields(
         self,
         res: Store.FieldList,
@@ -1116,6 +1117,181 @@ class MailMessage(models.Model):
         followers=None,
     ):
         """
+||||||| b44295bb6ce621ff87cbc96860492650d90d0ad7
+    def _field_store_repr(self, field_name):
+        """Return the default Store representation of the given field name, which can be passed as
+        param to the various Store methods."""
+        if field_name == "message_link_preview_ids":
+            return [
+                Store.Many(
+                    "message_link_preview_ids",
+                    value=lambda m: m.sudo()
+                    .message_link_preview_ids.filtered(
+                        lambda message_link_preview: not message_link_preview.is_hidden
+                    )
+                    .sorted(
+                        lambda message_link_preview: (
+                            message_link_preview.sequence,
+                            message_link_preview.id,
+                        )
+                    ),
+                )
+            ]
+        return [field_name]
+
+    def _to_store_defaults(self, target: Store.Target):
+        field_names = [
+            # sudo: mail.message - reading attachments on accessible message is allowed
+            Store.Many(
+                "attachment_ids",
+                sort="id",
+                dynamic_fields=lambda m: m._get_store_attachment_fields(target),
+                sudo=True,
+            ),
+            # sudo: mail.message: access to author_guest_id is allowed
+            Store.One("author_guest_id", ["avatar_128", "name"], sudo=True),
+            # sudo: mail.message: access to author_id is allowed
+            Store.One(
+                "author_id",
+                ["avatar_128", "is_company", Store.One("main_user_id", "share")],
+                dynamic_fields=lambda m: m._get_store_partner_name_fields(),
+                sudo=True,
+            ),
+            "body",
+            "create_date",
+            "date",
+            Store.Attr(
+                "email_from",
+                predicate=lambda m: target.is_internal(self.env)
+                or (not m.author_id and not m.author_guest_id),
+            ),
+            "incoming_email_cc",
+            "incoming_email_to",
+            # sudo: mail.message - reading link preview on accessible message is allowed
+            "message_format",
+            "message_link_preview_ids",
+            "message_type",
+            "model",  # keep for iOS app
+            # sudo: res.partner: reading limited data of recipients is acceptable
+            Store.Many(
+                "partner_ids",
+                "avatar_128",
+                dynamic_fields=lambda m: m._get_store_partner_name_fields(),
+                sort="id",
+                sudo=True,
+            ),
+            "pinned_at",
+            # sudo: mail.message - reading reactions on accessible message is allowed
+            Store.Attr("reactions", value=lambda m: Store.Many(m.sudo().reaction_ids)),
+            "record_name",  # keep for iOS app
+            "res_id",  # keep for iOS app
+            "subject",
+            # sudo: mail.message.subtype - reading subtype on accessible message is allowed
+            Store.One("subtype_id", ["description"], sudo=True),
+            "write_date",
+            *self._get_store_linked_messages_fields(),
+        ]
+        if target.is_internal(self.env):
+            # sudo - mail.notification: internal users can access notifications.
+            field_names.append(
+                Store.Many(
+                    "notification_ids",
+                    value=lambda m: m.sudo().notification_ids._filtered_for_web_client(),
+                ),
+            )
+        return field_names
+
+    def _to_store(self, store: Store, fields, *, format_reply=True, msg_vals=False, add_followers=False, followers=None):
+        """Add the messages to the given store.
+
+=======
+    def _field_store_repr(self, field_name):
+        """Return the default Store representation of the given field name, which can be passed as
+        param to the various Store methods."""
+        if field_name == "message_link_preview_ids":
+            return [
+                Store.Many(
+                    "message_link_preview_ids",
+                    value=lambda m: m.sudo()
+                    .message_link_preview_ids.filtered(
+                        lambda message_link_preview: not message_link_preview.is_hidden
+                    )
+                    .sorted(
+                        lambda message_link_preview: (
+                            message_link_preview.sequence,
+                            message_link_preview.id,
+                        )
+                    ),
+                )
+            ]
+        return [field_name]
+
+    def _to_store_defaults(self, target: Store.Target):
+        field_names = [
+            # sudo: mail.message - reading attachments on accessible message is allowed
+            Store.Many(
+                "attachment_ids",
+                sort="id",
+                dynamic_fields=lambda m: m._get_store_attachment_fields(target),
+                sudo=True,
+            ),
+            # sudo: mail.message: access to author_guest_id is allowed
+            Store.One("author_guest_id", ["avatar_128", "name"], sudo=True),
+            # sudo: mail.message: access to author_id is allowed
+            Store.One(
+                "author_id",
+                ["avatar_128", "is_company", Store.One("main_user_id", ["partner_id", "share"])],
+                dynamic_fields=lambda m: m._get_store_partner_name_fields(),
+                sudo=True,
+            ),
+            "body",
+            "create_date",
+            "date",
+            Store.Attr(
+                "email_from",
+                predicate=lambda m: target.is_internal(self.env)
+                or (not m.author_id and not m.author_guest_id),
+            ),
+            "incoming_email_cc",
+            "incoming_email_to",
+            # sudo: mail.message - reading link preview on accessible message is allowed
+            "message_format",
+            "message_link_preview_ids",
+            "message_type",
+            "model",  # keep for iOS app
+            # sudo: res.partner: reading limited data of recipients is acceptable
+            Store.Many(
+                "partner_ids",
+                "avatar_128",
+                dynamic_fields=lambda m: m._get_store_partner_name_fields(),
+                sort="id",
+                sudo=True,
+            ),
+            "pinned_at",
+            # sudo: mail.message - reading reactions on accessible message is allowed
+            Store.Attr("reactions", value=lambda m: Store.Many(m.sudo().reaction_ids)),
+            "record_name",  # keep for iOS app
+            "res_id",  # keep for iOS app
+            "subject",
+            # sudo: mail.message.subtype - reading subtype on accessible message is allowed
+            Store.One("subtype_id", ["description"], sudo=True),
+            "write_date",
+            *self._get_store_linked_messages_fields(),
+        ]
+        if target.is_internal(self.env):
+            # sudo - mail.notification: internal users can access notifications.
+            field_names.append(
+                Store.Many(
+                    "notification_ids",
+                    value=lambda m: m.sudo().notification_ids._filtered_for_web_client(),
+                ),
+            )
+        return field_names
+
+    def _to_store(self, store: Store, fields, *, format_reply=True, msg_vals=False, add_followers=False, followers=None):
+        """Add the messages to the given store.
+
+>>>>>>> 816b45921eb6ae85d417c235083dc96e391f2ae4
         :param format_reply: if True, also get data about the parent message if it exists.
             Only makes sense for discuss channel.
 
