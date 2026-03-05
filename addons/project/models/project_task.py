@@ -54,7 +54,6 @@ PROJECT_TASK_READABLE_FIELDS = {
     'repeat_until',
     'recurrence_id',
     'recurring_count',
-    'duration_tracking',
     'display_follow_button',
     'is_template',
     'has_template_ancestor',
@@ -79,6 +78,7 @@ PROJECT_TASK_WRITABLE_FIELDS = {
     'priority',
     'state',
     'is_closed',
+    'duration_tracking',
 }
 
 CLOSED_STATES = {
