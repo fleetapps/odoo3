@@ -468,10 +468,14 @@ export class FormCompiler extends ViewCompiler {
             });
         }
         for (const button of buttons) {
-            const slot = createElement("t", {
+            const slotData = {
                 "t-set-slot": `button_${slotId++}`,
                 isVisible: button.getAttribute("t-if") || true,
-            });
+            }
+            if (getTag(button, true) === "widget") {
+                slotData.closingMode = "'none'";
+            }
+            const slot = createElement("t", slotData);
             append(slot, button);
             append(statusBarButtons, slot);
         }

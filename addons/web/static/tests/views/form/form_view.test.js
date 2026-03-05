@@ -295,6 +295,37 @@ test(`form view with a group that contains an invisible group`, async () => {
 });
 
 test.tags("mobile");
+test(`support header button as widgets in submenu on form statusbar on mobile`, async () => {
+    class MyWidget extends Component {
+        static props = ["*"];
+        static template = xml`
+                <div class="test_widget">
+                    <button>MyWidget</button>
+                </div>`;
+    }
+    registry.category("view_widgets").add("test_widget", { component: MyWidget });
+
+    await mountView({
+        resModel: "partner",
+        type: "form",
+        arch: `<form><header>
+            <button name="main" string="Main"/>
+            <widget name="test_widget"/>
+            <button string="close" special="cancel"/>
+        </header></form>`,
+    });
+
+    await contains(`.o_cp_action_menus button:has(.fa-cog)`).click();
+    expect(`.o-dropdown--menu button:contains(MyWidget)`).toHaveCount(1);
+    // Widget doesn't close the Dropdown
+    await contains(`.o-dropdown--menu button:contains(MyWidget)`).click();
+    expect(`.o-dropdown--menu button:contains(MyWidget)`).toHaveCount(1);
+    // Buttons does close the Dropdown
+    await contains(`.o-dropdown--menu button:contains(close)`).click();
+    expect(`.o-dropdown--menu button:contains(MyWidget)`).toHaveCount(0);
+});
+
+test.tags("mobile");
 test(`button box rendering on small screen`, async () => {
     await mountView({
         resModel: "partner",
