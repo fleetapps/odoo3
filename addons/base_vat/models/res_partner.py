@@ -1,17 +1,21 @@
 import logging
 import datetime
 import re
+import requests
+import uuid
 
 import stdnum
 from stdnum import luhn
-from stdnum.eu.vat import check_vies
-from stdnum.exceptions import InvalidComponent, InvalidChecksum, InvalidFormat
+from stdnum.exceptions import InvalidChecksum, InvalidFormat
 from stdnum.util import clean
 
 from odoo import api, models, fields
 from odoo.tools import _, LazyTranslate
+from odoo.tools import hmac as hmac_tool
 from odoo.exceptions import ValidationError
 from odoo.addons.base.models.res_partner import EU_EXTRA_VAT_CODES
+
+from odoo.addons.base_vat.controllers.webhook import WEBHOOK_UPDATE_VIES_ROUTE
 
 _lt = LazyTranslate(__name__)
 _logger = logging.getLogger(__name__)
@@ -193,28 +197,51 @@ class ResPartner(models.Model):
             if partner.parent_id and partner.parent_id.vat == partner.vat:
                 partner.vies_valid = partner.parent_id.vies_valid
                 continue
-            from odoo.tools import zeep  # noqa: PLC0415
             try:
-                vies_valid = check_vies(partner.vat, timeout=10)
-                partner.vies_valid = vies_valid['valid']
-            except (OSError, InvalidComponent, zeep.exceptions.Error) as e:
+                status = self._check_vies_iap(partner.vat)
+                partner._update_vies_status(status)
+            except requests.exceptions.RequestException as e:
+                _logger.warning("Error while contacting IAP VIES: %s", e)
                 if partner._origin.id:
-                    msg = ""
-                    if isinstance(e, OSError):
-                        msg = _("Connection with the VIES server failed. The VAT number %s could not be validated.", partner.vat)
-                    elif isinstance(e, InvalidComponent):
-                        msg = _("The VAT number %s could not be interpreted by the VIES server.", partner.vat)
-                    elif isinstance(e, zeep.exceptions.Error):
-                        msg = _('The request for VAT validation was not processed. VIES service has responded with the following error: %s', e.message)
-                    partner._origin.message_post(body=msg)
-                _logger.warning("The VAT number %s failed VIES check.", partner.vat)
-                partner.vies_valid = False
+                    partner._origin.message_post(body=_("The Tax ID could not be checked as the IAP server is offline."))
 
     def _split_vat(self, vat):
         vat_prefix, vat_number = vat[:2].upper(), vat[2:].replace(' ', '')
         if not vat_prefix.isalpha():
             return '', vat
         return vat_prefix, vat_number
+
+    @api.model
+    def _check_vies_iap(self, vat):
+        endpoint = self.env['ir.config_parameter'].sudo().get_param('iap_vies_endpoint', 'https://vies.api.odoo.com')
+        payload = {
+            'jsonrpc': '2.0',
+            'method': 'call',
+            'params': {
+                "vat": vat,
+                "db_uuid": self.env['ir.config_parameter'].sudo().get_param('database.uuid'),
+                "webhook_url": self.get_base_url() + WEBHOOK_UPDATE_VIES_ROUTE,
+                "secret": hmac_tool(self.env, "vies", vat),  # For webhook, see BaseVatController
+            },
+            'id': uuid.uuid4().hex,
+        }
+        req = requests.post(endpoint + '/api/vies/1/check_validity', json=payload, timeout=20)
+        req.raise_for_status()
+        resp = req.json()
+        result = resp.get("result", {})
+        if result.get("error"):
+            _logger.warning("VIES check error: %s", result["error"])
+        return result.get("status", "unassigned")
+
+    def _update_vies_status(self, status):
+        for partner in self:
+            partner.vies_valid = status == "valid"
+            _logger.info("The Tax ID number %s VIES check returned: %s.", partner.vat, status)
+            if status in ("pending", "fault") and partner._origin.id:
+                msg = _("The VIES check is pending. The status will be updated soon.")
+                if status == "fault":
+                    msg = _("The VIES check failed. Please check the Tax ID manually.")
+                partner._origin.message_post(body=msg)
 
     @api.model
     def _check_vat_number(self, country_code, vat_number):
