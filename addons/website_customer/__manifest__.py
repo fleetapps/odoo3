@@ -27,5 +27,8 @@ Publish your customers as business references on your website to attract new pot
         'website.website_builder_assets': [
             'website_customer/static/src/website_builder/**/*',
         ],
+        'web.assets_frontend': [
+            'website_customer/static/src/scss/website_customer.scss',
+        ],
     },
 }
