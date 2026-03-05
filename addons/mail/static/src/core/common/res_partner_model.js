@@ -117,6 +117,13 @@ export class ResPartner extends Record {
         return this.name || this.display_name;
     }
 
+    get partner_share() {
+        if (!this.user_ids?.length) {
+            return true;
+        }
+        return !this.user_ids.some((user) => user.share === false);
+    }
+
     searchChat() {
         return Object.values(this.store["discuss.channel"].records).find(
             (channel) =>
