@@ -187,6 +187,9 @@
             <t t-set="opt_wsale_attributes" t-value="is_view_active('website_sale.products_attributes')"/>
             <t t-set="opt_wsale_filter_price" t-value="is_view_active('website_sale.filter_products_price')"/>
             <t t-set="opt_wsale_filter_tags" t-value="is_view_active('website_sale.filter_products_tags')"/>
+            <t t-set="opt_wsale_filter_ribbons" t-value="is_view_active('website_sale.filter_products_ribbons')"/>
+            <t t-if="not selected_ribbons" t-set="selected_ribbons" t-value="set()"/>
+            <t t-if="not available_ribbons" t-set="available_ribbons" t-value="[]"/>
             <t t-set="opt_wsale_design_grid" t-value="'o_wsale_products_opt_design_grid' in website.shop_opt_products_design_classes"/>
 
             <t t-set="opt_wsale_categories_top" t-value="is_view_active('website_sale.products_categories_top')"/>
@@ -256,13 +259,13 @@
                                     t-value="opt_wsale_filter_price and opt_wsale_attributes"
                                 />
                                 <div
-                                    t-if="attrib_values or tags or (
+                                    t-if="attrib_values or tags or selected_ribbons or (
                                         show_price_filter and isFilteringByPrice
                                     )"
                                     class="py-3 border-bottom"
                                 >
                                     <a
-                                        t-att-href="keep(attribute_values=0, tags=0, min_price=0, max_price=0)"
+                                        t-att-href="keep(attribute_values=0, tags=0, ribbons=0, min_price=0, max_price=0)"
                                         t-attf-class="btn btn-{{navClass}} d-flex align-items-center py-1"
                                         title="Clear Filters"
                                     >
@@ -415,7 +418,7 @@
                                                 <i class="oi oi-settings-adjust" role="img"/>
                                                 <small t-attf-class="ms-1 {{(hasPricelistDropdown and is_view_active('website_sale.search') and is_view_active('website_sale.sort')) and 'd-none d-md-inline-block'}}">Filters</small>
                                                 <span
-                                                    t-if="isFilteringByPrice or attrib_set or tags"
+                                                    t-if="isFilteringByPrice or attrib_set or tags or selected_ribbons"
                                                     t-attf-class="position-absolute top-0 start-100 translate-middle border border-{{navClass}} rounded-circle bg-danger p-1"
                                                 >
                                                     <span class="visually-hidden">filters active</span>
@@ -868,7 +871,7 @@
         <form
             t-attf-class="js_attributes {{('accordion accordion-flush d-flex flex-column ' + ('border-bottom' if attributes else '')) if isMobile else 'position-relative mb-2'}}"
             method="get"
-            t-att-action="keep(attribute_values=0, tags=0)"
+            t-att-action="keep(attribute_values=0, tags=0, ribbons=0)"
         >
             <t
                 t-set="visible_attributes"
@@ -975,12 +978,50 @@
                         </div>
                     </div>
                 </t>
+                <t t-if="opt_wsale_filter_ribbons and (opt_wsale_attributes or opt_wsale_attributes_top)">
+                    <t t-set="_status" t-value="'active' if selected_ribbons else 'inactive'"/>
+                    <div t-if="available_ribbons">
+                        <h2 class="accordion-header mb-0" t-attf-id="o_wsale_offcanvas_ribbons_header">
+                            <button
+                                t-attf-class="o_wsale_offcanvas_title accordion-button border-top rounded-0 {{not selected_ribbons and 'collapsed'}}"
+                                type="button"
+                                t-att-data-status="_status"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#o_wsale_offcanvas_ribbons"
+                                t-att-aria-expanded="_status == 'active' and 'True' or 'False'"
+                                t-attf-aria-controls="o_wsale_offcanvas_ribbons"
+                            >
+                                <b>Ribbon</b>
+                            </button>
+                        </h2>
+                        <div
+                            t-attf-id="o_wsale_offcanvas_ribbons"
+                            t-attf-class="accordion-collapse collapse {{(_status == 'active') and 'show'}}"
+                            t-attf-aria-labelledby="o_wsale_offcanvas_ribbons_header"
+                        >
+                            <div class="accordion-body pt-0">
+                                <div class="d-flex flex-wrap gap-2 pt-1 pb-3" data-bs-toggle="buttons">
+                                    <t
+                                        t-call="website_sale.filter_products_ribbons_list"
+                                        available_ribbons="available_ribbons"
+                                        selected_ribbons="selected_ribbons"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
             </t>
             <t t-else="">
                 <t
                     t-if="opt_wsale_filter_tags and opt_wsale_attributes"
                     t-call="website_sale.filter_products_tags"
                     all_tags="all_tags"
+                >
+                </t>
+                <t
+                    t-if="opt_wsale_filter_ribbons and opt_wsale_attributes"
+                    t-call="website_sale.filter_products_ribbons"
                 >
                 </t>
             </t>
@@ -1073,10 +1114,12 @@
                    isOffcanvas="True"/>
             </div>
             <div class="offcanvas-body d-flex justify-content-between flex-grow-0 border-top overflow-hidden">
-                <a t-attf-class="btn btn-{{navClass}} d-flex py-1 mb-2 {{(not attrib_values and not isFilteringByPrice and not tags) and 'disabled' }}"
-                   t-att-aria-disabled="(not attrib_values and not isFilteringByPrice and not tags) and 'true' or 'false'"
-                   t-att-href="keep(attribute_values=0, tags=0, min_price=0, max_price=0)"
-                   title="Clear Filters">
+                <a
+                    t-attf-class="btn btn-{{navClass}} d-flex py-1 mb-2 {{(not attrib_values and not isFilteringByPrice and not tags and not selected_ribbons) and 'disabled' }}"
+                    t-att-aria-disabled="(not attrib_values and not isFilteringByPrice and not tags and not selected_ribbons) and 'true' or 'false'"
+                    t-att-href="keep(attribute_values=0, tags=0, ribbons=0, min_price=0, max_price=0)"
+                    title="Clear Filters"
+                >
                     Clear Filters
                 </a>
             </div>
@@ -1278,7 +1321,7 @@
                     >
                         <i class="oi oi-settings-adjust" role="img"/>
                         <span
-                            t-if="isFilteringByPrice or attrib_set or tags"
+                            t-if="isFilteringByPrice or attrib_set or tags or selected_ribbons"
                             t-attf-class="position-absolute top-0 start-100 translate-middle rounded-circle bg-danger p-1"
                         >
                             <span class="visually-hidden">filters active</span>
@@ -1444,7 +1487,7 @@
         active="True"
     >
         <xpath expr="//div[contains(@t-attf-class, 'products_attributes_filters')]" position="inside">
-            <div t-if="attributes or all_tags" id="wsale_products_attributes_collapse"
+            <div t-if="attributes or all_tags or available_ribbons" id="wsale_products_attributes_collapse"
                  class=" position-relative">
                  <t t-call="website_sale.product_attribute_filters_form" isMobile="False"/>
             </div>
@@ -1500,19 +1543,19 @@
                 <div class="accordion-item">
                     <div class="accordion-header h6 mb-0">
                         <button
-                            class="accordion-button px-0 bg-transparent shadow-none"
+                            t-attf-class="accordion-button px-0 bg-transparent shadow-none {{'' if isFilteringByPrice else 'collapsed'}}"
                             type="button"
                             data-bs-toggle="collapse"
                             t-attf-data-bs-target="#o_wsale_price_range_option_inner"
                             t-attf-aria-controls="o_wsale_price_range_option_inner"
-                            aria-expanded="true"
+                            t-att-aria-expanded="'true' if isFilteringByPrice else 'false'"
                         >
                             <b>Price Range</b>
                         </button>
                     </div>
                     <div
                         id="o_wsale_price_range_option_inner"
-                        class="accordion-collapse collapse show"
+                        t-attf-class="accordion-collapse collapse {{'show' if isFilteringByPrice else ''}}"
                     >
                         <input
                             type="range"
@@ -1549,6 +1592,68 @@
                 />
             </t>
         </div>
+    </template>
+
+    <template id="website_sale.filter_products_ribbons" name="Filter by Ribbons" active="True">
+        <div t-if="available_ribbons" class="accordion-item">
+            <t t-if="is_sidebar_collapsible">
+                <div class="accordion-header h6 mb-0">
+                    <button
+                        t-attf-class="accordion-button px-0 bg-transparent shadow-none {{'' if selected_ribbons else 'collapsed'}}"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#o_wsale_ribbons_option_inner"
+                        aria-controls="o_wsale_ribbons_option_inner"
+                        t-att-aria-expanded="'true' if selected_ribbons else 'false'"
+                    >
+                        <b>Ribbon</b>
+                    </button>
+                </div>
+                <div
+                    id="o_wsale_ribbons_option_inner"
+                    t-attf-class="accordion-collapse collapse {{'show' if selected_ribbons else ''}}"
+                >
+                    <div class="d-flex flex-wrap gap-2 mb-3" data-bs-toggle="buttons">
+                        <t
+                            t-call="website_sale.filter_products_ribbons_list"
+                            available_ribbons="available_ribbons"
+                            selected_ribbons="selected_ribbons"
+                        />
+                    </div>
+                </div>
+            </t>
+            <t t-else="">
+                <h6 class="mb-3">
+                    <b class="d-none d-lg-block">Ribbon</b>
+                </h6>
+                <div class="d-flex flex-wrap gap-2 mb-3" data-bs-toggle="buttons">
+                    <t
+                        t-call="website_sale.filter_products_ribbons_list"
+                        available_ribbons="available_ribbons"
+                        selected_ribbons="selected_ribbons"
+                    />
+                </div>
+            </t>
+        </div>
+    </template>
+
+    <template id="website_sale.filter_products_ribbons_list">
+        <t t-foreach="available_ribbons" t-as="ribbon">
+            <input
+                type="checkbox"
+                name="ribbons"
+                class="btn-check"
+                t-attf-id="ribbon_#{ribbon.id}"
+                t-att-value="ribbon.id"
+                t-att-checked="ribbon.id in selected_ribbons"
+                autocomplete="off"
+            />
+            <label
+                t-attf-class="btn border {{'active bg-primary-subtle border-primary text-primary-emphasis' if ribbon.id in selected_ribbons else ''}}"
+                t-attf-for="ribbon_#{ribbon.id}"
+                t-out="ribbon.name"
+            />
+        </t>
     </template>
 
     <template id="website_sale.filter_products_tags" name="Filter by Tags" active="True">

@@ -254,7 +254,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
         return fuzzy_search_term, product_count, search_result
 
     def _shop_get_query_url_kwargs(
-        self, search, min_price, max_price, order=None, tags=None, **kwargs
+        self, search, min_price, max_price, order=None, tags=None, ribbons=None, **kwargs
     ):
         attribute_values = request.session.get('attribute_values', [])
         return {
@@ -263,6 +263,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
             'max_price': max_price,
             'order': order,
             'tags': tags,
+            'ribbons': ribbons,
             'attribute_values': attribute_values,
         }
 
@@ -292,7 +293,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
         # Sends a 404 error in case of any Access error instead of 403.
         handle_params_access_error=lambda e, **kwargs: NotFound.code,
     )
-    def shop(self, page=0, category=None, search='', min_price=0.0, max_price=0.0, tags='', **post):
+    def shop(self, page=0, category=None, search='', min_price=0.0, max_price=0.0, tags='', ribbons='', **post):
         if not request.website.has_ecommerce_access():
             return request.redirect(f'/web/login?redirect={request.httprequest.path}')
 
@@ -342,6 +343,14 @@ class WebsiteSale(payment_portal.PaymentPortal):
             else:
                 post['tags'] = None
                 tags = {}
+
+        filter_by_ribbons_enabled = website.is_view_active('website_sale.filter_products_ribbons')
+        selected_ribbon_ids = set()
+        if filter_by_ribbons_enabled and ribbons:
+            post['ribbons'] = ribbons
+            selected_ribbon_ids = {int(r) for r in ribbons.split(',') if r.isdigit()}
+        else:
+            post['ribbons'] = None
 
         url = self._get_shop_path(category)
         keep = QueryURL(
@@ -431,6 +440,39 @@ class WebsiteSale(payment_portal.PaymentPortal):
         else:
             all_tags = ProductTag
 
+        ProductRibbon = request.env['product.ribbon'].sudo()
+        all_ribbons = ProductRibbon.browse()
+        available_ribbons = ProductRibbon
+        auto_assign_ribbons = ProductRibbon.search([('assign', '!=', 'manual')])
+        if filter_by_ribbons_enabled:
+            all_ribbons = auto_assign_ribbons
+            available_ribbons = all_ribbons.browse()
+            # Evaluate the whole resultset only when an actual ribbon filter is selected.
+            if selected_ribbon_ids and search_product:
+                ProductVariant = request.env['product.product']
+                all_variant_ids = [p._get_first_possible_variant_id() for p in search_product]
+                all_variants = ProductVariant.sudo().browse(vid for vid in all_variant_ids if vid)
+                all_variants.fetch()
+                search_variant_by_id = {variant.id: variant for variant in all_variants}
+                variant_by_template = {
+                    product: search_variant_by_id.get(variant_id, ProductVariant)
+                    for product, variant_id in zip(search_product, all_variant_ids)
+                }
+                all_search_prices = (
+                    search_product._get_sales_prices(website) if auto_assign_ribbons else {}
+                )
+                matching_product_ids = set()
+                for product in search_product:
+                    ribbon = product._get_ribbon(
+                        price_vals=all_search_prices.get(product.id, {}),
+                        auto_assign_ribbons=auto_assign_ribbons,
+                        variant=variant_by_template[product],
+                    )
+                    if ribbon and ribbon.id in selected_ribbon_ids:
+                        matching_product_ids.add(product.id)
+                search_product = search_product.filtered(lambda product: product.id in matching_product_ids)
+                product_count = len(search_product)
+
         # categories
 
         Category = request.env['product.public.category']
@@ -495,12 +537,25 @@ class WebsiteSale(payment_portal.PaymentPortal):
         products_prices = products._get_sales_prices(website)
         product_query_params = self._get_product_query_params(**post)
 
+        if filter_by_ribbons_enabled and products:
+            available_ribbon_ids = set()
+            for product in products:
+                ribbon = product._get_ribbon(
+                    price_vals=products_prices.get(product.id, {}),
+                    auto_assign_ribbons=auto_assign_ribbons,
+                    variant=product_variants[product],
+                )
+                if ribbon:
+                    available_ribbon_ids.add(ribbon.id)
+            available_ribbons = all_ribbons.filtered(lambda ribbon: ribbon.id in available_ribbon_ids)
+
         grouped_attributes_values = request.env['product.attribute.value'].browse(
             attribute_value_ids
         ).sorted().grouped('attribute_id')
-
         values = {
-            'auto_assign_ribbons': self.env['product.ribbon'].sudo().search([('assign', '!=', 'manual')]),
+            'auto_assign_ribbons': auto_assign_ribbons,
+            'available_ribbons': available_ribbons if filter_by_ribbons_enabled else ProductRibbon.browse(),
+            'selected_ribbons': selected_ribbon_ids if filter_by_ribbons_enabled else set(),
             'search': fuzzy_search_term or search,
             'original_search': fuzzy_search_term and search,
             'order': post.get('order', ''),
