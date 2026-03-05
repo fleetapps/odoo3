@@ -36,6 +36,7 @@ IGNORED_IN_EXPRESSION = {
     'abs',
     'len',
     'bool',
+    'int',
     'float',
     'str',
     'unicode',
@@ -222,6 +223,13 @@ def _get_expression_contextual_values(item_ast):
         for item in item_ast.values:
             values |= _get_expression_contextual_values(item)
         return values
+    if isinstance(item_ast, ast.JoinedStr):
+        values = set()
+        for value in item_ast.values:
+            values |= _get_expression_contextual_values(value)
+        return values
+    if isinstance(item_ast, ast.FormattedValue):
+        return _get_expression_contextual_values(item_ast.value)
 
     raise ValueError(f"Undefined item {item_ast!r}.")
 

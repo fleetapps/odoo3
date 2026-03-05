@@ -1069,8 +1069,13 @@ class ProjectTask(models.Model):
             if task.stage_id and task.stage_id not in task.project_id.type_ids and task.stage_id.id not in stage_ids_per_project[task.project_id]:
                 stage_ids_per_project[task.project_id].append(task.stage_id.id)
 
+        project_ids_per_stage_ids = defaultdict(set)
         for project, stage_ids in stage_ids_per_project.items():
-            project.write({'type_ids': [Command.link(stage_id) for stage_id in stage_ids]})
+            project_ids_per_stage_ids[frozenset(stage_ids)].add(project.id)
+
+        for stage_ids, project_ids in project_ids_per_stage_ids.items():
+            projects = self.env['project.project'].browse(project_ids)
+            projects.type_ids = [Command.link(stage_id) for stage_id in stage_ids]
 
     def _load_records_create(self, vals_list):
         for vals in vals_list:
