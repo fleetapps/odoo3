@@ -1204,6 +1204,11 @@ class PurchaseOrder(models.Model):
         res = super()._get_product_catalog_order_data(products, **kwargs)
         for product in products:
             res[product.id] |= self._get_product_price_and_data(product)
+            available_uoms = product.uom_id | product.uom_ids | product.seller_ids.uom_id
+            res[product.id]['availableUoms'] = [
+                {'id': uom.id, 'name': uom.display_name}
+                for uom in available_uoms
+            ]
         return res
 
     def _get_product_catalog_record_lines(self, product_ids, *, section_id=None, **kwargs):
@@ -1234,7 +1239,8 @@ class PurchaseOrder(models.Model):
         self.ensure_one()
         product_infos = {
             'price': product.standard_price,
-            'uomDisplayName': product.uom_id.display_name
+            'uomDisplayName': product.uom_id.display_name,
+            'uomId': product.uom_id.id,
         }
         params = {'order_id': self}
         # Check if there is a price and a minimum quantity for the order's vendor.
@@ -1260,6 +1266,7 @@ class PurchaseOrder(models.Model):
                 price=price,
                 min_qty=seller.min_qty,
                 uomDisplayName=seller.uom_id.display_name,
+                uomId=seller.uom_id.id,
             )
 
         return product_infos
@@ -1327,13 +1334,14 @@ class PurchaseOrder(models.Model):
             line._update_date_planned(date)
 
     def _update_order_line_info(
-        self, product_id, quantity, *, section_id=False, child_field='order_line', **kwargs
+        self, product_id, quantity, *, section_id=False, child_field='order_line', uom_id=False, **kwargs
     ):
         """ Update purchase order line information for a given product or create
         a new one if none exists yet.
         :param int product_id: The product, as a `product.product` id.
         :param int quantity: The quantity selected in the catalog.
         :param int section_id: The id of section selected in the catalog.
+        :param int uom_id: The UoM selected in the catalog, as a `uom.uom` id.
         :return: The unit price of the product, based on the pricelist of the
                  purchase order and the quantity selected.
         :rtype: float
@@ -1344,6 +1352,8 @@ class PurchaseOrder(models.Model):
             and l.get_parent_section_line().id == section_id
         )
         if pol:
+            if uom_id and pol.uom_id.id != uom_id:
+                pol.uom_id = uom_id
             if quantity != 0:
                 pol.product_qty = quantity
             elif self.state in ['draft', 'sent']:
@@ -1353,12 +1363,15 @@ class PurchaseOrder(models.Model):
             else:
                 pol.product_qty = 0
         elif quantity > 0:
-            pol = self.env['purchase.order.line'].create({
+            vals = {
                 'order_id': self.id,
                 'product_id': product_id,
                 'product_qty': quantity,
                 'sequence': self._get_new_line_sequence(child_field, section_id),
-            })
+            }
+            if uom_id:
+                vals['uom_id'] = uom_id
+            pol = self.env['purchase.order.line'].create(vals)
             if pol.selected_seller_id:
                 # Fix the PO line's price on the seller's one.
                 seller = pol.selected_seller_id
