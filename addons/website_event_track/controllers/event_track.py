@@ -258,8 +258,10 @@ class EventTrackController(http.Controller):
         for track in tracks_sudo:
             track_day = fields.Datetime.from_string(track.date).replace(tzinfo=pytz.utc).astimezone(local_tz).date()
             tracks_by_days[track_day] += 1
-            if track.location_id not in locations_by_days[track_day]:
-                locations_by_days[track_day].append(track.location_id)
+            for time_slot in time_slots_by_tracks[track]:
+                slot_day = time_slot.date()
+                if track.location_id not in locations_by_days[slot_day]:
+                    locations_by_days[slot_day].append(track.location_id)
 
         for used_locations in locations_by_days.values():
             used_locations.sort(key=operator.itemgetter('sequence', 'id'))
@@ -304,17 +306,21 @@ class EventTrackController(http.Controller):
         start_date = fields.Datetime.from_string(track.date).replace(tzinfo=pytz.utc).astimezone(local_tz)
         start_datetime = self.time_slot_rounder(start_date, 15)
         end_datetime = self.time_slot_rounder(start_datetime + timedelta(hours=(track.duration or 0.25)), 15)
-        time_slots_count = int(((end_datetime - start_datetime).total_seconds() / 3600) * 4)
 
-        time_slots_by_day_start_time = {start_datetime: 0}
-        for i in range(0, time_slots_count):
-            # If the new time slot is still on the current day
-            next_day = (start_datetime + timedelta(days=1)).date()
-            if (start_datetime + timedelta(minutes=15*i)).date() <= next_day:
-                time_slots_by_day_start_time[start_datetime] += 1
-            else:
-                start_datetime = next_day.datetime()
-                time_slots_by_day_start_time[start_datetime] = 0
+        time_slots_by_day_start_time = {}
+        current_datetime = start_datetime
+        while current_datetime < end_datetime:
+            bucket_start = current_datetime
+            next_midnight = (current_datetime + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            bucket_end = min(next_midnight, end_datetime)
+
+            duration_seconds = (bucket_end - bucket_start).total_seconds()
+            slots = int((duration_seconds / 3600) * 4)
+
+            if slots > 0:
+                time_slots_by_day_start_time[bucket_start] = slots
+
+            current_datetime = bucket_end
 
         return time_slots_by_day_start_time
 
