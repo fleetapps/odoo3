@@ -16,7 +16,6 @@ imStatusDataRegistry.add(
             busy: "fa fa-minus-circle",
             offline: "fa fa-circle-o",
             bot: "fa fa-heart o-xsmaller o-pt-0_5",
-            default: "fa fa-question-circle",
         },
         title: {
             online: _t("User is online"),
@@ -24,7 +23,6 @@ imStatusDataRegistry.add(
             busy: _t("User is busy"),
             offline: _t("User is offline"),
             bot: _t("User is a bot"),
-            default: _t("No IM status available"),
         },
     },
     { sequence: 100 }
@@ -66,12 +64,12 @@ export class ImStatus extends Component {
 
     get icon() {
         const data = this.activeImStatusData;
-        return data.icon[this.persona.im_status] || data.icon.default || data.icon;
+        return data.icon[this.persona?.im_status] || data.icon;
     }
 
     get title() {
         const data = this.activeImStatusData;
-        return data.title[this.persona.im_status] || data.title.default || data.title;
+        return data.title[this.persona?.im_status] || data.icon;
     }
 
     get colorClass() {

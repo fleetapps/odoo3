@@ -50,9 +50,7 @@ export class DiscussAvatar extends Component {
         if (this.channel) {
             return this.channel.showThreadIcon({ ignoreTyping: !this.props.typing });
         }
-        if (this.props.member || this.props.persona) {
-            return true;
-        }
-        return false;
+        const persona = this.props.member?.persona ?? this.props.persona;
+        return Boolean(persona && persona?.im_status && persona?.im_status !== "im_partner");
     }
 }
