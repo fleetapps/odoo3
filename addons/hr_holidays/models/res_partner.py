@@ -32,3 +32,28 @@ class ResPartner(models.Model):
     @api.model
     def _get_on_leave_ids(self):
         return self.env['res.users']._get_on_leave_ids(partner=True)
+<<<<<<< 40ba71e96e0a9189a443a207bec1486f08107a5d
+||||||| b44295bb6ce621ff87cbc96860492650d90d0ad7
+
+    def _to_store_defaults(self, target):
+        defaults = super()._to_store_defaults(target)
+        if target.is_internal(self.env):
+            # sudo: res.users - to access other company's portal user leave date
+            defaults.append(
+                Store.One("main_user_id", Store.Many("employee_ids", "leave_date_to", sudo=True)),
+            )
+        return defaults
+=======
+
+    def _to_store_defaults(self, target):
+        defaults = super()._to_store_defaults(target)
+        if target.is_internal(self.env):
+            # sudo: res.users - to access other company's portal user leave date
+            defaults.append(
+                Store.One(
+                    "main_user_id",
+                    [Store.Many("employee_ids", "leave_date_to", sudo=True), "partner_id"],
+                ),
+            )
+        return defaults
+>>>>>>> 816b45921eb6ae85d417c235083dc96e391f2ae4
