@@ -511,6 +511,7 @@ export function createRelatedModels(modelDefs, modelClasses = {}, opts = {}) {
                 }
             }
 
+            record.unmarkDirty();
             aggregatedUpdates.remove(record);
             aggregatedUpdates.fireEventAndDirty({
                 silentModels: opts.silent ? [record.model.name] : [],
@@ -598,6 +599,7 @@ export function createRelatedModels(modelDefs, modelClasses = {}, opts = {}) {
                 this,
                 mapObj(processedModelDefs, (modelName) => new Model(modelName))
             );
+
             this[STORE_SYMBOL] = store;
         }
 
@@ -613,10 +615,11 @@ export function createRelatedModels(modelDefs, modelClasses = {}, opts = {}) {
          * @param {Array<string>} [modelsToLoad=[]] - The names of the models to be loaded.
          * @returns {Array<Base>} - The list of loaded records.
          */
-        loadConnectedData(data, modelsToLoad = []) {
+        loadConnectedData(data, modelsToLoad = [], opts = {}) {
             return disabler.call((...args) => this._loadData(...args), data, modelsToLoad, {
                 connectRecords: false,
                 serverData: true,
+                ...opts,
             });
         }
 
