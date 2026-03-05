@@ -1,6 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -23,7 +23,19 @@ class SaleOrderLine(models.Model):
     #=== BUSINESS METHODS ===#
 
     def get_description_following_lines(self):
-        return reversed(self.name.splitlines()[1:])
+        lang = self.order_id._get_lang()
+        if lang != self.env.lang:
+            line = self.with_context(lang=lang)
+        if line.product_id:
+            description = line._get_sale_order_line_multiline_description_variants()
+            if line.linked_line_id and not line.combo_item_id:
+                description += "\n" + _(
+                    "Option for: %s",
+                    line.linked_line_id.product_id.with_context(display_default_code=False).display_name
+                )
+            if line.product_id.description_sale:
+                description +=  "\n" + line.product_id.description_sale
+        return description.splitlines()
 
     def _get_combination_name(self):
         return self.product_id.product_template_attribute_value_ids._get_combination_name()
