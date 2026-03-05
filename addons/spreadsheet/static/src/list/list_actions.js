@@ -13,30 +13,36 @@ const { isMatrix } = helpers;
  * @returns {Promise<void>}
  */
 export const SEE_RECORD_LIST = async (position, env, newWindow) => {
+    // TODORAR make it work with dynamic lists as well
     position = env.model.getters.getEvaluatedCell(position).origin ?? position;
     const cell = env.model.getters.getCorrespondingFormulaCell(position);
     const sheetId = position.sheetId;
     if (!cell || !cell.isFormula) {
         return;
     }
-    const { args } = getFirstListFunction(cell.compiledFormula, env.model.getters);
-    const evaluatedArgs = args
-        .map(astToFormula)
-        .map((arg) => env.model.getters.evaluateFormula(sheetId, arg));
+    const { functionName, args } = getFirstListFunction(cell.compiledFormula, env.model.getters);
     const listId = env.model.getters.getListIdFromPosition(position);
-    const { model, actionXmlId, context } = env.model.getters.getListDefinition(listId);
     const dataSource = await env.model.getters.getAsyncListDataSource(listId);
-    let index = evaluatedArgs[1];
-    if (isMatrix(index)) {
+    let index;
+    if (functionName === "ODOO.LIST") {
         const mainPosition = env.model.getters.getCellPosition(cell.id);
-        const rowOffset = position.row - mainPosition.row;
-        const colOffset = position.col - mainPosition.col;
-        index = index[colOffset][rowOffset];
+        index = position.row - mainPosition.row;
+    } else if (functionName === "ODOO.LIST.VALUE") {
+        const evaluatedArgs = args
+            .map(astToFormula)
+            .map((arg) => env.model.getters.evaluateFormula(sheetId, arg));
+        index = evaluatedArgs[1];
+        if (isMatrix(index)) {
+            const mainPosition = env.model.getters.getCellPosition(cell.id);
+            const rowOffset = position.row - mainPosition.row;
+            const colOffset = position.col - mainPosition.col;
+            index = index[colOffset][rowOffset];
+        }
     }
-
     if (typeof index !== "number") {
         return;
     }
+    const { model, actionXmlId, context } = env.model.getters.getListDefinition(listId);
     const recordId = dataSource.getIdFromPosition(index - 1);
     if (!recordId) {
         return;
@@ -64,13 +70,25 @@ export const SEE_RECORD_LIST_VISIBLE = (position, getters) => {
     const evaluatedCell = getters.getEvaluatedCell(position);
     position = evaluatedCell.origin ?? position;
     const cell = getters.getCorrespondingFormulaCell(position);
-    return !!(
+    const cellHasRelevantListFormula = !!(
         evaluatedCell.type !== "empty" &&
         evaluatedCell.type !== "error" &&
         evaluatedCell.value !== "" &&
         cell &&
         cell.isFormula &&
-        hasListFormula(cell.compiledFormula) &&
-        getFirstListFunction(cell.compiledFormula, getters).functionName === "ODOO.LIST"
+        hasListFormula(cell.compiledFormula)
     );
+    if (!cellHasRelevantListFormula) {
+        return false;
+    }
+    const { functionName } = getFirstListFunction(cell.compiledFormula, getters);
+    if (functionName === "ODOO.LIST") {
+        const mainPosition = getters.getCellPosition(cell.id);
+        const rowOffset = position.row - mainPosition.row;
+        return rowOffset >= 1;
+    } else if (functionName === "ODOO.LIST.VALUE") {
+        return true;
+    } else {
+        return false;
+    }
 };
