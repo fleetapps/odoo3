@@ -154,7 +154,7 @@ class MrpProduction(models.Model):
     date_finished = fields.Datetime(
         'End', copy=False, default=_get_default_date_finished,
         compute='_compute_date_finished', store=True,
-        help="Date you expect to finish production or actual date you finished production.")
+        help="Date at which you finished production.")
     duration_expected = fields.Float("Expected Duration", help="Total expected duration (in minutes)", compute='_compute_duration_expected', store=True)
     duration = fields.Float("Real Duration", help="Total real duration (in minutes)", compute='_compute_duration', store=True)
 
@@ -1024,7 +1024,23 @@ class MrpProduction(models.Model):
         if vals.get('state') == 'progress' and 'date_start' not in vals:
             vals['date_start'] = fields.Datetime.now()
 
+        date_finished_changed = 'date_finished' in vals and 'state' not in vals
+
+        production_initial_values = defaultdict(dict)
+        if date_finished_changed:
+            tracked_fields = self.fields_get(['date_finished'])
+            for production in self:
+                if production.state == 'done':
+                    production_initial_values[production] = {
+                        'date_finished': production.date_finished
+                    }
+
         res = super(MrpProduction, self).write(vals)
+
+        for production, initial_values in production_initial_values.items():
+            tracking_value_ids = production._mail_track(tracked_fields, initial_values)[1]
+            if tracking_value_ids:
+                production._message_log(tracking_value_ids=tracking_value_ids)
 
         for production in self:
             if 'date_start' in vals and not self.env.context.get('force_date', False):
