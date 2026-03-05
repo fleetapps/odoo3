@@ -4,12 +4,14 @@
 DEFAULT_PAYMENT_METHODS_CODES = [
     # Primary payment methods.
     'card',
-    'ideal',
+    'ideal_wero',
     # Brand payment methods.
     'visa',
     'mastercard',
     'amex',
     'discover',
+    'ideal',
+    'wero',
 ]
 
 # Mapping of payment method codes to Buckaroo codes.
