@@ -1878,6 +1878,12 @@ class SaleOrder(models.Model):
             if self.state in ('draft', 'sent'):
                 access_opt['title'] = _("View Quotation")
 
+        # followers and customers have access to the quotation
+        for group in groups:
+            if group[0] in ('customer', 'follower'):
+                group[2]['has_button_access'] = True
+                group[2]['button_access'] = access_opt
+
         return groups
 
     def _notify_by_email_prepare_rendering_context(self, message, msg_vals=False, model_description=False,
