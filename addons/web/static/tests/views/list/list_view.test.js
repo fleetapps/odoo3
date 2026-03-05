@@ -20121,3 +20121,35 @@ test(`custom button that creates record in list with sample data`, async () => {
     expect(`.o_list_view .o_content`).not.toHaveClass("o_view_sample_data");
     expect(`.o_data_row`).toHaveCount(1);
 });
+
+test(`x2many list: create control supports hotkey`, async () => {
+    Foo._records[0].o2m = [1];
+
+    await mountView({
+        resModel: "foo",
+        type: "form",
+        arch: `
+            <form>
+                <sheet>
+                    <field name="o2m">
+                        <list editable="bottom">
+                            <control>
+                                <create string="Add a line"/>
+                                <create string="Add a note" hotkey="n"/>
+                            </control>
+                            <field name="name"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        `,
+        resId: 1,
+    });
+
+    expect(queryAllTexts(`.o_field_x2many_list_row_add button`)).toEqual([
+        "Add a line",
+        "Add a note",
+    ]);
+    expect(`.o_field_x2many_list_row_add button:eq(0)`).not.toHaveAttribute("data-hotkey");
+    expect(`.o_field_x2many_list_row_add button:eq(1)`).toHaveAttribute("data-hotkey", "n");
+});
