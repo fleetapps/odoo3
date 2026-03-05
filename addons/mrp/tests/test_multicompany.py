@@ -316,3 +316,33 @@ class TestMrpMulticompany(common.TransactionCase):
         delivery.with_company(self.company_a).action_confirm()
         delivery.with_company(self.company_a).action_assign()
         self.assertRecordValues(delivery.move_ids, [{'state': 'confirmed', 'quantity': 0.0}])
+
+    def test_bom_report_without_warehouse(self):
+        """
+        Checks that bom overview/report shows availabilities as "Not Available" when the warehouse is not active.
+        """
+        self.warehouse_a.active = False
+        product_a = self.env['product.product'].create({'name': 'p1'})
+        bom = self.env['mrp.bom'].create({
+                'product_tmpl_id': product_a.product_tmpl_id.id,
+                'company_id': self.company_a.id,
+            })
+        report = self.env['report.mrp.report_bom_structure'].with_company(self.company_a)
+        bom_overview = report._get_report_data(bom_id=bom.id)
+        bom_report = report._get_report_values(docids=[bom.id], data={})
+
+        self.assertEqual(
+            False,
+            bom_overview["lines"]["availability_delay"],
+            bom_report["docs"][0]["availability_delay"],
+        )
+        self.assertEqual(
+            "Not Available",
+            bom_overview["lines"]["availability_display"],
+            bom_report["docs"][0]["availability_display"],
+        )
+        self.assertEqual(
+            "unavailable",
+            bom_overview["lines"]["availability_state"],
+            bom_report["docs"][0]["availability_state"],
+        )
