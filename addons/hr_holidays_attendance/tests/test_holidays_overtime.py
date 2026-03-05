@@ -135,7 +135,7 @@ class TestHolidaysOvertime(HttpCase, TransactionCase):
         self.new_attendance(check_in=datetime(2021, 1, 2, 8), check_out=datetime(2021, 1, 2, 16))
         self.assertEqual(self.employee.total_overtime, 8, 'Should have 8 hours of overtime')
 
-        leave = self.env['hr.leave'].create({
+        leave = self.env['hr.leave'].with_user(self.user).create({
             'name': 'no overtime',
             'employee_id': self.employee.id,
             'work_entry_type_id': self.work_entry_type_no_alloc.id,
@@ -205,7 +205,6 @@ class TestHolidaysOvertime(HttpCase, TransactionCase):
             'request_date_from': '2022-01-06',
             'request_date_to': '2022-01-06',
         })
-        leave.with_user(self.user_manager).action_approve()
         self._check_deductible(8)
 
         self.assertTrue(leave.with_user(self.user).can_cancel)
@@ -278,14 +277,13 @@ class TestHolidaysOvertime(HttpCase, TransactionCase):
             'count_as': 'working_time',
         })
 
-        leave = self.env['hr.leave'].create({
+        self.env['hr.leave'].create({
             'name': 'no overtime',
             'employee_id': self.employee.id,
             'work_entry_type_id': work_entry_type_worked.id,
             'request_date_from': datetime(2021, 1, 5),
             'request_date_to': datetime(2021, 1, 5),
         })
-        leave._action_validate()
 
         atts = self.env['hr.attendance'].create([
             {
@@ -317,7 +315,6 @@ class TestHolidaysOvertime(HttpCase, TransactionCase):
             'request_date_from': '2022-1-6',
             'request_date_to': '2022-1-6',
         })
-        leave.with_user(self.user_manager).action_approve()
         self._check_deductible(8)
 
         leave.with_user(self.user_manager).action_refuse()
@@ -394,7 +391,7 @@ class TestHolidaysOvertime(HttpCase, TransactionCase):
 
         # Use some of the overtime as a day off (8 hours)
         # Affects unspent_compensable_time's value
-        leave = self.env['hr.leave'].create(
+        self.env['hr.leave'].create(
             {
                 'name': 'no overtime',
                 'employee_id': self.employee.id,
@@ -403,7 +400,6 @@ class TestHolidaysOvertime(HttpCase, TransactionCase):
                 'request_date_to': '2022-1-6',
             }
         )
-        leave.with_user(self.user_manager).action_approve()
         expected_final_data = {
             'worked_hours': 27.0,  # 11 + 16 hours from Jan attendances
             'overtime_hours': 19.0,  # 3 + 16 hours from Jan attendances

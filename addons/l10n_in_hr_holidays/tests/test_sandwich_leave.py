@@ -100,7 +100,6 @@ class TestSandwichLeave(TransactionCase):
             'request_date_to': '2025-08-18',
             'state': 'confirm',
         })
-        approved_leave.action_approve()
         self.assertIsNotNone(approved_leave.with_user(self.demo_user).work_entry_type_increases_duration)
 
         approved_leave_without_sl = self.env['hr.leave'].create({
@@ -111,7 +110,6 @@ class TestSandwichLeave(TransactionCase):
             'request_date_to': '2025-12-15',
             'state': 'confirm',
         })
-        approved_leave_without_sl.action_approve()
         self.assertEqual(
             approved_leave_without_sl.with_user(self.demo_user)._get_durations()[approved_leave_without_sl.id][0],
             1
