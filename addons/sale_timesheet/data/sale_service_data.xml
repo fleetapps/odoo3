@@ -19,7 +19,7 @@
         <!-- Timesheets export template -->
         <record id="account_analytic_line_export_template_line_so_line" model="ir.exports.line">
             <field name="export_id" ref="hr_timesheet.account_analytic_line_export_template"/>
-            <field name="name">so_line</field>
+            <field name="name">sale_order_line_id</field>
         </record>
 
         <!-- Timesheets export template 2 -->

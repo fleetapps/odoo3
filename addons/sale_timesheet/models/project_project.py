@@ -183,7 +183,7 @@ class ProjectProject(models.Model):
         res = super().write(vals)
         if 'allow_billable' in vals and not vals.get('allow_billable'):
             self.task_ids._get_timesheet().write({
-                'so_line': False,
+                'sale_order_line_id': False,
             })
         return res
 
@@ -194,7 +194,7 @@ class ProjectProject(models.Model):
                 continue
             for employee_id in project.sale_line_employee_ids.filtered(lambda l: l.project_id == project).employee_id:
                 sale_line_id = project.sale_line_employee_ids.filtered(lambda l: l.project_id == project and l.employee_id == employee_id).sale_line_id
-                timesheet_ids.filtered(lambda t: t.employee_id == employee_id).sudo().so_line = sale_line_id
+                timesheet_ids.filtered(lambda t: t.employee_id == employee_id).sudo().sale_order_line_id = sale_line_id
 
     def action_view_timesheet(self):
         self.ensure_one()
@@ -258,7 +258,7 @@ class ProjectProject(models.Model):
         query = super()._get_sale_order_items_query(domain_per_model)
 
         Timesheet = self.env['account.analytic.line']
-        timesheet_domain = [('project_id', 'in', self.ids), ('so_line', '!=', False), ('project_id.allow_billable', '=', True)]
+        timesheet_domain = [('project_id', 'in', self.ids), ('sale_order_line_id', '!=', False), ('project_id.allow_billable', '=', True)]
         if Timesheet._name in domain_per_model:
             timesheet_domain = Domain.AND([
                 domain_per_model.get(Timesheet._name, []),
@@ -267,7 +267,7 @@ class ProjectProject(models.Model):
         timesheet_query = Timesheet._search(timesheet_domain)
         timesheet_sql = timesheet_query.select(
             f'{Timesheet._table}.project_id AS id',
-            f'{Timesheet._table}.so_line AS sale_line_id',
+            f'{Timesheet._table}.sale_order_line_id AS sale_line_id',
         )
 
         EmployeeMapping = self.env['project.sale.line.employee.map']

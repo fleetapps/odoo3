@@ -39,12 +39,12 @@ class TestSaleTimesheetReport(TestCommonSaleTimesheet):
             'task_id': task.id,
             'unit_amount': 24,
             'employee_id': self.employee_user.id,
-            'so_line': so_line.id,
+            'sale_order_line_id': so_line.id,
             'order_id': sale_order.id,
         })
         self.env.flush_all()
 
-        report = self.env['timesheets.analysis.report'].search([('so_line', '=', so_line.id)])
+        report = self.env['timesheets.analysis.report'].search([('sale_order_line_id', '=', so_line.id)])
         self.assertEqual(report.unit_amount, 24)
         self.assertEqual(report.timesheet_revenues, 30)
         self.assertEqual(report.billable_time, 24)

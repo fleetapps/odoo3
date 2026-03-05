@@ -303,7 +303,7 @@
                 "F62": "=PIVOT.HEADER(2,\"#task_id\",8)",
                 "F63": "=PIVOT.HEADER(2,\"#task_id\",9)",
                 "F64": "=PIVOT.HEADER(2,\"#task_id\",10)",
-                "F66": "[Non-Billable Tasks Costs](odoo://view/{\"viewType\":\"pivot\",\"action\":{\"domain\":[\"&\",\"&\",[\"project_id\",\"!=\",false],[\"task_id\",\"!=\",false],\"|\",[\"project_id.allow_billable\",\"=\",false],[\"so_line\",\"=\",false]],\"context\":{\"group_by\":[\"task_id\"],\"pivot_measures\":[\"amount\",\"non_billable_time\"],\"pivot_column_groupby\":[],\"pivot_row_groupby\":[\"task_id\"]},\"modelName\":\"timesheets.analysis.report\",\"views\":[[false,\"pivot\"],[false,\"graph\"],[false,\"search\"]]},\"threshold\":0,\"name\":\"Non-Billable Tasks Costs\"})",
+                "F66": "[Non-Billable Tasks Costs](odoo://view/{\"viewType\":\"pivot\",\"action\":{\"domain\":[\"&\",\"&\",[\"project_id\",\"!=\",false],[\"task_id\",\"!=\",false],\"|\",[\"project_id.allow_billable\",\"=\",false],[\"sale_order_line_id\",\"=\",false]],\"context\":{\"group_by\":[\"task_id\"],\"pivot_measures\":[\"amount\",\"non_billable_time\"],\"pivot_column_groupby\":[],\"pivot_row_groupby\":[\"task_id\"]},\"modelName\":\"timesheets.analysis.report\",\"views\":[[false,\"pivot\"],[false,\"graph\"],[false,\"search\"]]},\"threshold\":0,\"name\":\"Non-Billable Tasks Costs\"})",
                 "F67": "=_t(\"Task\")",
                 "F68": "=PIVOT.HEADER(8, \"#task_id\", 1)",
                 "F69": "=PIVOT.HEADER(8, \"#task_id\", 2)",
@@ -1734,7 +1734,7 @@
                     false
                 ],
                 [
-                    "so_line",
+                    "sale_order_line_id",
                     "=",
                     false
                 ]

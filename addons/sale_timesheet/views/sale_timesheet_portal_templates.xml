@@ -14,8 +14,8 @@
             <attribute name="colspan">2</attribute>
         </xpath>
         <xpath expr="//t[@t-foreach='grouped_timesheets']/tbody/tr[hasclass('table-light')]/th[hasclass('text-end')]" position="before">
-            <t t-elif="groupby == 'so_line'">
-                <t t-set="sol" t-value="timesheets[0].so_line"/>
+            <t t-elif="groupby == 'sale_order_line_id'">
+                <t t-set="sol" t-value="timesheets[0].sale_order_line_id"/>
                 <th colspan="5">
                     <t t-if="sol">
                         <span t-field="sol.display_name"/>
@@ -59,12 +59,12 @@
             </t>
         </xpath>
         <th name="t_label" position="before">
-            <th t-if="not groupby == 'so_line'">Sales Order Item</th>
+            <th t-if="not groupby == 'sale_order_line_id'">Sales Order Item</th>
             <th t-if="not groupby == 'reinvoice_move_id'">Invoice</th>
         </th>
         <xpath expr="//tbody//td[hasclass('text-end')]" position="before">
-            <td t-if="not groupby == 'so_line' and timesheets[0].env['account.analytic.line']._show_portal_timesheets()">
-                <span t-if="timesheet.so_line" t-field="timesheet.so_line" t-att-title="timesheet.so_line.display_name"></span>
+            <td t-if="not groupby == 'sale_order_line_id' and timesheets[0].env['account.analytic.line']._show_portal_timesheets()">
+                <span t-if="timesheet.sale_order_line_id" t-field="timesheet.sale_order_line_id" t-att-title="timesheet.sale_order_line_id.display_name"></span>
                 <span t-else="" class="text-muted">Non-billable</span>
             </td>
             <td t-if="not groupby == 'reinvoice_move_id'"><span t-field="timesheet.reinvoice_move_id" t-att-title="timesheet.reinvoice_move_id.display_name"></span></td>

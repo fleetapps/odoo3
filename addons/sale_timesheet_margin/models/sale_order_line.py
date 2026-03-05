@@ -22,8 +22,8 @@ class SaleOrderLine(models.Model):
         super(SaleOrderLine, self - timesheet_sols - service_non_timesheet_sols)._compute_purchase_price()
         if timesheet_sols:
             group_amount = self.env['account.analytic.line']._read_group(
-                [('so_line', 'in', timesheet_sols.ids), ('project_id', '!=', False)],
-                ['so_line'],
+                [('sale_order_line_id', 'in', timesheet_sols.ids), ('project_id', '!=', False)],
+                ['sale_order_line_id'],
                 ['amount:sum', 'unit_amount:sum'])
             mapped_sol_timesheet_amount = {
                 so_line.id: - amount_sum / unit_amount_sum if unit_amount_sum else 0.0

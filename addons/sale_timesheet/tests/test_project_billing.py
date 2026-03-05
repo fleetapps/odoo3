@@ -123,13 +123,13 @@ class TestProjectBilling(TestCommonSaleTimesheet):
             'employee_id': self.employee_manager.id,
         })
 
-        self.assertFalse(timesheet1.so_line, "The timesheet should be not linked to the project of the map entry since no SOL in the linked task.")
+        self.assertFalse(timesheet1.sale_order_line_id, "The timesheet should be not linked to the project of the map entry since no SOL in the linked task.")
 
         task.write({
             'sale_line_id': self.project_employee_rate_user.sale_line_id.id
         })
 
-        self.assertEqual(self.project_employee_rate_manager.sale_line_id, timesheet1.so_line, "The timesheet should be linked to the SOL associated to the Employee manager in the map")
+        self.assertEqual(self.project_employee_rate_manager.sale_line_id, timesheet1.sale_order_line_id, "The timesheet should be linked to the SOL associated to the Employee manager in the map")
         self.assertEqual(self.project_employee_rate_manager.project_id, timesheet1.project_id, "The timesheet should be linked to the project of the map entry")
 
         # create a subtask
@@ -154,7 +154,7 @@ class TestProjectBilling(TestCommonSaleTimesheet):
 
         self.assertEqual(subtask.project_id, timesheet2.project_id, "The timesheet is in the subtask project")
         self.assertNotEqual(self.project_employee_rate_user.project_id, timesheet2.project_id, "The timesheet should not be linked to the billing project for the map")
-        self.assertFalse(timesheet2.so_line, "The timesheet should not be linked to SOL as the task is in a non billable project")
+        self.assertFalse(timesheet2.sale_order_line_id, "The timesheet should not be linked to SOL as the task is in a non billable project")
 
         # move task into task rate project
         task.write({
@@ -193,7 +193,7 @@ class TestProjectBilling(TestCommonSaleTimesheet):
             'employee_id': self.employee_tde.id,
         })
 
-        self.assertFalse(timesheet3.so_line, "The timesheet should not be linked to SOL as there is no fallback at all (no map, no SOL on task, no SOL on project)")
+        self.assertFalse(timesheet3.sale_order_line_id, "The timesheet should not be linked to SOL as there is no fallback at all (no map, no SOL on task, no SOL on project)")
 
         # log timesheet on task in 'employee rate' project (no map, no SOL on task, but SOL on project)
         timesheet4 = Timesheet.create({
@@ -204,7 +204,7 @@ class TestProjectBilling(TestCommonSaleTimesheet):
             'employee_id': self.employee_tde.id,
         })
 
-        self.assertFalse(timesheet4.so_line, "The timesheet should not be linked to SOL, as no entry for TDE in project map")
+        self.assertFalse(timesheet4.sale_order_line_id, "The timesheet should not be linked to SOL, as no entry for TDE in project map")
 
     def test_billing_task_rate(self):
         """
@@ -231,7 +231,7 @@ class TestProjectBilling(TestCommonSaleTimesheet):
             'employee_id': self.employee_manager.id,
         })
 
-        self.assertEqual(task.sale_line_id, timesheet1.so_line, "The timesheet should be linked to the SOL associated to the task since the pricing type of the project is task rate.")
+        self.assertEqual(task.sale_line_id, timesheet1.sale_order_line_id, "The timesheet should be linked to the SOL associated to the task since the pricing type of the project is task rate.")
 
         # create a subtask
         subtask = Task.with_context(default_project_id=self.project_task_rate.id).create({
@@ -251,7 +251,7 @@ class TestProjectBilling(TestCommonSaleTimesheet):
             'employee_id': self.employee_user.id,
         })
         self.assertEqual(subtask.project_id, timesheet2.project_id, "The timesheet is in the subtask project")
-        self.assertFalse(timesheet2.so_line, "The timesheet should not be linked to SOL as it's a non billable project")
+        self.assertFalse(timesheet2.sale_order_line_id, "The timesheet should not be linked to SOL as it's a non billable project")
         # the `subtask.sale_line_id` is consider to be recompute,
         # but the result differ after the write of project_id
         task.flush_model(["sale_line_id"])
@@ -337,7 +337,7 @@ class TestProjectBilling(TestCommonSaleTimesheet):
             'name': '/',
             'project_id': self.project_task_rate.id,
             'unit_amount': 1,
-            'so_line': self.so1_line_deliver_no_task.id,
+            'sale_order_line_id': self.so1_line_deliver_no_task.id,
             'is_so_line_edited': True,
             'employee_id': self.employee_user.id,
         })
@@ -352,7 +352,7 @@ class TestProjectBilling(TestCommonSaleTimesheet):
         timesheet2 = self.env['account.analytic.line'].create({
             'project_id': self.project_task_rate.id,
             'unit_amount': 2,
-            'so_line': self.so1_line_deliver_no_task.id,
+            'sale_order_line_id': self.so1_line_deliver_no_task.id,
             'is_so_line_edited': True,
             'employee_id': self.employee_user.id,
         })

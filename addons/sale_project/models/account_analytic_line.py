@@ -18,11 +18,11 @@ class AccountAnalyticLine(models.Model):
     billable_type = fields.Selection(BILLABLE_TYPES, string="Billable Type",
         compute='_compute_project_billable_type', compute_sudo=True, store=True, readonly=True)
 
-    @api.depends('so_line.product_id', 'amount')
+    @api.depends('sale_order_line_id.product_id', 'amount')
     def _compute_project_billable_type(self):
         for line in self:
             if line.amount >= 0 and line.unit_amount >= 0:
-                if line.so_line and line.so_line.product_id.type == 'service':
+                if line.sale_order_line_id and line.sale_order_line_id.product_id.type == 'service':
                     line.billable_type = '10_service_revenues'
                 else:
                     if line.product_id.invoice_policy == 'delivery':

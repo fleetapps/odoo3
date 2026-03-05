@@ -37,7 +37,7 @@ class AccountAnalyticLine(models.Model):
 
     billable_type = fields.Selection(selection_add=TIMESHEET_BILLABLE_TYPES)
     commercial_partner_id = fields.Many2one('res.partner', compute="_compute_commercial_partner")
-    so_line = fields.Many2one(
+    sale_order_line_id = fields.Many2one(
         falsy_value_label="Non-billable",
         help="Sales order item to which the time spent will be added in order to be invoiced to your customer. Remove the sales order item for the timesheet entry to be non-billable."
     )
@@ -50,43 +50,43 @@ class AccountAnalyticLine(models.Model):
         for timesheet in self:
             timesheet.commercial_partner_id = timesheet.task_id.sudo().partner_id.commercial_partner_id or timesheet.project_id.sudo().partner_id.commercial_partner_id
 
-    @api.depends('so_line.product_id', 'project_id.billing_type', 'amount')
+    @api.depends('sale_order_line_id.product_id', 'project_id.billing_type', 'amount')
     def _compute_project_billable_type(self):
         timesheets_with_project = self.filtered(lambda t: t.project_id)
         for timesheet in timesheets_with_project:
             invoice_type = False
-            if not timesheet.so_line:
+            if not timesheet.sale_order_line_id:
                 invoice_type = '09_non_billable' if timesheet.project_id.billing_type != 'manually' else '08_billable_manual'
-            elif timesheet.so_line.product_id.type == 'service':
-                if timesheet.so_line.product_id.invoice_policy == 'delivery':
-                    if timesheet.so_line.product_id.service_type == 'timesheet':
+            elif timesheet.sale_order_line_id.product_id.type == 'service':
+                if timesheet.sale_order_line_id.product_id.invoice_policy == 'delivery':
+                    if timesheet.sale_order_line_id.product_id.service_type == 'timesheet':
                         invoice_type = '03_timesheet_revenues' if timesheet.amount > 0 and timesheet.unit_amount > 0 else '04_billable_time'
                     else:
-                        service_type = timesheet.so_line.product_id.service_type
+                        service_type = timesheet.sale_order_line_id.product_id.service_type
                         if service_type == 'milestones':
                             invoice_type = '06_billable_milestones'
                         elif service_type == 'manual':
                             invoice_type = '08_billable_manual'
                         else:
                             invoice_type = '02_billable_fixed'
-                elif timesheet.so_line.product_id.invoice_policy == 'order':
+                elif timesheet.sale_order_line_id.product_id.invoice_policy == 'order':
                     invoice_type = '02_billable_fixed'
             timesheet.billable_type = invoice_type
         super(AccountAnalyticLine, self - timesheets_with_project)._compute_project_billable_type()
 
     @api.depends('task_id.sale_line_id', 'project_id.sale_line_id', 'employee_id', 'project_id.allow_billable')
-    def _compute_so_line(self):
-        super()._compute_so_line()
+    def _compute_sale_order_line_id(self):
+        super()._compute_sale_order_line_id()
         # Get only the timesheets that are not yet invoiced
         for timesheet in self.filtered(lambda t: t.project_id and not t.is_so_line_edited and t._is_not_billed()):
-            timesheet.so_line = timesheet.project_id.allow_billable and timesheet._timesheet_determine_sale_line()
+            timesheet.sale_order_line_id = timesheet.project_id.allow_billable and timesheet._timesheet_determine_sale_line()
 
-    @api.depends('so_line')
+    @api.depends('sale_order_line_id')
     def _compute_order_id(self):
         super()._compute_order_id()
         # compute only for timesheets
         for timesheet in self.filtered('project_id'):
-            timesheet.order_id = timesheet.so_line.order_id
+            timesheet.order_id = timesheet.sale_order_line_id.order_id
 
     @api.depends('reinvoice_move_id.state')
     def _compute_partner_id(self):
@@ -104,7 +104,7 @@ class AccountAnalyticLine(models.Model):
         return not self.reinvoice_move_id or (self.reinvoice_move_id.state == 'cancel' and self.reinvoice_move_id.payment_state != 'invoicing_legacy')
 
     def _check_timesheet_can_be_billed(self):
-        return self.so_line in self.project_id.mapped('sale_line_employee_ids.sale_line_id') | self.task_id.sale_line_id | self.project_id.sale_line_id
+        return self.sale_order_line_id in self.project_id.mapped('sale_line_employee_ids.sale_line_id') | self.task_id.sale_line_id | self.project_id.sale_line_id
 
     def _restricted_fields_when_invoiced(self):
         return super()._restricted_fields_when_invoiced() + ['employee_id', 'project_id', 'task_id']
@@ -159,7 +159,7 @@ class AccountAnalyticLine(models.Model):
     @api.model
     def _timesheet_get_sale_domain(self, order_lines_ids, invoice_ids):
         if not invoice_ids:
-            return [('so_line', 'in', order_lines_ids.ids)]
+            return [('sale_order_line_id', 'in', order_lines_ids.ids)]
 
         return [
             '|',
@@ -170,7 +170,7 @@ class AccountAnalyticLine(models.Model):
             '&',
             ('billable_type', '=', '02_billable_fixed'),
                 '&',
-                ('so_line', 'in', order_lines_ids.ids),
+                ('sale_order_line_id', 'in', order_lines_ids.ids),
                 ('reinvoice_move_id', '=', False),
         ]
 
@@ -219,7 +219,7 @@ class AccountAnalyticLine(models.Model):
         return super()._is_updatable_timesheet and self._is_not_billed()
 
     def _timesheet_preprocess_get_accounts(self, vals):
-        so_line = self.env['sale.order.line'].browse(vals.get('so_line'))
+        so_line = self.env['sale.order.line'].browse(vals.get('sale_order_line_id'))
         if not (so_line and (distribution := so_line.sudo().analytic_distribution)):
             return super()._timesheet_preprocess_get_accounts(vals)
 
@@ -248,7 +248,7 @@ class AccountAnalyticLine(models.Model):
         return account_id_per_fname
 
     def _timesheet_postprocess(self, values):
-        if values.get('so_line'):
+        if values.get('sale_order_line_id'):
             for timesheet in self.sudo():
                 # If no account_id was found in the SOL's distribution, we fallback on the project's account_id
                 if not timesheet.account_id:

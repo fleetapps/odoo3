@@ -25,7 +25,7 @@ class AccountMoveLine(models.Model):
             ('reinvoice_move_id.move_type', '=', 'out_invoice'),
             ('reinvoice_move_id.state', '=', 'draft'),
             ('reinvoice_move_id', 'in', self.move_id.ids)],
-            ['reinvoice_move_id', 'so_line'],
+            ['reinvoice_move_id', 'sale_order_line_id'],
             ['id:array_agg'])
 
         timesheet_ids = []

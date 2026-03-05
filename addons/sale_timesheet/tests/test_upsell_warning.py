@@ -64,7 +64,7 @@ class TestUpsellWarning(TestCommonSaleTimesheet):
             'project_id': project.id,
             'task_id': task.id,
         })
-        timesheet._compute_so_line()
+        timesheet._compute_sale_order_line_id()
         so.order_line._compute_qty_delivered()
         so.order_line._compute_invoice_status()
         so._compute_invoice_status()
@@ -75,7 +75,7 @@ class TestUpsellWarning(TestCommonSaleTimesheet):
         timesheet.write({
             'unit_amount': 6,
         })
-        timesheet._compute_so_line()
+        timesheet._compute_sale_order_line_id()
         so.order_line._compute_qty_delivered()
         so.order_line._compute_invoice_status()
         so._compute_invoice_status()

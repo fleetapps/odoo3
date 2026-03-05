@@ -152,11 +152,11 @@ class TestSaleService(TestCommonSaleTimesheet):
         # make task non billable
         task_serv2.write({'sale_line_id': False})
         self.assertTrue(all(billing_type == '04_billable_time' for billing_type in timesheets.mapped('billable_type')), "billable type of timesheet should not change when tranfering task into another project")
-        self.assertEqual(task_serv2.timesheet_ids.mapped('so_line'), so_line_deliver_global_project, "Old invoiced timesheet are not modified when changing the task SO line")
+        self.assertEqual(task_serv2.timesheet_ids.mapped('sale_order_line_id'), so_line_deliver_global_project, "Old invoiced timesheet are not modified when changing the task SO line")
 
         # try to update timesheets, catch error 'You cannot modify invoiced timesheet'
         with self.assertRaises(UserError):
-            timesheets.write({'so_line': False})
+            timesheets.write({'sale_order_line_id': False})
 
     def test_delivered_quantity(self):
         # create SO line and confirm it
@@ -532,11 +532,11 @@ class TestSaleService(TestCommonSaleTimesheet):
             'project_id': self.project_task_rate.id,
             'task_id': task.id,
             'unit_amount': 1,
-            'so_line': prepaid_service_sol.id,
+            'sale_order_line_id': prepaid_service_sol.id,
             'is_so_line_edited': True,
             'employee_id': self.employee_user.id,
         })
-        self.assertEqual(timesheet.so_line, prepaid_service_sol, "The SOL should be the same than one containing the prepaid service product.")
+        self.assertEqual(timesheet.sale_order_line_id, prepaid_service_sol, "The SOL should be the same than one containing the prepaid service product.")
         self.assertEqual(prepaid_service_sol.remaining_hours, 2, "The remaining hours should not change.")
 
     def test_several_uom_sol_to_planned_hours(self):

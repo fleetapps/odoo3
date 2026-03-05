@@ -7,8 +7,8 @@ class TestAnalyticToSaleTimesheet(TestCommonSaleTimesheet):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.product_order_timesheet2.expense_policy = 'sales_price'
-        cls.product_delivery_timesheet2.expense_policy = 'sales_price'
+        cls.product_order_timesheet2.reinvoice_policy = 'sales_price'
+        cls.product_delivery_timesheet2.reinvoice_policy = 'sales_price'
 
         cls.timesheet_and_services_sale_order = cls.env['sale.order'].create({
             'partner_id': cls.partner.id,
@@ -70,12 +70,12 @@ class TestAnalyticToSaleTimesheet(TestCommonSaleTimesheet):
         })
 
         self.assertEqual(
-            invoice_ordered_qty_aal.so_line,
+            invoice_ordered_qty_aal.sale_order_line_id,
             self.invoice_ordered_qty_sol,
             "The upsell AALs should be linked to the same sale order line.",
         )
         self.assertEqual(
-            invoice_delivered_qty_aal.so_line,
+            invoice_delivered_qty_aal.sale_order_line_id,
             self.invoice_delivered_qty_sol,
             "The upsell AALs should be linked to the same sale order line.",
         )
