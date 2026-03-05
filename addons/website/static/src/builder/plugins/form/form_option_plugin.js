@@ -173,6 +173,10 @@ export class FormOptionPlugin extends Plugin {
             SetDefaultErrorMessageAction,
             SetRequirementComparatorAction,
             SetMultipleFilesAction,
+            ToggleCharacterLimitAction,
+            SetCharacterLimitAction,
+            SetAllowedFileTypesAction,
+            ToggleRestrictFileTypesAction,
         },
         content_not_editable_selectors: ".s_website_form form",
         content_editable_selectors: [
@@ -837,15 +841,20 @@ export class FormOptionPlugin extends Plugin {
      * @returns {string} The default error message.
      */
     defaultMessage(comparator, condition, between, type) {
+        if (["substring", "!substring", "domain"].includes(comparator)) {
+            condition = JSON.parse(condition)
+                .map(({ requirement_text }) => requirement_text.trim());
+        }
         const textMessages = {
             contains: _t("This field must include keyword %s.", condition),
             "!contains": _t("This field must not include keyword %s.", condition),
-            substring: _t("This field must include keyword %s.", condition),
-            "!substring": _t("This field must not include keyword %s.", condition),
+            substring: _t("This field must contain one of the keyword(s): '%s'", condition),
+            "!substring": _t("This field must not include the keyword(s): '%s'", condition),
             greater: _t("Invalid: field is not greater than %s.", condition),
             less: _t("Invalid: field is not less than %s.", condition),
             "greater or equal": _t("Invalid: field is not greater than or equal to %s.", condition),
             "less or equal": _t("Invalid: field is not less than or equal to %s.", condition),
+            domain: _t("This field must have one of these email domain(s): %s.", condition),
         };
 
         if (condition && textMessages[comparator]) {
@@ -1392,6 +1401,73 @@ export class SetDefaultErrorMessageAction extends BuilderAction {
             between,
             type
         );
+    }
+}
+/**
+ * Sets the character limit on input fields.
+ */
+export class SetCharacterLimitAction extends BuilderAction {
+    static id = "setCharacterLimit";
+    apply({ editingElement: inputEl }) {
+        const max = parseInt(inputEl.getAttribute("maxlength"));
+        const min = parseInt(inputEl.getAttribute("minlength"));
+        inputEl.setAttribute("maxlength", Math.max(max, min));
+        inputEl.setAttribute("minlength", Math.min(max, min));
+    }
+}
+/**
+ * Toggles the character limit on input fields.
+ */
+export class ToggleCharacterLimitAction extends BuilderAction {
+    static id = "toggleCharacterLimit";
+    apply({ editingElement: inputEl }) {
+        inputEl.setAttribute("maxlength", 100);
+        inputEl.setAttribute("minlength", 0);
+    }
+    clean({ editingElement: inputEl }) {
+        inputEl.removeAttribute("maxlength");
+        inputEl.removeAttribute("minlength");
+    }
+    isApplied({ editingElement: inputEl, params: { mainParam: activeValue } }) {
+        return inputEl.hasAttribute("maxlength") && inputEl.hasAttribute("minlength");
+    }
+}
+/**
+ * Toggles the restriction of file types on file input fields.
+ */
+export class ToggleRestrictFileTypesAction extends BuilderAction {
+    static id = "toggleRestrictFileTypes";
+    apply({ editingElement: inputEl }) {
+        inputEl.toggleAttribute("accept");
+    }
+    isApplied({ editingElement: inputEl }) {
+        return inputEl.hasAttribute("accept");
+    }
+}
+/**
+ * Restricts to the allowed file types on file input fields.
+ */
+export class SetAllowedFileTypesAction extends BuilderAction {
+    static id = "setAllowedFileTypes";
+    apply({ editingElement: inputEl, params: { mainParam: activeValue } }) {
+        if (activeValue === "application/pdf") {
+            inputEl.setAttribute("accept", activeValue);
+        } else {
+            let allowedMimeTypes = inputEl.accept.split(",");
+            allowedMimeTypes = allowedMimeTypes.filter((type) => type !== "application/pdf");
+            if (!allowedMimeTypes.includes(activeValue)) {
+                allowedMimeTypes.push(activeValue);
+            }
+            inputEl.setAttribute("accept", allowedMimeTypes.join(","));
+        }
+    }
+    clean({ editingElement: inputEl, params: { mainParam: activeValue } }) {
+        let allowedMimeTypes = inputEl.accept.split(",");
+        allowedMimeTypes = allowedMimeTypes.filter((mimeType) => mimeType !== activeValue);
+        inputEl.setAttribute("accept", allowedMimeTypes.join(","));
+    }
+    isApplied({ editingElement: inputEl, params: { mainParam: activeValue } }) {
+        return !!inputEl.accept?.includes(activeValue);
     }
 }
 
