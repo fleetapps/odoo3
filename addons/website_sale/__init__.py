@@ -1,4 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+from odoo.fields import Domain
+from odoo.tools.sql import SQL
 
 from . import controllers
 from . import models
@@ -17,6 +19,19 @@ def _post_init_hook(env):
     existing_websites = env['website'].search([])
     for website in existing_websites:
         website._create_checkout_steps()
+
+    # suggest_optional_products is TRUE only if there are no optional products set
+    env.execute_query(
+        SQL(
+            """
+            UPDATE product_template
+               SET suggest_optional_products = TRUE
+             WHERE NOT id IN (SELECT src_id FROM product_optional_rel)
+               AND sale_ok = TRUE
+               AND is_published = TRUE
+            """
+        )
+    )
 
 def uninstall_hook(env):
     ''' Need to reenable the `product` pricelist multi-company rule that were
