@@ -618,6 +618,27 @@ export class ControlPanel extends Component {
      * @param {EmbeddedAction} action
      */
     async onEmbeddedActionClick(action) {
+        console.log(action.action_id)
+        
+        this.breadcrumbs.push(
+            {
+                jsId: "controller_8",
+                get name() {
+                    return "Test";
+                },
+                get isFormView() {
+                    return true;
+                },
+                get url() {
+                    return "odoo/project";
+                },
+                onSelected() {
+                    
+                },
+            }
+         );
+        console.log(this.breadcrumbs)
+
         this.env.config.setEmbeddedActions(this.state.embeddedInfos.embeddedActions);
         const { active_id, active_model } = this.env.searchModel.globalContext;
         const actionContext = action.context ? makeContext([action.context]) : {};
@@ -641,6 +662,7 @@ export class ControlPanel extends Component {
             },
             { isEmbeddedAction: true }
         );
+
     }
 
     /**
