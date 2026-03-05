@@ -16,13 +16,14 @@ to minimise the code to maintain
 import logging
 import sys
 
-import odoo
+import odoo.modules
 from . import case
 from .common import HttpCase
 from .result import stats_logger
 from unittest import util, BaseTestSuite, TestCase
 
 __unittest = True
+
 
 class TestSuite(BaseTestSuite):
     """A test suite is a composite test consisting of a number of TestCases.
@@ -45,8 +46,8 @@ class TestSuite(BaseTestSuite):
 
             if not test.__class__._classSetupFailed:
                 test(result)
-
         self._tearDownPreviousClass(None, result)
+        odoo.modules.module.current_test = None
         return result
 
     def _handleClassSetUp(self, test, result):
