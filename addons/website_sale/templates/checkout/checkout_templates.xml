@@ -88,6 +88,7 @@
                     <i class="fa fa-angle-left me-2 fw-light"/>
                     Continue shopping
                 </a>
+                <nav class="mt-2 oe_empty" id="oe_structure_website_sale_checkout_continue_shopping_inner_content_1" />
             </t>
         </div>
     </template>
