@@ -214,6 +214,8 @@ class HrEmployeeBase(models.AbstractModel):
                     leave_unit = 'hours'
 
                 leave_type_data = allocations_leaves_consumed[employee][leave_type]
+
+                already_seen_historical_ids = {}
                 for leave in leaves_per_employee_type[employee][leave_type].sorted('date_from'):
                     leave_duration = leave[leave_duration_field]
                     skip_excess = False
@@ -230,6 +232,39 @@ class HrEmployeeBase(models.AbstractModel):
                             # to give a warning if the total exceeds what will be accrued.
                             if allocation.date_from > leave.date_to.date() or (allocation.date_to and allocation.date_to < leave.date_from.date()):
                                 continue
+
+                            seen_ids = already_seen_historical_ids.setdefault(allocation.id, [])
+                            reconciliation = allocation._calculate_reconciled_consumption(
+                                leave, already_seen_leave_ids=seen_ids)
+
+                            if reconciliation.get('is_historical'):
+                                # Historical leave (entirely before last carryover reset).
+                                #
+                                # The leave does NOT consume from the current allocation balance
+                                # directly — it was already in a past period. However, it MAY
+                                # have reduced the carryover into this period. We apply that
+                                # carryover delta (old_carry - new_carry) to the balance now.
+                                carryover_delta = reconciliation['total_reconciliation_impact']
+                                if carryover_delta > 0:
+                                    actual_delta = min(
+                                        carryover_delta,
+                                        leave_type_data[allocation]['virtual_remaining_leaves']
+                                    )
+                                    leave_type_data[allocation]['virtual_leaves_taken'] += actual_delta
+                                    leave_type_data[allocation]['virtual_remaining_leaves'] -= actual_delta
+                                    if leave.state == 'validate':
+                                        leave_type_data[allocation]['leaves_taken'] += actual_delta
+                                        leave_type_data[allocation]['remaining_leaves'] -= actual_delta
+
+                                # Mark the leave as consumed up to what was historically available.
+                                # If the leave exceeded the period budget, the remainder stays in
+                                # leave_duration > 0 → goes to excess_days → ValidationError.
+                                leave_duration -= reconciliation['post_carryover_consumption']
+                                # Record this leave as seen so subsequent historical leaves in
+                                # this pass compute their own carryover delta correctly.
+                                seen_ids.append(leave.id)
+                                break
+
                             interval_start = max(
                                 leave.date_from,
                                 datetime.combine(allocation.date_from, time.min)
