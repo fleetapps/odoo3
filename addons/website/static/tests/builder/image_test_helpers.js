@@ -26,6 +26,12 @@ export const testGifImg = `
     <img src='/web/image/456-test/test.gif'>
     `;
 
+export const testSvgImgSrc = "/web/image/457-test/test.svg";
+
+export const testSvgImg = `
+    <img src='${testSvgImgSrc}'>
+    `;
+
 export function mockImageRequests() {
     before(() => {
         onRpc("/html_editor/get_image_info", async (data) => {
@@ -40,6 +46,17 @@ export function mockImageRequests() {
                         image_src:
                             "/website/static/src/img/snippets_options/header_effect_fade_out.gif",
                         mimetype: "image/gif",
+                    },
+                };
+            } else if (params.src === testSvgImgSrc) {
+                return {
+                    attachment: {
+                        id: 457,
+                    },
+                    original: {
+                        id: 457,
+                        image_src: "/website/static/src/img/website_logo.svg",
+                        mimetype: "image/svg+xml",
                     },
                 };
             }
@@ -63,5 +80,6 @@ export function mockImageRequests() {
         onRpcImg("/web/image/123/transparent.png");
         onRpcImg("/website/static/src/svg/hover_effects.svg");
         onRpcImg("/html_builder/static/image_shapes/geometric/geo_square.svg");
+        onRpcImg("/website/static/src/img/website_logo.svg");
     });
 }

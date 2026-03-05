@@ -3,6 +3,9 @@ import { toRatio } from "@html_builder/utils/utils";
 import { _t } from "@web/core/l10n/translation";
 import { ShapeSelector } from "@html_builder/plugins/shape/shape_selector";
 import { deepCopy } from "@web/core/utils/objects";
+import { loadImageInfo } from "@html_editor/utils/image_processing";
+import { isImageSupportedForProcessing } from "@html_editor/main/media/image_post_process_plugin";
+import { getMimetypeBeforeShape } from "@html_builder/utils/image";
 
 export class ImageShapeOption extends BaseOptionComponent {
     static template = "html_builder.ImageShapeOption";
@@ -18,8 +21,13 @@ export class ImageShapeOption extends BaseOptionComponent {
         this.customizeTabPlugin = this.dependencies.customizeTab;
         this.imageShapeOption = this.dependencies.imageShapeOption;
         this.toRatio = toRatio;
-        this.state = useDomState((editingElement) => {
-            const shape = editingElement.dataset.shape;
+        this.state = useDomState(async (editingElement) => {
+            const data = await loadImageInfo(editingElement).then((data) => ({
+                ...editingElement.dataset,
+                ...data,
+            }));
+            const shape = data.shape;
+            const mimetype = await getMimetypeBeforeShape(editingElement, data);
             return {
                 hasShape: !!shape && !this.imageShapeOption.isTechnicalShape(shape),
                 shapeLabel: this.imageShapeOption.getShapeLabel(shape),
@@ -30,7 +38,10 @@ export class ImageShapeOption extends BaseOptionComponent {
                 showImageShape4: this.isShapeVisible(editingElement, 4),
                 showImageShapeTransform: this.imageShapeOption.isTransformableShape(shape),
                 showImageShapeAnimation: this.imageShapeOption.isAnimableShape(shape),
-                togglableRatio: this.imageShapeOption.isTogglableRatioShape(shape),
+                togglableRatio:
+                    this.imageShapeOption.isTogglableRatioShape(shape) &&
+                    (await isImageSupportedForProcessing(editingElement, mimetype, data)),
+                showShapeOption: !!data.originalSrc,
             };
         });
     }

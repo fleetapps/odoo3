@@ -8,7 +8,6 @@ import {
     cropperDataFields,
     loadImage,
     loadImageInfo,
-    isGif,
 } from "@html_editor/utils/image_processing";
 import { getValueFromVar } from "@html_builder/utils/utils";
 import { imageShapeDefinitions } from "@html_builder/plugins/image/image_shapes_definition";
@@ -18,7 +17,6 @@ import {
 } from "@html_editor/main/media/image_post_process_plugin";
 import { _t } from "@web/core/l10n/translation";
 import { BuilderAction } from "@html_builder/core/builder_action";
-import { getMimetype } from "@html_editor/utils/image";
 
 /**
  * @typedef {((dataset: DOMStringMap) => string)[]} default_shape_handlers
@@ -85,11 +83,12 @@ export class ImageShapeOptionPlugin extends Plugin {
     }
     async canHaveHoverEffect(imgEl) {
         const dataset = Object.assign({}, imgEl.dataset, await loadImageInfo(imgEl));
+        const isImageSupportedForShapes = this.isImageSupportedForShapes(imgEl, dataset);
         return (
             imgEl.tagName === "IMG" &&
             !this.isDeviceShape(imgEl) &&
             !this.isAnimableShape(dataset.shape) &&
-            this.isImageSupportedForShapes(imgEl, dataset)
+            isImageSupportedForShapes
         );
     }
     isDeviceShape(img) {
@@ -101,14 +100,10 @@ export class ImageShapeOptionPlugin extends Plugin {
         return shapeCategory === "devices";
     }
     isImageSupportedForShapes(img, dataset = img.dataset) {
-        // todo: The hover effect and shape code should probably be define somewhere else.
-        if (!!dataset.hoverEffect || !!dataset.shape) {
-            return true;
-        }
         if (!dataset.originalId) {
             return false;
         }
-        return isImageSupportedForProcessing(getMimetype(img, dataset));
+        return true;
     }
     async getShapeSvgText(shapeName) {
         // Compatibility with old shapes.
@@ -543,16 +538,3 @@ export class ToggleImageShapeRatioAction extends BuilderAction {
 }
 
 registry.category("builder-plugins").add(ImageShapeOptionPlugin.id, ImageShapeOptionPlugin);
-
-/**
- * @param {String} mimetype
- * @param {Boolean} [strict=false] if true, even partially supported images (GIFs)
- *     won't be accepted.
- * @returns {Boolean}
- */
-function isImageSupportedForProcessing(mimetype, strict = false) {
-    if (isGif(mimetype)) {
-        return !strict;
-    }
-    return ["image/jpeg", "image/png", "image/webp"].includes(mimetype);
-}
