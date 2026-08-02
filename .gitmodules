@@ -1,0 +1,4 @@
+[submodule "custom_addons"]
+	path = custom_addons
+	url = https://github.com/fleetapps/odoo-apps.git
+	branch = 19.0
