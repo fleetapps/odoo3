@@ -16,5 +16,18 @@ COPY --chown=odoo:odoo ./custom_addons /opt/custom_addons
 # Fail the build loudly if the submodule was not checked out. Without this the
 # COPY above happily produces an empty directory, the build goes green, and the
 # only symptom is an Apps list with none of our modules in it.
-RUN test -f /opt/custom_addons/shopify_bisync/__manifest__.py \
+#
+# Checks for *any* module rather than one by name: the odoo-apps 19.0 branch is
+# periodically trimmed to the App Store-ready set, and a guard naming a module
+# that gets trimmed away fails every build for the wrong reason.
+RUN ls /opt/custom_addons/*/__manifest__.py >/dev/null 2>&1 \
     || (echo "ERROR: custom_addons/ is empty - git submodule not initialised" && exit 1)
+
+# Print what actually got baked in. This is the one line to read in the Render
+# build log to answer "did this deploy pick up my push?" - the alternative is
+# deploying, opening the app, and inferring the version from the UI.
+RUN echo "custom_addons baked into this image:" \
+ && for m in /opt/custom_addons/*/__manifest__.py; do \
+        echo "  $(basename $(dirname "$m")) \
+$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$m" | head -1)"; \
+    done
